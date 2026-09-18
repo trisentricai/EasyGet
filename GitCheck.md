@@ -73,7 +73,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
-| 2026-09-18 | main | (initial commit) | Phase 1 foundation baseline: Django API + health endpoint + CI + React/Flutter scaffolds; git/SSH setup; docs (README, currentUpdate.md, GitCheck.md) |
+| 2026-09-18 | main | `66bc53a` | Phase 1 foundation baseline: Django API + health endpoint + CI + React/Flutter scaffolds; git/SSH setup; docs (README, currentUpdate.md, GitCheck.md) |
 
 ## 9. Gotchas
 
