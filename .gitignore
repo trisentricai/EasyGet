@@ -1,0 +1,41 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local tool logs and worktrees
+.kilo/
+*.log
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+coverage.xml
+htmlcov/
+
+# Django
+staticfiles/
+media/
+db.sqlite3
+
+# Node
+node_modules/
+dist/
+npm-debug.log*
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+build/
+
+# IDE and OS
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store
