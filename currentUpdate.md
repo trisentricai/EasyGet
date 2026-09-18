@@ -1,11 +1,31 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-09-18
-**Phase in progress:** 1 — Project Foundation
+**Last updated:** 2026-09-19
+**Phase in progress:** 3 — Store + Product + Inventory (Recommended Build Order) — Phase 2 Auth **✅ done**
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
+
+---
+
+## 0. LAST COMPLETED — Phase 2: Authentication & Users (✅ done on `phase-2-auth`)
+
+**Built & merged to `main` (README Phase 2 checklist passing):**
+
+- Custom `User` model (`AUTH_USER_MODEL = "users.User"`), email login (`USERNAME_FIELD = email`), unique email
+- Roles via `User.Role.TextChoices`: `CUSTOMER` (default), `ADMIN`, `STORE_MANAGER`, `DELIVERY_AGENT`; Django `auth.Permission` retained for group perms
+- JWT auth (`djangorestframework-simplejwt==5.5.0`) + `token_blacklist` → logout/blacklist verified working
+- OTP via `OTPCode` model (6-digit, 10-min expiry, 5-attempt cap); dev email = console backend; verified end-to-end over live HTTP
+- Users are active but **must verify email before login** (`is_email_verified`)
+- DRF defaults changed: `DEFAULT_AUTHENTICATION_CLASSES = JWTAuthentication`, `DEFAULT_PERMISSION_CLASSES = IsAuthenticated` → **health endpoint made explicitly public** (`@permission_classes([AllowAny])`)
+- Tests: **18/18 pass** (was 3 before)
+
+**Verified live (12 checks):** register 201 ✔ OTP verify ✔ login tokens ✔ /users/me GET+PATCH ✔ addresses (1st auto-default, set-default works, exactly 1 default) ✔ admin-only → 403 for CUSTOMER ✔ logout ✔ refresh-after-logout → 401 ✔ pre-verify login → 400 ✔.
+
+**API surface** (all `/api/v1/`): `auth/register|verify-otp|resend-otp|login|refresh|logout`, `users/me`, `users/me/addresses` (+`/set-default/`), `admin/only` (probe).
+
+**Next → Phase 3 per Recommended Build Order: Store + Product + Inventory** — categories, products(+variants), images, and per-store inventory models.
 
 ---
 
@@ -28,7 +48,7 @@ Verified and repaired the Phase 1 foundation end-to-end:
 
 | Item | Value |
 |---|---|
-| Branch | `main` (baseline foundation commit `66bc53a` landed 2026-09-18) |
+| Branch | `main` (baseline foundation commit `66bc53a` landed 2026-09-19) |
 | Remote | `origin = git@github.com:trisentricai/EasyGet.git` (SSH) |
 | Auth | SSH verified (`rahulbharathi1921` authenticated successfully) |
 | Identity (repo-local) | Rahul Bharathi <mailtorahulbharathi@gmail.com> |
@@ -82,7 +102,7 @@ Source: README.md Phase 1 Manual Test Checklist + docs/phase-1-foundation-spec.m
 EasyGet/
 ├── README.md                    # Full product roadmap + phases (0–15)
 ├── currentUpdate.md             # THIS FILE — live status/architecture snapshot
-├── requirements.txt             # Python deps (Django 5.2, DRF, cors, environ, celery, redis, psycopg)
+├── requirements.txt             # Python deps (Django 5.2, DRF, simplejwt, cors, environ, celery, redis, psycopg)
 ├── .env.example                 # Env template — placeholders ONLY, no secrets
 ├── .env                         # Local env (gitignored, created from example)
 ├── .gitignore
@@ -95,15 +115,26 @@ EasyGet/
 │   ├── config/                  # Project configuration package
 │   │   ├── settings/
 │   │   │   ├── __init__.py      # imports * from base
-│   │   │   └── base.py          # core settings: env, DRF, CORS, REST, Celery/Redis
-│   │   ├── urls.py              # /admin/ + /api/v1/ -> common.urls
+│   │   │   └── base.py          # env, DRF (JWT), CORS, SIMPLE_JWT, email, Celery/Redis
+│   │   ├── urls.py              # /admin/ + /api/v1/{auth,users,admin,health}
 │   │   ├── wsgi.py / asgi.py
 │   │   └── celery.py            # Celery app "easyget", autodiscover_tasks
-│   ├── common/                  # Shared/health app (no domain yet)
-│   │   └── views.py             # GET /api/v1/health/
-│   │   └── urls.py              # health route
+│   ├── common/                  # Shared/health app
+│   │   ├── views.py             # GET /api/v1/health/ (public)
+│   │   ├── urls.py
 │   │   └── tests.py             # 3 health + CORS tests
-│   └── (future domain apps...)  # users, stores, products, inventory, cart,
+│   ├── users/                   # Phase 2 — Auth & Users
+│   │   ├── models.py            # User (roles), Address, OTPCode
+│   │   ├── admin.py
+│   │   ├── permissions.py       # IsVerifiedEmail, role_required, IsAdminOnly
+│   │   ├── serializers.py       # Register/Verify/Login/Logout/User/Address
+│   │   ├── services.py          # send_otp_email
+│   │   ├── auth_views.py        # register/verify-otp/resend-otp/login/logout
+│   │   ├── views.py             # MeView, AddressViewSet(+set-default), AdminOnlyView
+│   │   ├── urls.py / auth_urls.py / admin_urls.py
+│   │   ├── tests.py             # 12 auth + profile/address/RBAC tests
+│   │   └── migrations/
+│   └── (future domain apps...)  # stores, products, inventory, cart,
 │                                # orders, payments, delivery, coupons, notifications, reviews
 │
 ├── customer-web/                # React (Vite+TS) — customer web app
@@ -147,7 +178,7 @@ Flutter lib/                 React src/
 ```
 
 ### Backend domain split (already reflected in README, create apps as phases land)
-Balance: `users` (Ph.2) → `categories`/`products` (Ph.3) → `stores`/`inventory` (Ph.4) → `cart` (Ph.5) → `orders` (Ph.6) → `payments` (Ph.7) → `delivery`/`coupons`/`notifications`/`reviews` (later).
+Balance: `users` ✅ (Ph.2) → `stores`/`categories`/`products`/`inventory` (Ph.3) → `cart` (Ph.5) → `orders` (Ph.6) → `payments` (Ph.7) → `delivery`/`coupons`/`notifications`/`reviews` (later).
 
 ## 6. Ports & Commands
 
@@ -183,5 +214,6 @@ docker compose up -d postgres redis
 - **Keep `DJANGO_DEBUG=false` in any prod-like env** — SECRET_KEY required there.
 - Backend is the source of truth for pricing/payments (Phases 5–7) — never trust client prices.
 - `requirements.txt` is at repo root (CI runs `pip install -r ../requirements.txt` from `backend/`).
-- No domain models exist yet — **do not** assume models/migrations for users, stores, etc. until their phase lands.
+- DRF now defaults to **JWT + IsAuthenticated**: every view either uses it or explicitly opts out (`authenticate_classes=[]`/`AllowAny` on register/verify/login/logout/health).
+- Only `users.*` domain models exist post-Phase 2 — **do not** assume models for stores/products/orders until those phases land.
 - Never commit `.env` or secrets; `.env.*` except `.env.example` is gitignored.

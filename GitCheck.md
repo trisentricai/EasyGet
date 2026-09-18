@@ -1,6 +1,6 @@
 # GIT CHECK — EASYGET (Git & GitHub Reference)
 
-**Last updated:** 2026-09-18
+**Last updated:** 2026-09-19
 **Read BEFORE working:** together with `README.md` (roadmap) and `currentUpdate.md` (live code status). Update this file after every commit/change.
 
 ---
@@ -26,7 +26,7 @@
 
 - Method: **SSH** (chosen; recommended over HTTPS/PAT)
 - Key: `~/.ssh/id_ed25519.pub` (private key `id_ed25519`)
-- Verified: `ssh -T git@github.com` → `Hi rahulbharathi1921! You've successfully authenticated` (2026-09-18)
+- Verified: `ssh -T git@github.com` → `Hi rahulbharathi1921! You've successfully authenticated` (2026-09-19)
 - If auth ever fails: confirm key is still listed under GitHub → Settings → SSH and GPG keys.
 
 ## 4. Commit Identity (repo-local — does NOT touch global config)
@@ -47,6 +47,8 @@ git config user.name; git config user.email
 - `main` — stable, shippable baseline. Every phase merges here only after its checklist passes.
 - Feature/phase branches: `phase-1-foundation`, `phase-2-auth`, `phase-3-products`, … (named per README phase)
 - Workflow: create branch → build phase → verify against `README.md` manual checklist → merge into `main` → push.
+
+**In progress:** none — `phase-2-auth` was **merged into `main`** (2026-09-19). Next phase branch: `phase-3-store-product-inventory`.
 
 ## 6. Commit-Message Conventions
 
@@ -73,7 +75,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
-| 2026-09-18 | main | `66bc53a` | Phase 1 foundation baseline: Django API + health endpoint + CI + React/Flutter scaffolds; git/SSH setup; docs (README, currentUpdate.md, GitCheck.md) |
+| 2026-09-19 | main | `66bc53a` | Phase 1 foundation baseline: Django API + health endpoint + CI + React/Flutter scaffolds; git/SSH setup; docs (README, currentUpdate.md, GitCheck.md) |
 
 ## 9. Gotchas
 

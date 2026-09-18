@@ -25,6 +25,22 @@
 | Customer web | `http://localhost:5173` |
 | Admin web | `http://localhost:5174` |
 
+## Auth API quick reference (Phase 2)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register/` | `email`, `password` (min 8), `first_name`, `last_name`, `phone` → 201 + emails OTP |
+| POST | `/api/v1/auth/verify-otp/` | `email`, `code` (6-digit) → marks email verified |
+| POST | `/api/v1/auth/resend-otp/` | `email` → emails a fresh OTP |
+| POST | `/api/v1/auth/login/` | verified-only; returns `access` + `refresh` + `user` |
+| POST | `/api/v1/auth/refresh/` | `refresh` → new tokens |
+| POST | `/api/v1/auth/logout/` | `refresh` → blacklists it |
+| GET/PATCH | `/api/v1/users/me/` | profile (JWT required, verified email required) |
+| GET/POST | `/api/v1/users/me/addresses/` | first address auto-becomes default |
+| POST | `/api/v1/users/me/addresses/{id}/set-default/` | exactly one default at a time |
+
+Dev only: OTP prints to the Django console (console email backend); in tests it is captured via the locmem backend.
+
 ## Background worker
 
 After Redis is running, start a worker from `backend`:

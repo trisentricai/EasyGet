@@ -493,8 +493,8 @@ Don't develop Flutter, React, Django, admin, and delivery simultaneously. Build 
 
 | # | Phase | Status |
 |---|---|---|
-| 1 | Foundation | ☐ |
-| 2 | Auth | ☐ |
+| 1 | Foundation | ✅ |
+| 2 | Auth | 🔨 in progress (`phase-2-auth`) |
 | 3 | Store + Product + Inventory | ☐ |
 | 4 | Customer Flutter App | ☐ |
 | 5 | Cart | ☐ |
