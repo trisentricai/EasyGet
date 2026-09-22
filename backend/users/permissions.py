@@ -31,3 +31,18 @@ def role_required(*allowed_roles):
 
 
 IsAdminOnly = role_required(User.Role.ADMIN)
+IsStoreManagerOnly = role_required(User.Role.STORE_MANAGER)
+
+
+class IsAdminOrStoreManager(BasePermission):
+    """Anyone who holds the ADMIN or STORE_MANAGER role."""
+
+    message = "Admin or store-manager access required."
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.role
+            in {User.Role.ADMIN, User.Role.STORE_MANAGER}
+        )
