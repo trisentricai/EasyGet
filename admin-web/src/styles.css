@@ -1,4 +1,933 @@
-:root { font-family: Inter, system-ui, sans-serif; color: #172033; background: #f7f8fc; }
-body { margin: 0; } main { max-width: 42rem; margin: 18vh auto; padding: 2rem; }
-.eyebrow { color: #4f46e5; font-weight: 700; letter-spacing: .12em; }
-h1 { font-size: clamp(2rem, 6vw, 4rem); margin: .25rem 0; }
+/* ============================================================
+   EASYGET ADMIN — Design System
+   Dual theme (light/dark) via [data-theme] custom properties.
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --c-primary: #4f46e5;
+  --c-primary-strong: #4338ca;
+  --c-accent: #f59e0b;
+  --c-danger: #ef4444;
+  --c-danger-strong: #dc2626;
+  --c-success: #10b981;
+  --c-info: #3b82f6;
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+
+  --sidebar-w: 240px;
+
+  --t-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-med: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-slow: 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------- Light theme ---------- */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f5fb;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #eceef7;
+  --bg-hover: rgba(79, 70, 229, 0.06);
+  --bg-active: rgba(79, 70, 229, 0.12);
+
+  --text: #171923;
+  --text-soft: #4a5065;
+  --text-faint: #8a90a5;
+
+  --border: #e3e5f0;
+  --border-strong: #cdd0e0;
+
+  --shadow-sm: 0 1px 2px rgba(23, 25, 35, 0.06);
+  --shadow: 0 8px 24px -6px rgba(23, 25, 35, 0.12);
+  --shadow-lg: 0 24px 60px -12px rgba(23, 25, 35, 0.22);
+
+  --glass: rgba(255, 255, 255, 0.75);
+  --theme-toggle-track: #d9dcEC;
+  --theme-toggle-knob: #ffffff;
+  --drop-active: rgba(79, 70, 229, 0.15);
+}
+
+/* ---------- Dark theme ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c0d13;
+  --bg-elevated: #15161f;
+  --bg-sunken: #0f1017;
+  --bg-hover: rgba(139, 132, 255, 0.09);
+  --bg-active: rgba(139, 132, 255, 0.18);
+
+  --text: #f0f1f7;
+  --text-soft: #a8adc2;
+  --text-faint: #6d7288;
+
+  --border: #262838;
+  --border-strong: #3a3d52;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 8px 28px -6px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 28px 64px -12px rgba(0, 0, 0, 0.7);
+
+  --glass: rgba(21, 22, 31, 0.72);
+  --theme-toggle-track: #262838;
+  --theme-toggle-knob: #8b84ff;
+  --drop-active: rgba(139, 132, 255, 0.22);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--t-med), color var(--t-med);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+/* ============================ Layout ============================ */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: 100vh;
+}
+
+.shell.sidebar-collapsed {
+  grid-template-columns: 68px 1fr;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  padding: 20px 14px;
+  gap: 6px;
+  transition: width var(--t-med), background-color var(--t-med),
+    border-color var(--t-med);
+  overflow: hidden;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 22px;
+  white-space: nowrap;
+}
+
+.brand-mark {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--c-primary), var(--c-accent));
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-name {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-size: 15px;
+}
+
+.brand-name small {
+  display: block;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  font-size: 9px;
+  color: var(--text-faint);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-soft);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--t-fast), color var(--t-fast),
+    transform var(--t-fast);
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  transform: translateX(2px);
+}
+
+.nav-item.active {
+  background: var(--bg-active);
+  color: var(--c-primary);
+}
+
+:root[data-theme="dark"] .nav-item.active {
+  color: #b9b3ff;
+}
+
+.nav-item .ico {
+  width: 20px;
+  text-align: center;
+  flex: none;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---------- Main / Topbar ---------- */
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Contain wide children (tables, editor boards) so they scroll/clip inside
+     the main column instead of blowing out the page grid and squishing the
+     sidebar. `clip` (unlike `hidden`) keeps sticky descendants working. */
+  overflow-x: clip;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 26px;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  transition: background-color var(--t-med), border-color var(--t-med);
+}
+
+.topbar h1 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.content {
+  padding: 26px;
+  animation: page-in var(--t-slow) both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ============================ Primitives ============================ */
+
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  transition: background-color var(--t-med), border-color var(--t-med),
+    box-shadow var(--t-med), transform var(--t-med);
+}
+
+.card.hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  background: var(--bg-sunken);
+  color: var(--text);
+  transition: transform var(--t-fast), box-shadow var(--t-fast),
+    background-color var(--t-fast), border-color var(--t-fast),
+    opacity var(--t-fast), color var(--t-fast);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--c-primary),
+    var(--c-primary-strong)
+  );
+  color: #fff;
+  box-shadow: 0 6px 18px -6px var(--c-primary);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+}
+
+.btn-danger {
+  background: transparent;
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+
+.btn-danger:hover {
+  background: var(--c-danger);
+  color: #fff;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+.input,
+select.input {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast),
+    background-color var(--t-med);
+}
+
+.input:focus {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--bg-active);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-soft);
+}
+
+.badge.ok {
+  background: rgba(16, 185, 129, 0.14);
+  color: var(--c-success);
+}
+
+.badge.warn {
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--c-accent);
+}
+
+.badge.err {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--c-danger);
+}
+
+/* ---------- Theme toggle ---------- */
+.theme-toggle {
+  position: relative;
+  width: 56px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--theme-toggle-track);
+  cursor: pointer;
+  flex: none;
+  transition: background-color var(--t-med);
+}
+
+.theme-toggle .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--theme-toggle-knob);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--t-slow), background-color var(--t-med);
+}
+
+:root[data-theme="dark"] .theme-toggle .knob {
+  transform: translateX(26px);
+}
+
+/* ---------- Stat cards ---------- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.stat {
+  position: relative;
+  overflow: hidden;
+}
+
+.stat::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--c-primary), var(--c-accent));
+  opacity: 0;
+  transition: opacity var(--t-med);
+}
+
+.stat:hover::after {
+  opacity: 1;
+}
+
+.stat .label {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.stat .value {
+  font-size: 32px;
+  font-weight: 800;
+  margin-top: 6px;
+  letter-spacing: -0.02em;
+}
+
+.stat .sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.stat .ico-big {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  font-size: 30px;
+  opacity: 0.85;
+}
+
+/* ---------- Tables ---------- */
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th {
+  text-align: left;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+tbody tr {
+  transition: background-color var(--t-fast);
+}
+
+tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/* ---------- Toolbar / filter rows ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.toolbar .input {
+  max-width: 280px;
+}
+
+.toolbar .spacer {
+  flex: 1;
+}
+
+/* ---------- Modal ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow-y: auto;
+  background: rgba(10, 10, 18, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fade-in var(--t-fast) both;
+}
+
+.modal {
+  width: min(560px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  animation: pop-in var(--t-slow) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+.modal h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+}
+
+.modal .muted {
+  margin: 0 0 18px;
+}
+
+.muted {
+  color: var(--text-soft);
+  font-size: 13.5px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* ---------- Toasts ---------- */
+.toasts {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 90;
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  font-weight: 600;
+  font-size: 14px;
+  animation: toast-in var(--t-slow) both;
+}
+
+.toast.err {
+  border-color: var(--c-danger);
+}
+
+.toast.ok {
+  border-color: var(--c-success);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+/* ---------- Spinner ---------- */
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid var(--border-strong);
+  border-top-color: var(--c-primary);
+  animation: spin 0.8s linear infinite;
+  margin: 40px auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-faint);
+  padding: 42px 0;
+  font-size: 14.5px;
+}
+
+/* ============================ Login ============================ */
+
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(
+      1000px 500px at 15% -10%,
+      var(--bg-hover),
+      transparent
+    ),
+    radial-gradient(800px 500px at 110% 110%, var(--bg-hover), transparent),
+    var(--bg);
+}
+
+.login-card {
+  width: min(420px, 100%);
+  padding: 34px;
+}
+
+.login-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  margin: 0 auto 14px;
+  background: linear-gradient(135deg, var(--c-primary), var(--c-accent));
+  box-shadow: var(--shadow);
+}
+
+.login-card h1 {
+  margin: 0 0 6px;
+  text-align: center;
+  font-size: 22px;
+}
+
+.login-theme {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+}
+
+/* ============================ Storefront editor ============================ */
+
+/* Board + theme panel. minmax(0, 1fr) lets the board shrink instead of
+   forcing the page wider than the viewport (which used to squash the
+   sidebar and cause page-level horizontal scroll). */
+.sf-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
+}
+
+.sf-layout > * {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .sf-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.section-board {
+  display: grid;
+  gap: 14px;
+}
+
+.section-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  cursor: grab;
+  border-radius: var(--radius-lg);
+  transition: box-shadow var(--t-fast), transform var(--t-fast),
+    opacity var(--t-fast), background-color var(--t-fast);
+}
+
+.section-row:active {
+  cursor: grabbing;
+}
+
+.section-row.dragging {
+  opacity: 0.45;
+  transform: scale(1.01);
+  box-shadow: var(--shadow-lg);
+}
+
+.section-row.drop-target {
+  outline: 2px dashed var(--c-primary);
+  outline-offset: 3px;
+  background: var(--drop-active);
+}
+
+.drag-handle {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  display: grid;
+  place-items: center;
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+  font-size: 18px;
+  user-select: none;
+  transition: color var(--t-fast), background-color var(--t-fast);
+}
+
+.section-row:hover .drag-handle {
+  color: var(--c-primary);
+}
+
+.section-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.section-head .title {
+  font-weight: 800;
+  font-size: 15.5px;
+  flex: 1;
+  /* Was min-width: 140px — forced the row wider than narrow columns,
+     pushing the whole board (and page) into horizontal overflow. */
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.section-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.item-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.item-chip {
+  flex: none;
+  width: 148px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  padding: 10px;
+  cursor: grab;
+  transition: transform var(--t-fast), box-shadow var(--t-fast),
+    border-color var(--t-fast), opacity var(--t-fast);
+}
+
+.item-chip.dragging {
+  opacity: 0.45;
+}
+
+.item-chip.drop-target {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--drop-active);
+}
+
+.item-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.item-chip .chip-type {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.item-chip .chip-label {
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knob-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.knob-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.knob-row select,
+.knob-row input[type="number"] {
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  font-size: 13px;
+}
+
+.effect-pill {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-soft);
+  transition: all var(--t-fast);
+}
+
+.effect-pill.on {
+  background: var(--bg-active);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+/* ============================ Responsive ============================ */
+
+@media (max-width: 860px) {
+  .shell,
+  .shell.sidebar-collapsed {
+    grid-template-columns: 68px 1fr;
+  }
+
+  .brand-name,
+  .nav-item span {
+    display: none;
+  }
+
+  .content {
+    padding: 16px;
+  }
+}

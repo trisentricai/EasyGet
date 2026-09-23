@@ -1,6 +1,6 @@
 # GIT CHECK — EASYGET (Git & GitHub Reference)
 
-**Last updated:** 2026-09-18
+**Last updated:** 2026-09-23
 **Read BEFORE working:** together with `README.md` (roadmap) and `currentUpdate.md` (live code status). Update this file after every commit/change.
 
 ---
@@ -26,7 +26,7 @@
 
 - Method: **SSH** (chosen; recommended over HTTPS/PAT)
 - Key: `~/.ssh/id_ed25519.pub` (private key `id_ed25519`)
-- Verified: `ssh -T git@github.com` → `Hi rahulbharathi1921! You've successfully authenticated` (2026-09-18)
+- Verified: `ssh -T git@github.com` → `Hi rahulbharathi1921! You've successfully authenticated` (2026-09-19)
 - If auth ever fails: confirm key is still listed under GitHub → Settings → SSH and GPG keys.
 
 ## 4. Commit Identity (repo-local — does NOT touch global config)
@@ -47,6 +47,8 @@ git config user.name; git config user.email
 - `main` — stable, shippable baseline. Every phase merges here only after its checklist passes.
 - Feature/phase branches: `phase-1-foundation`, `phase-2-auth`, `phase-3-products`, … (named per README phase)
 - Workflow: create branch → build phase → verify against `README.md` manual checklist → merge into `main` → push.
+
+**In progress:** `phase-3-store-product-inventory` — all Phase 3+ work committed in logical chunks (see changelog); branch is pushed to `origin`, awaiting merge into `main` after the manual checklist pass. `phase-2-auth` was merged into `main` (2026-09-19).
 
 ## 6. Commit-Message Conventions
 
@@ -73,7 +75,21 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
-| 2026-09-18 | main | `66bc53a` | Phase 1 foundation baseline: Django API + health endpoint + CI + React/Flutter scaffolds; git/SSH setup; docs (README, currentUpdate.md, GitCheck.md) |
+| 2026-09-23 | phase-3-store-product-inventory | PR #2 | Closed PR #1 (stale CI history), opened fresh PR #2 — same branch, full description; CI restarting clean |
+| 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Fix backend CI: pin missing deps (channels, channels-redis, drf-spectacular, django-ratelimit) + SQLite env for CI tests |
+| 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | `GETTING_STARTED.md`: full run guide (4 terminals, logins, per-screen map) + works/quirks/pending lists; README pointer |
+| 2026-09-23 | phase-3-store-product-inventory | `ed01af0` | Pushed branch to `origin` (all 14 commits); fixed stale changelog hashes; `origin/phase-3-store-product-inventory` now tracks local |
+| 2026-09-23 | phase-3-store-product-inventory | `af251ee` | Flutter app: full customer build (Riverpod 3.3 + go_router 17 + Dio + secure storage, clean arch, all screens); analyzer 0, debug APK built |
+| 2026-09-23 | phase-3-store-product-inventory | `0908e75` | Delivery v1: `delivery` app (Assignment model + state machine + order sync), assign/advance/agents APIs (tenant-scoped), admin Orders delivery section; 9 tests; live E2E confirm→assign→delivered; agent `agent@easyget.app` |
+| 2026-09-23 | phase-3-store-product-inventory | `efa1efb` | Tenant-wiring: Cart tenant FK + cross-tenant guards, Order tenant FK + scoped querysets, Payments inherit-via-order + scoped refunds, refunds-router order fix; products pagination (20/page, Load-more browse, listAll helpers); 58 tests pass |
+| 2026-09-23 | phase-3-store-product-inventory | `6fa9d12` | Customer-web polish (icons/branding/fonts, UUID order ids) + CORS :3000 |
+| 2026-09-23 | phase-3-store-product-inventory | `b24419b` | Docs refresh: README build-order statuses + Quick Start (run/logins/tests), local-development venv paths + logins + test instructions |
+|---|---|---|---|
+| 2026-09-23 | phase-3-store-product-inventory | `f72a14c` | Order Engine: admin `OrdersPage` (#/orders, filters, detail+timeline, advance/cancel) + Dashboard fulfilment link; fixed modal portal, storefront `.sf-layout` grid, sidebar overflow guard; stripped trailing `|` from 200 products + seed JSON |
+| 2026-09-22 | phase-3-store-product-inventory | `0283bd4`+`23ea54d`+`6ba7cc7` | Supabase live verify (health/admin-login/dashboard/stores/categories/storefront/products-200), created `admin@easyget.local` in Supabase, fixed products N+1 (`prefetch_related` + annotated `min_variant_price` + prefetched `primary_image`); 31 tests pass (products/stores/categories/tenants); both webs build pass |
+| 2026-09-20 | phase-3-store-product-inventory | — (uncommitted) | Admin dashboard UI (admin-web): dual-theme SPA, login/JWT+refresh, dashboard stats, categories/products/inventory CRUD, drag-and-drop storefront designer (sections+items, design knobs, theme panel); backend fixes: `/api/v1/admin/` route order, storefront template backend (`storefront` app: theme/sections/items + render API, 21 tests) — suite 141✅ |
+| 2026-09-20 | phase-3-store-product-inventory | — (uncommitted) | Phase 3: new `tenants` app (Tenant/TenantMembership/permissions/services), tenant FKs on Store/Product/StockItem + migrations, merchant onboarding flow, tenant-scoped products/inventory, 22 isolation tests (suite 120✅); fixed 6 generated-baseline bugs (Redis fail-soft throttle cache, product routes/filters, realtime signal); `seed_shop_catalog` → 10 categories / 200 products / 200 stock items from Shop Stock Checklist |
+| 2026-09-19 | main | `66bc53a` | Phase 1 foundation baseline: Django API + health endpoint + CI + React/Flutter scaffolds; git/SSH setup; docs (README, currentUpdate.md, GitCheck.md) |
 
 ## 9. Gotchas
 
