@@ -1,7 +1,7 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-23
-**Phase in progress:** Tenant-wiring DONE — Cart/Orders/Payments (migrations applied to Supabase, 58 tests pass); products paginated (20/page) with frontend paging wired
+**Phase in progress:** Delivery v1 DONE — manual assignment API + admin UI + agent `agent@easyget.app`; live order delivered end-to-end
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.

@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  NEXT_DELIVERY_STATUS,
   NEXT_STATUS,
+  advanceDelivery,
+  assignDelivery,
   cancelOrder,
   errText,
   getOrder,
+  listAgents,
+  listDeliveries,
   listOrders,
   updateOrderStatus,
+  type DeliveryAgent,
+  type DeliveryAssignment,
   type Order,
   type OrderDetail,
 } from "../services/api";
@@ -152,13 +159,26 @@ function OrderDetailModal({
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [delivery, setDelivery] = useState<DeliveryAssignment | null>(null);
+  const [agents, setAgents] = useState<DeliveryAgent[]>([]);
+  const [agentId, setAgentId] = useState("");
 
   const load = useCallback(async () => {
     setOrder(await getOrder(id));
+    try {
+      const all = await listDeliveries();
+      const list = Array.isArray(all) ? all : all.results;
+      setDelivery(list.find((d) => d.order === id) ?? null);
+    } catch {
+      setDelivery(null);
+    }
   }, [id]);
 
   useEffect(() => {
     load().catch((e) => push(errText(e, "Failed to load order"), "err"));
+    listAgents()
+      .then(setAgents)
+      .catch(() => setAgents([]));
   }, [load, push]);
 
   async function advance(next: string) {
@@ -196,6 +216,46 @@ function OrderDetailModal({
 
   const next = order ? NEXT_STATUS[order.status] ?? [] : [];
   const cancellable = order?.status === "PENDING" || order?.status === "CONFIRMED";
+  const assignable =
+    !!order &&
+    !delivery &&
+    ["CONFIRMED", "PREPARING", "READY"].includes(order.status);
+  const nextDelivery = delivery ? NEXT_DELIVERY_STATUS[delivery.status] ?? [] : [];
+
+  async function doAssign() {
+    if (!agentId) {
+      push("Pick a delivery agent", "err");
+      return;
+    }
+    setBusy(true);
+    try {
+      const created = await assignDelivery(id, Number(agentId));
+      setDelivery(created);
+      await onChanged();
+      push(`Assigned to ${created.agent_email}`);
+    } catch (e) {
+      push(errText(e, "Assign failed"), "err");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function advanceDeliveryTo(nextStatus: string) {
+    if (!delivery) return;
+    setBusy(true);
+    try {
+      const updated = await advanceDelivery(delivery.id, nextStatus);
+      setDelivery(updated);
+      // Delivery progress can move the order itself (e.g. out for delivery).
+      setOrder(await getOrder(id));
+      await onChanged();
+      push(`Delivery → ${nextStatus.replace(/_/g, " ").toLowerCase()}`);
+    } catch (e) {
+      push(errText(e, "Delivery update failed"), "err");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <Modal
@@ -263,6 +323,56 @@ function OrderDetailModal({
               </label>
             </div>
           ) : null}
+
+          <div style={{ marginTop: 16 }}>
+            <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+              🛵 Delivery
+            </div>
+            {delivery ? (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <span className={`badge ${delivery.status === "DELIVERED" ? "ok" : delivery.status === "CANCELLED" ? "err" : "warn"}`}>
+                  {delivery.status.replace(/_/g, " ")}
+                </span>
+                <span className="muted" style={{ fontSize: 13 }}>
+                  {delivery.agent_email}
+                </span>
+                {nextDelivery.map((s) => (
+                  <button
+                    key={s}
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => advanceDeliveryTo(s)}
+                    disabled={busy}
+                  >
+                    {busy ? "Saving…" : `→ ${s.replace(/_/g, " ").toLowerCase()}`}
+                  </button>
+                ))}
+              </div>
+            ) : assignable ? (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <select
+                  className="input"
+                  style={{ maxWidth: 260 }}
+                  value={agentId}
+                  onChange={(e) => setAgentId(e.target.value)}
+                  aria-label="Delivery agent"
+                >
+                  <option value="">Select agent…</option>
+                  {agents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.email}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn btn-sm btn-primary" onClick={doAssign} disabled={busy || !agentId}>
+                  {busy ? "Assigning…" : "Assign delivery"}
+                </button>
+              </div>
+            ) : (
+              <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+                Confirm the order first — delivery assignment opens at CONFIRMED.
+              </p>
+            )}
+          </div>
 
           <div className="modal-actions">
             <button className="btn btn-ghost" onClick={onClose} disabled={busy}>

@@ -384,3 +384,55 @@ export const updateOrderStatus = (id: string, status: string, note = "") =>
 
 export const cancelOrder = (id: string, reason: string) =>
   api<OrderDetail>(`/orders/${id}/cancel/`, { method: "POST", body: { reason } });
+
+/* ---------------- Delivery (manual-assignment v1) ---------------- */
+
+export type DeliveryAssignment = {
+  id: string;
+  order: string;
+  order_number: string;
+  store_name?: string;
+  agent: number;
+  agent_email: string;
+  status: string;
+  note: string;
+  assigned_at: string;
+  accepted_at?: string | null;
+  picked_up_at?: string | null;
+  delivered_at?: string | null;
+  cancelled_at?: string | null;
+};
+
+export type DeliveryAgent = {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+};
+
+export const NEXT_DELIVERY_STATUS: Record<string, string[]> = {
+  ASSIGNED: ["ACCEPTED"],
+  ACCEPTED: ["PICKED_UP"],
+  PICKED_UP: ["OUT_FOR_DELIVERY"],
+  OUT_FOR_DELIVERY: ["DELIVERED"],
+};
+
+export function listDeliveries() {
+  return api<DeliveryAssignment[] | { results: DeliveryAssignment[] }>("/delivery/");
+}
+
+export function listAgents() {
+  return api<DeliveryAgent[]>("/delivery/agents/");
+}
+
+export const assignDelivery = (order: string, agent: number, note = "") =>
+  api<DeliveryAssignment>("/delivery/assign/", {
+    method: "POST",
+    body: { order, agent, note },
+  });
+
+export const advanceDelivery = (id: string, status: string, note = "") =>
+  api<DeliveryAssignment>(`/delivery/${id}/advance/`, {
+    method: "POST",
+    body: { status, note },
+  });
