@@ -108,23 +108,21 @@ Note: several domain *models* (webhooks, pwa, admin_panel, notifications, search
 
 ### 2.4 Current capabilities (verified working)
 
+> Updated 2026-09-23 — the paragraphs below replace the original Day-1 snapshot.
 - **Health endpoint** `GET /api/v1/health/` → `{ "status": "ok", "service": "easyget-api" }` (public).
-- **Authentication** (JWT via SimpleJWT, token backlist on logout):
-  - `POST /api/v1/auth/register/`, `verify-otp/`, `resend-otp/`, `login/`, `refresh/`, `logout/`.
-  - Email-verification gate: new users must verify email before login.
-- **User profile & addresses** (JWT required):
-  - `GET/PATCH /api/v1/users/me/`, `GET/POST /api/v1/users/me/addresses/`, `POST .../set-default/`.
-  - First address auto-becomes default; exactly one default enforced.
-- **Role-based access** — `CUSTOMER`, `ADMIN`, `STORE_MANAGER`, `DELIVERY_AGENT` roles; admin-only endpoints return 403 for non-admins.
-- **CORS** — allows configured local React/Flutter origins, denies unknown origins.
-- **Tests: 80 pass** (1 skipped) across backend apps; `manage.py check` reports 0 issues.
+- **Authentication** (JWT via SimpleJWT, blacklist on logout): register, OTP verify/resend, login, refresh, logout; email-verification gate; profile + addresses (one default enforced); role-based access (CUSTOMER/ADMIN/STORE_MANAGER/DELIVERY_AGENT).
+- **Multi-tenancy IS implemented** (`tenants` app: Tenant/TenantMembership, server-side permission classes + services; direct FK on Store/Product/StockItem/Cart/Order/DeliveryAssignment, inheritance for line items/variants/images; User/payment-methods stay platform-level). Cross-tenant reads/writes covered by isolation tests.
+- **Catalog**: 10 categories / 200 products live in Supabase; products paginated (20/page); customer Browse (Load more), Search (+SQLite fallback), admin CRUD, storefront designer (sections/items DnD, theme) rendering on web + app home.
+- **Cart → Orders → Payments → Delivery**: full flow verified live on Supabase (confirm → assign agent → accept → pickup → out-for-delivery → delivered, order mirrored). Admin fulfilment queue at `#/orders` with delivery section.
+- **Frontends**: customer-web (Home/Browse/Search/Product/Cart/Checkout/Orders/Account) and admin-web (Overview/Orders/Categories/Products/Inventory/Storefront) built, both `npm run build` clean. Flutter customer app: full build landed (Riverpod 3 + go_router + Dio), analyzer fixes pending.
+- **Tests: 120+ pass** across backend apps (SQLite); `manage.py check` 0 issues; Redis/Celery fail-soft without Docker.
 
 ### 2.5 What is NOT built yet (honest status)
 
-- **Multi-tenant isolation is not implemented.** There is no `Tenant` model yet; no store model exists; no model carries a tenant foreign key; 0 queries are tenant-scoped. Phase A analysis verified this.
-- **The visual website builder is not built.**
 - **No production deployment, no load tests, no verified backups, no SMS/email prod backend, no media CDN.**
-- Frontends (`customer-web`, `admin-web`, `customer-app`) are empty scaffolds — no routing, no API integration, no real UI.
+- **Notifications**: models only, no live flow (needs Redis/Celery + Docker).
+- **Delivery auto-assignment, live tracking, COD gateway**: manual assignment only (v1).
+- Flutter app not yet click-tested on device; no signed release build.
 
 Do not confuse *model existence* with *feature readiness*: e.g. `webhooks`/`pwa`/`admin_panel` models exist, but their endpoints, UI, and operations do not yet.
 

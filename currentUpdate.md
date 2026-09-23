@@ -1,13 +1,21 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-23
-**Phase in progress:** Delivery v1 DONE — manual assignment API + admin UI + agent `agent@easyget.app`; live order delivered end-to-end
+**Phase in progress:** Flutter customer app — full build landed (Riverpod 3 + go_router + Dio, clean architecture, all screens); 30 analyzer issues to fix before commit
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — Flutter app (2026-09-23): full customer build, analyzer red
+
+**Stack (latest, researched 2026-09):** `flutter_riverpod ^3.0.0` (Notifier/AsyncNotifier, no codegen), `go_router ^17.0.0` (StatefulShell tabs + custom fade/rise transitions), `dio ^5.7.0` (JWT interceptor + one-shot 401 refresh), `flutter_secure_storage ^10.0.0`, `cached_network_image ^3.4.1`, `intl`. Pinned below Riverpod 3.4/go_router 18 (need newer Dart than the local 3.10.7). `flutter pub get` ✅ resolved.
+
+**Clean architecture (`lib/src/`):** `core/` (config, network(ApiClient+ApiException), storage(TokenStore), theme light/dark Material3, widgets, utils) + `routing/` (auth-gated GoRouter, bottom-tab shell with cart badge) + `features/` (auth, home/storefront-sections, catalog browse+Load-more/search+suggestions/product-detail, cart, checkout addresses+place-order, orders list/detail/cancel+timeline, account/addresses). ~30 files.
+
+**NOT done:** `flutter analyze` reports **30 issues** (real errors: `valueOrNull` isn't on this Riverpod's AsyncValue, `AutoDisposeAsyncNotifier` API shape, one `//`-in-Dart typo already fixed, RadioListTile deprecations, unused imports). Nothing committed — fix analyzer to zero, then `flutter build apk`, then click-test vs Supabase, then commit.
 
 ## 0. LATEST — Order Engine (2026-09-23): fulfilment queue + 3 layout fixes
 

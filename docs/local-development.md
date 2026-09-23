@@ -25,6 +25,12 @@
    (`GET /` → 404 is **normal** — the backend is API-only, no homepage.)
 5. In `customer-web` and `admin-web`, run `npm install` then `npm run dev`.
 6. In `customer-app`, run `flutter pub get` then `flutter run`.
+   The app defaults to `http://10.0.2.2:8000/api/v1` (Android emulator
+   loopback). iOS simulator/desktop use host loopback automatically only
+   if you override: `flutter run
+   --dart-define=API_BASE=http://127.0.0.1:8000/api/v1`. Physical device:
+   `--dart-define=API_BASE=http://<your-pc-lan-ip>:8000/api/v1`.
+   Gate: `flutter analyze` must report zero issues before committing.
 
 ## Local endpoints
 

@@ -498,11 +498,12 @@ After real customers use the MVP, add:
 | 2 | Auth & Users | ✅ done (merged to `main`) |
 | 3 | Store + Product + Inventory | ✅ done — tenancy (`tenants` app), 200 seeded products, Supabase live |
 | 4 | Customer web app | ✅ built (Home/Browse/Search/Product/Cart/Checkout/Orders/Account) |
+| 4b | Customer Flutter app | 🔨 in progress — full build landed (Riverpod 3, go_router, Dio, all screens), analyzer fixes pending |
 | 5 | Cart (backend) | ✅ endpoints built · ☐ tenant-wiring pending |
 | 6 | Orders (backend) + admin fulfilment UI | ✅ built — `admin-web/#/orders` live, 1 order in queue · ☐ tenant-wiring pending |
 | 7 | Payments (backend) | ✅ endpoints built · ☐ tenant-wiring + provider gateway pending |
 | 8 | Admin dashboard | ✅ built (Overview, Orders, Categories, Products, Inventory, Storefront designer) |
-| 9 | Delivery | ☐ not started |
+| 9 | Delivery | ✅ v1 built — manual assignment API + admin UI + agent flow, verified live end-to-end |
 | 10 | Notifications | ☐ models only, no live flow yet |
 | 11 | Search, Performance & Redis | ⚠️ partial — search API works (+SQLite fallback); Redis fail-soft, no Docker locally |
 | 12 | Testing & Security | ⚠️ partial — 120+ backend tests pass; no prod audit yet |
@@ -528,6 +529,11 @@ cd admin-web; npm install; npm run dev      # http://localhost:5174
 
 # 3 — Customer shop (new terminal)
 cd customer-web; npm install; npm run dev   # http://localhost:5173
+
+# 4 — Customer mobile app (needs Android emulator or device)
+cd customer-app; flutter pub get; flutter run
+# Emulator reaches the backend via http://10.0.2.2:8000 (default).
+# Physical device on LAN: flutter run --dart-define=API_BASE=http://<your-pc-ip>:8000/api/v1
 ```
 
 Notes:
