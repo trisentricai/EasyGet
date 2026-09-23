@@ -3,7 +3,8 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { navigate } from "../hooks/useHashRoute";
 import { errText } from "../services/api";
-import { EmptyState, money, SignInGate, Spinner } from "../components/ui";
+import { EmptyState, money, Monogram, SignInGate, Spinner } from "../components/ui";
+import { Icon } from "../components/icons";
 
 export function CartPage() {
   const { user, ready } = useAuth();
@@ -35,7 +36,7 @@ export function CartPage() {
         <Spinner />
       ) : items.length === 0 ? (
         <EmptyState
-          icon="🛒"
+          icon="cart"
           title="Your cart is empty"
           text="Browse the catalog and add something you love."
           action={<button className="btn" onClick={() => navigate("browse")}>Browse products</button>}
@@ -50,19 +51,8 @@ export function CartPage() {
                 .join(" · ");
               return (
                 <div className="cart-line" key={item.id}>
-                  <div
-                    style={{
-                      width: 62,
-                      height: 62,
-                      borderRadius: 10,
-                      background: "var(--bg)",
-                      display: "grid",
-                      placeItems: "center",
-                      overflow: "hidden",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {attrText.includes("image:") ? null : <span style={{ fontSize: 24 }}>📦</span>}
+                  <div className="thumb">
+                    <Monogram text={item.variant.name || item.variant.sku} />
                   </div>
                   <div className="grow">
                     <div className="name">{item.variant.name || item.variant.sku}</div>
@@ -75,7 +65,9 @@ export function CartPage() {
                     <button onClick={() => void setQty(item.id, item.quantity + 1)} aria-label="Increase">+</button>
                   </div>
                   <div style={{ fontWeight: 700, minWidth: 80, textAlign: "right" }}>{money(item.line_total)}</div>
-                  <button className="trash" title="Remove" onClick={() => void remove(item.id)}>🗑</button>
+                  <button className="trash" title="Remove" aria-label="Remove item" onClick={() => void remove(item.id)}>
+                    <Icon name="trash" size={17} />
+                  </button>
                 </div>
               );
             })}
@@ -100,7 +92,7 @@ export function CartPage() {
               <span>{money(cart?.subtotal)}</span>
             </div>
             <button className="btn btn-block" style={{ marginTop: 14 }} onClick={() => navigate("checkout")}>
-              Proceed to checkout →
+              Proceed to checkout
             </button>
           </div>
         </div>

@@ -37,12 +37,12 @@ export function OrdersPage() {
       </div>
 
       {error ? (
-        <EmptyState icon="⚠️" title="Couldn't load orders" text={error} />
+        <EmptyState icon="warning" title="Couldn't load orders" text={error} />
       ) : orders === null ? (
         <Spinner />
       ) : orders.length === 0 ? (
         <EmptyState
-          icon="📦"
+          icon="box"
           title="No orders yet"
           text="When you place an order it will show up here."
           action={<button className="btn" onClick={() => navigate("browse")}>Start shopping</button>}
@@ -78,7 +78,7 @@ export function OrderDetailPage({ id }: { id: string }) {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    getOrder(Number(id))
+    getOrder(id)
       .then((o) => {
         if (!cancelled) setOrder(o);
       })
@@ -91,7 +91,7 @@ export function OrderDetailPage({ id }: { id: string }) {
   }, [user, id]);
 
   if (!user) return <SignInGate title="Order details" text="Sign in to view this order." />;
-  if (error) return <div className="page"><EmptyState icon="⚠️" title="Order not found" text={error} /></div>;
+  if (error) return <div className="page"><EmptyState icon="warning" title="Order not found" text={error} /></div>;
   if (!order) return <Spinner />;
 
   const doCancel = async () => {

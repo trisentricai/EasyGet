@@ -24,7 +24,7 @@ export function CheckoutPage() {
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Address["id"] | null>(null);
   const [instructions, setInstructions] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -105,7 +105,7 @@ export function CheckoutPage() {
       // The create endpoint echoes the input payload, so resolve the real
       // order (id/number) from the user's order list (newest first).
       let orderNumber = "";
-      let orderId: number | null = null;
+      let orderId: string | null = null;
       try {
         const orders = asArray<Order>(await listOrders());
         const newest = orders[0];

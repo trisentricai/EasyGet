@@ -13,6 +13,7 @@ import {
   type Address,
 } from "../services/api";
 import { SignInGate, Spinner } from "../components/ui";
+import { Icon } from "../components/icons";
 
 export function AccountPage() {
   const { user, ready, signOut } = useAuth();
@@ -57,7 +58,7 @@ export function AccountPage() {
     }
   };
 
-  const makeDefault = async (id: number) => {
+  const makeDefault = async (id: Address["id"]) => {
     try {
       await setDefaultAddress(id);
       setAddresses((list) => list.map((a) => ({ ...a, is_default: a.id === id })));
@@ -67,7 +68,7 @@ export function AccountPage() {
     }
   };
 
-  const removeAddress = async (id: number) => {
+  const removeAddress = async (id: Address["id"]) => {
     try {
       await deleteAddress(id);
       setAddresses((list) => list.filter((a) => a.id !== id));
@@ -117,7 +118,7 @@ export function AccountPage() {
           <div className="field">
             <label>Status</label>
             <input
-              value={user.is_email_verified ? "✅ Verified" : "⚠️ Not verified"}
+              value={user.is_email_verified ? "Verified" : "Not verified"}
               readOnly
               style={{ color: user.is_email_verified ? "var(--ok)" : "var(--secondary)" }}
             />
@@ -146,7 +147,9 @@ export function AccountPage() {
                   {!a.is_default ? (
                     <button className="btn btn-ghost btn-sm" onClick={() => void makeDefault(a.id)}>Make default</button>
                   ) : null}
-                  <button className="trash" title="Delete" onClick={() => void removeAddress(a.id)}>🗑</button>
+                  <button className="trash" title="Delete" aria-label="Delete address" onClick={() => void removeAddress(a.id)}>
+                    <Icon name="trash" size={17} />
+                  </button>
                 </div>
               </div>
             ))}

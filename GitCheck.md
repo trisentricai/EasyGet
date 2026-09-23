@@ -75,6 +75,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Customer-web polish (icons/branding/fonts, UUID order ids) + CORS :3000 |
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Docs refresh: README build-order statuses + Quick Start (run/logins/tests), local-development venv paths + logins + test instructions |
 |---|---|---|---|
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Order Engine: admin `OrdersPage` (#/orders, filters, detail+timeline, advance/cancel) + Dashboard fulfilment link; fixed modal portal, storefront `.sf-layout` grid, sidebar overflow guard; stripped trailing `|` from 200 products + seed JSON |

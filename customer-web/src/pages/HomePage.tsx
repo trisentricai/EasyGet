@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
-import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/ui";
+import { EmptyState, Monogram, Price, ProductCard, Section, Spinner } from "../components/ui";
 
 /**
  * Home page = the store's designed storefront. The backend returns an ordered
@@ -17,7 +17,7 @@ export function HomePage() {
     return (
       <div className="page">
         <EmptyState
-          icon="🏪"
+          icon="store"
           title="Storefront not available"
           text={error ?? "This store does not exist or is inactive."}
         />
@@ -113,10 +113,10 @@ function BannerSection({ section }: { section: StoreSection }) {
   const body = (
     <>
       <div>
-        <h3>{section.title || "🎉 Limited-time offers"}</h3>
+        <h3>{section.title || "Limited-time offers"}</h3>
         <p>{section.subtitle || first?.caption || "Save more on your daily essentials."}</p>
       </div>
-      {link ? <span className="link">View →</span> : null}
+      {link ? <span className="link">View</span> : null}
     </>
   );
   return link ? (
@@ -135,7 +135,9 @@ function CategoryGridSection({ section }: { section: StoreSection }) {
         <div className="grid grid-categories" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${Math.round(560 / columns)}px, 1fr))` }}>
           {cats.map((item) => (
             <a key={item.id} className="cat-card" href={href(`browse?category=${item.category_slug}`)}>
-              <span className="cat-ico">{item.image ? <img src={img(item.image)!} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} /> : "🧩"}</span>
+              <span className="cat-ico">
+                {item.image ? <img src={img(item.image)!} alt="" /> : <Monogram text={item.category_name || item.caption || "·"} />}
+              </span>
               {item.category_name || item.caption}
             </a>
           ))}
@@ -169,7 +171,7 @@ function ProductRowSection({ section }: { section: StoreSection }) {
     <Section
       title={section.title || undefined}
       subtitle={section.subtitle || undefined}
-      action={<a className="link" href={href("browse")}>See all →</a>}
+      action={<a className="link" href={href("browse")}>See all</a>}
     >
       {products.length ? (
         <div
@@ -179,10 +181,9 @@ function ProductRowSection({ section }: { section: StoreSection }) {
             ...(columns ? {} : null),
           }}
         >
-          {products.map((p, idx) => (
+          {products.map((p) => (
             <ProductCard
               key={p.id}
-              delay={idx * 40}
               product={{
                 id: p.id,
                 name: p.name,

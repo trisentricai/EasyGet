@@ -4,7 +4,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { navigate } from "../hooks/useHashRoute";
 import { errText, getProduct, img, type ProductDetail } from "../services/api";
-import { Price, SignInGate, Spinner } from "../components/ui";
+import { EmptyState, Monogram, Price, SignInGate, Spinner } from "../components/ui";
 
 export function ProductPage({ slug }: { slug: string }) {
   const { user } = useAuth();
@@ -40,11 +40,7 @@ export function ProductPage({ slug }: { slug: string }) {
   if (error) {
     return (
       <div className="page">
-        <div className="empty-state">
-          <div className="empty-ico">🔎</div>
-          <h3>Product not found</h3>
-          <p className="muted">{error}</p>
-        </div>
+        <EmptyState icon="search" title="Product not found" text={error} />
       </div>
     );
   }
@@ -63,7 +59,7 @@ export function ProductPage({ slug }: { slug: string }) {
     setBusy(true);
     try {
       await add(variantId, 1);
-      toast.push("Added to cart 🛒");
+      toast.push("Added to cart");
     } catch (e) {
       toast.push(errText(e, "Could not add to cart"), "err");
     } finally {
@@ -76,33 +72,21 @@ export function ProductPage({ slug }: { slug: string }) {
       <div style={{ marginBottom: 14 }}>
         <span className="link" onClick={() => history.back()}>← Back</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 460px) 1fr", gap: 34, alignItems: "start" }}>
+      <div className="product-detail">
         <div>
-          <div className="product-thumb" style={{ aspectRatio: "1/0.9", borderRadius: 18, border: "1px solid var(--border)" }}>
-            {activeImage ? (
-              <img src={activeImage} alt={product.name} style={{ borderRadius: 18 }} />
-            ) : (
-              <span className="ph" style={{ fontSize: 64 }}>🛒</span>
-            )}
+          <div className="product-thumb detail-thumb">
+            {activeImage ? <img src={activeImage} alt={product.name} /> : <Monogram text={product.name} />}
           </div>
           {images.length > 1 ? (
-            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <div className="thumb-row">
               {images.map((im) => (
                 <button
                   key={im.id}
                   onClick={() => setActiveImage(img(im.image))}
-                  style={{
-                    width: 58,
-                    height: 58,
-                    padding: 0,
-                    borderRadius: 10,
-                    overflow: "hidden",
-                    border: img(im.image) === activeImage ? "2px solid var(--primary)" : "1px solid var(--border)",
-                    background: "var(--surface)",
-                    cursor: "pointer",
-                  }}
+                  aria-label={`Show image: ${im.caption || "product"}`}
+                  className={`thumb-btn ${img(im.image) === activeImage ? "active" : ""}`}
                 >
-                  <img src={img(im.image)!} alt={im.caption} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={img(im.image)!} alt={im.caption} />
                 </button>
               ))}
             </div>
@@ -113,28 +97,23 @@ export function ProductPage({ slug }: { slug: string }) {
           {product.category ? (
             <a className="link" href={`#/browse?category=${product.category.slug}`}>{product.category.name}</a>
           ) : null}
-          <h1 style={{ margin: "6px 0 6px", fontSize: 27 }}>{product.name}</h1>
+          <h1 className="detail-title">{product.name}</h1>
           {product.brand ? <p className="muted" style={{ margin: "0 0 10px" }}>by {product.brand}</p> : null}
           <Price price={price} mrp={product.mrp} discount={activeVariant?.discount_percent || product.discount_percent} size="lg" />
 
           {product.description ? (
-            <p style={{ marginTop: 16, lineHeight: 1.65, fontSize: 14.5 }}>{product.description}</p>
+            <p className="detail-desc">{product.description}</p>
           ) : null}
 
           {product.variants.length > 1 ? (
             <div style={{ marginTop: 18 }}>
-              <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>Choose option</h3>
+              <h3 className="detail-option-label">Choose option</h3>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {product.variants.filter((v) => v.is_active).map((v) => (
                   <button
                     key={v.id}
                     onClick={() => setVariantId(v.id)}
-                    className="btn btn-sm"
-                    style={
-                      v.id === variantId
-                        ? {}
-                        : { background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }
-                    }
+                    className={`variant-btn ${v.id === variantId ? "active" : ""}`}
                   >
                     {v.name || v.sku} · ₹{v.price}
                   </button>
@@ -145,10 +124,10 @@ export function ProductPage({ slug }: { slug: string }) {
 
           <div className="form-actions" style={{ marginTop: 24 }}>
             <button className="btn" style={{ minWidth: 200 }} disabled={busy || !variantId} onClick={addToCart}>
-              {busy ? "Adding…" : "Add to cart 🛒"}
+              {busy ? "Adding…" : "Add to cart"}
             </button>
             <button
-              className="btn btn-ghost"
+              className="btn btn-dark"
               onClick={() => {
                 if (variantId) void add(variantId, 1).then(() => navigate("cart"));
               }}

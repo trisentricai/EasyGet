@@ -225,7 +225,7 @@ export const getMe = () => api<User>("/users/me/");
 /* ---------------- Addresses ---------------- */
 
 export type Address = {
-  id: number;
+  id: number | string;
   label: string;
   line1: string;
   line2: string;
@@ -243,11 +243,11 @@ export async function createAddress(body: Partial<Address>) {
   return api<Address>("/users/me/addresses/", { method: "POST", body });
 }
 
-export async function deleteAddress(id: number) {
+export async function deleteAddress(id: number | string) {
   return api<void>(`/users/me/addresses/${id}/`, { method: "DELETE" });
 }
 
-export async function setDefaultAddress(id: number) {
+export async function setDefaultAddress(id: number | string) {
   return api<Address>(`/users/me/addresses/${id}/set-default/`, { method: "POST" });
 }
 
@@ -378,7 +378,8 @@ export const clearCart = () => api<void>("/cart/clear/", { method: "DELETE" });
 /* ---------------- Orders (authed) ---------------- */
 
 export type Order = {
-  id: number;
+  /** The orders API uses UUID primary keys. */
+  id: string;
   order_number: string;
   store: number | null;
   store_name?: string;
@@ -419,9 +420,9 @@ export const createOrder = (body: OrderCreateInput) =>
 
 export const listOrders = () => api<{ results?: Order[] } | Order[]>("/orders/");
 
-export const getOrder = (id: number) => api<OrderDetail>(`/orders/${id}/`);
+export const getOrder = (id: string | number) => api<OrderDetail>(`/orders/${id}/`);
 
-export const cancelOrder = (id: number, reason: string) =>
+export const cancelOrder = (id: string | number, reason: string) =>
   api<OrderDetail>(`/orders/${id}/cancel/`, { method: "POST", body: { reason } });
 
 /* ---------------- Stores ---------------- */

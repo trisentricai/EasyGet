@@ -14,7 +14,8 @@ import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { OrderDetailPage, OrdersPage } from "./pages/OrdersPage";
 import { AccountPage } from "./pages/AccountPage";
-import { Spinner } from "./components/ui";
+import { Icon } from "./components/icons";
+import { Spinner, usePopOnChange } from "./components/ui";
 
 export default function App() {
   return (
@@ -62,7 +63,8 @@ function Shell() {
     }
   }, [data]);
 
-  const storeName = data?.store?.name ?? "EASYGET";
+  const storeName = data?.store?.name ?? "EasyGet";
+  const storeCity = data?.store?.city ?? "";
   const routeKey = `${route.name}:${route.params.join("/") ?? ""}`;
 
   const page = (() => {
@@ -85,8 +87,8 @@ function Shell() {
         <div className="brand" onClick={() => navigate("home")}>
           <div className="brand-mark">EG</div>
           <div>
-            {storeName}
-            <small>{loading ? "…" : error ? "STORE" : "STORE"}</small>
+            <span className="brand-name">{loading ? "EasyGet" : storeName}</span>
+            <span className="brand-city">{loading ? "" : storeCity || "store"}</span>
           </div>
         </div>
 
@@ -104,12 +106,17 @@ function Shell() {
 
         <div className="nav-spacer" />
 
-        <a className="icon-btn" title="Orders" href={href("orders")}>📦</a>
-        <a className="icon-btn" title="Cart" href={href("cart")}>
-          🛒{count > 0 ? <span className="bubble">{count > 99 ? "99+" : count}</span> : null}
+        <a className="icon-btn" title="Orders" aria-label="Orders" href={href("orders")}>
+          <Icon name="box" size={19} />
+        </a>
+        <a className="icon-btn" title="Cart" aria-label={`Cart${count ? `, ${count} items` : ""}`} href={href("cart")}>
+          <Icon name="cart" size={19} />
+          {count > 0 ? <CartBubble count={count} /> : null}
         </a>
         {!ready ? null : user ? (
-          <a className="icon-btn" title="Account" href={href("account")}>👤</a>
+          <a className="icon-btn" title="Account" aria-label="Account" href={href("account")}>
+            <Icon name="user" size={19} />
+          </a>
         ) : (
           <button className="btn btn-sm" onClick={() => navigate("login")}>Sign in</button>
         )}
@@ -118,8 +125,14 @@ function Shell() {
       {page}
 
       <footer className="footer">
-        Powered by <b>EASYGET</b> — quick-commerce, beautifully simple.
+        <span className="brand-mark">EG</span>
+        Powered by <b>EasyGet</b> — quick-commerce, beautifully simple.
       </footer>
     </>
   );
+}
+
+function CartBubble({ count }: { count: number }) {
+  const ref = usePopOnChange(count);
+  return <span className="bubble" ref={ref}>{count > 99 ? "99+" : count}</span>;
 }

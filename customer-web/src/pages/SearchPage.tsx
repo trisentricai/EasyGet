@@ -7,6 +7,7 @@ import {
   type Product,
 } from "../services/api";
 import { CardSkeletonGrid, EmptyState, ProductCard, Section } from "../components/ui";
+import { Icon } from "../components/icons";
 
 export function SearchPage({ initialQuery }: { initialQuery?: string }) {
   const { user } = useAuth();
@@ -72,7 +73,9 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
     return (
       <div className="auth-wrap">
         <div className="auth-card" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🔐</div>
+          <div style={{ display: "grid", placeItems: "center", margin: "10px 0 12px", color: "var(--primary)" }}>
+            <Icon name="lock" size={30} />
+          </div>
           <h1>Search products</h1>
           <p className="sub">Sign in to search the catalog.</p>
           <button className="btn btn-block" onClick={() => (window.location.hash = "#/login")}>
@@ -145,7 +148,7 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "")}
               >
-                🔍 {s}
+                {s}
               </div>
             ))}
           </div>
@@ -153,16 +156,16 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
       </div>
 
       {error ? (
-        <EmptyState icon="⚠️" title="Search failed" text={error} />
+        <EmptyState icon="warning" title="Search failed" text={error} />
       ) : busy && !products ? (
         <CardSkeletonGrid />
       ) : products && products.length === 0 ? (
-        <EmptyState icon="🤔" title={`No results for "${q}"`} text="Check the spelling or try a broader term." />
+        <EmptyState icon="search" title={`No results for "${q}"`} text="Check the spelling or try a broader term." />
       ) : products ? (
         <Section>
           <div className="grid grid-products">
-            {products.map((p, i) => (
-              <ProductCard key={p.id} product={p} delay={Math.min(i, 10) * 30} />
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
         </Section>

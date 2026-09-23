@@ -85,16 +85,16 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
       </div>
 
       {error ? (
-        <EmptyState icon="⚠️" title="Couldn't load products" text={error} />
+        <EmptyState icon="warning" title="Couldn't load products" text={error} />
       ) : products === null ? (
         <CardSkeletonGrid />
       ) : products.length === 0 ? (
-        <EmptyState icon="🔍" title="No products found" text="Try clearing the filters." />
+        <EmptyState icon="search" title="No products found" text="Try clearing the filters." />
       ) : (
         <Section>
           <div className="grid grid-products">
-            {products.map((p, i) => (
-              <ProductCard key={p.id} product={p} delay={Math.min(i, 10) * 35} />
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
         </Section>
