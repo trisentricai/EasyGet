@@ -75,6 +75,8 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Fix backend CI: pin missing deps (channels, channels-redis, drf-spectacular, django-ratelimit) + SQLite env for CI tests |
+|---|---|---|---|
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | `GETTING_STARTED.md`: full run guide (4 terminals, logins, per-screen map) + works/quirks/pending lists; README pointer |
 | 2026-09-23 | phase-3-store-product-inventory | `ed01af0` | Pushed branch to `origin` (all 14 commits); fixed stale changelog hashes; `origin/phase-3-store-product-inventory` now tracks local |
 | 2026-09-23 | phase-3-store-product-inventory | `af251ee` | Flutter app: full customer build (Riverpod 3.3 + go_router 17 + Dio + secure storage, clean arch, all screens); analyzer 0, debug APK built |
