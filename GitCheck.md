@@ -75,6 +75,8 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Docs refresh: README build-order statuses + Quick Start (run/logins/tests), local-development venv paths + logins + test instructions |
+|---|---|---|---|
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Order Engine: admin `OrdersPage` (#/orders, filters, detail+timeline, advance/cancel) + Dashboard fulfilment link; fixed modal portal, storefront `.sf-layout` grid, sidebar overflow guard; stripped trailing `|` from 200 products + seed JSON |
 | 2026-09-22 | phase-3-store-product-inventory | `0283bd4`+`23ea54d`+`6ba7cc7` | Supabase live verify (health/admin-login/dashboard/stores/categories/storefront/products-200), created `admin@easyget.local` in Supabase, fixed products N+1 (`prefetch_related` + annotated `min_variant_price` + prefetched `primary_image`); 31 tests pass (products/stores/categories/tenants); both webs build pass |
 | 2026-09-20 | phase-3-store-product-inventory | — (uncommitted) | Admin dashboard UI (admin-web): dual-theme SPA, login/JWT+refresh, dashboard stats, categories/products/inventory CRUD, drag-and-drop storefront designer (sections+items, design knobs, theme panel); backend fixes: `/api/v1/admin/` route order, storefront template backend (`storefront` app: theme/sections/items + render API, 21 tests) — suite 141✅ |

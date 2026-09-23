@@ -1,7 +1,7 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-23
-**Phase in progress:** Order Engine — fulfilment queue UI landed in admin-web; 3 admin layout bugs fixed
+**Phase in progress:** Order Engine — fulfilment queue UI landed; docs refreshed (README status + quick start, local-development paths/logins)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.

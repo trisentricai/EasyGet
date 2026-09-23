@@ -489,23 +489,57 @@ After real customers use the MVP, add:
 
 ## Recommended Build Order
 
-Don't develop Flutter, React, Django, admin, and delivery simultaneously. Build **vertically**:
+> **Live status:** this table is the roadmap — the ground truth of what works
+> *right now* is `currentUpdate.md` (updated every session).
 
 | # | Phase | Status |
 |---|---|---|
-| 1 | Foundation | ✅ |
-| 2 | Auth | 🔨 in progress (`phase-2-auth`) |
-| 3 | Store + Product + Inventory | ☐ |
-| 4 | Customer Flutter App | ☐ |
-| 5 | Cart | ☐ |
-| 6 | Checkout | ☐ |
-| 7 | Payment | ☐ |
-| 8 | Order Engine | ☐ |
-| 9 | React Admin | ☐ |
-| 10 | Delivery | ☐ |
-| 11 | Notifications | ☐ |
-| 12 | Testing | ☐ |
-| 13 | Production | ☐ |
+| 1 | Foundation | ✅ done |
+| 2 | Auth & Users | ✅ done (merged to `main`) |
+| 3 | Store + Product + Inventory | ✅ done — tenancy (`tenants` app), 200 seeded products, Supabase live |
+| 4 | Customer web app | ✅ built (Home/Browse/Search/Product/Cart/Checkout/Orders/Account) |
+| 5 | Cart (backend) | ✅ endpoints built · ☐ tenant-wiring pending |
+| 6 | Orders (backend) + admin fulfilment UI | ✅ built — `admin-web/#/orders` live, 1 order in queue · ☐ tenant-wiring pending |
+| 7 | Payments (backend) | ✅ endpoints built · ☐ tenant-wiring + provider gateway pending |
+| 8 | Admin dashboard | ✅ built (Overview, Orders, Categories, Products, Inventory, Storefront designer) |
+| 9 | Delivery | ☐ not started |
+| 10 | Notifications | ☐ models only, no live flow yet |
+| 11 | Search, Performance & Redis | ⚠️ partial — search API works (+SQLite fallback); Redis fail-soft, no Docker locally |
+| 12 | Testing & Security | ⚠️ partial — 120+ backend tests pass; no prod audit yet |
+| 13 | Production Deployment | ☐ not started |
+
+Next up per `PROJECT.md` §3.3: **Cart/Orders/Payments tenant-wiring** (model-by-model, migrations + isolation tests per batch), then **`/products/` pagination** (200 items ≈ 3.5s on Supabase).
+
+---
+
+## Quick Start (run it)
+
+Prerequisites: Python 3.11+ (`.venv` at repo root), Node 22+. No Docker needed — the live DB is Supabase (see `.env`).
+
+```powershell
+# 1 — Backend API (leave running)
+cd C:\Users\Rahul\Documents\TRISENTRICS-AI\EasyGet
+.\.venv\Scripts\python.exe backend\manage.py runserver
+# health → http://127.0.0.1:8000/api/v1/health/   ({"status":"ok"})
+# docs   → http://127.0.0.1:8000/api/docs/
+
+# 2 — Admin dashboard (new terminal)
+cd admin-web; npm install; npm run dev      # http://localhost:5174
+
+# 3 — Customer shop (new terminal)
+cd customer-web; npm install; npm run dev   # http://localhost:5173
+```
+
+Notes:
+- `.venv` lives at the **repo root**, `manage.py` inside **`backend/`** — the combo above is the correct one.
+- `GET /` → 404 is **normal**: the backend is API-only, it has no homepage.
+- Seeded logins (Supabase): admin `admin@easyget.local` / `EasyGet!2026` → `:5174`; customer `customer@easyget.app` / `Customer@123` → `:5173`; merchant `merchant@easyget.app` / `Merchant@123`.
+- Backend tests must run **from `backend/`** with the SQLite override (Supabase can't create test DBs):
+```powershell
+cd backend
+$env:DATABASE_URL='sqlite:///db.sqlite3'
+& 'C:\Users\Rahul\Documents\TRISENTRICS-AI\EasyGet\.venv\Scripts\python.exe' manage.py test -v 1
+```
 
 ---
 
