@@ -498,7 +498,7 @@ After real customers use the MVP, add:
 | 2 | Auth & Users | ✅ done (merged to `main`) |
 | 3 | Store + Product + Inventory | ✅ done — tenancy (`tenants` app), 200 seeded products, Supabase live |
 | 4 | Customer web app | ✅ built (Home/Browse/Search/Product/Cart/Checkout/Orders/Account) |
-| 4b | Customer Flutter app | 🔨 in progress — full build landed (Riverpod 3, go_router, Dio, all screens), analyzer fixes pending |
+| 4b | Customer Flutter app | ✅ built (Riverpod 3, go_router, Dio, clean arch, all screens; analyzer 0, debug APK built) — device click-test pending |
 | 5 | Cart (backend) | ✅ endpoints built · ☐ tenant-wiring pending |
 | 6 | Orders (backend) + admin fulfilment UI | ✅ built — `admin-web/#/orders` live, 1 order in queue · ☐ tenant-wiring pending |
 | 7 | Payments (backend) | ✅ endpoints built · ☐ tenant-wiring + provider gateway pending |

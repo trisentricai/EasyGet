@@ -1,7 +1,7 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-23
-**Phase in progress:** Flutter customer app — full build landed (Riverpod 3 + go_router + Dio, clean architecture, all screens); 30 analyzer issues to fix before commit
+**Phase in progress:** Flutter app DONE — analyzer zero, debug APK built; all surfaces live
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
@@ -9,7 +9,15 @@
 
 ---
 
-## 0. LATEST — Flutter app (2026-09-23): full customer build, analyzer red
+## 0. LATEST — Flutter app (2026-09-23): analyzer zero, APK built ✅
+
+**Stack (latest, researched 2026-09):** `flutter_riverpod ^3.0.0` (resolved 3.3.2 — Notifier/AsyncNotifier, no codegen; 3.4+ needs newer Dart), `go_router 17.5.0`, `dio`, `flutter_secure_storage 10.3.4`, `cached_network_image`, `intl`. Pinned below versions needing a newer SDK than local Flutter 3.38 / Dart 3.10.
+
+**Clean architecture (`lib/src/`):** `core/` (config incl. emulator-aware API_BASE, Dio client with JWT + one-shot 401 refresh, secure TokenStore, Material3 light/dark theme, skeleton/error/empty states, product card, INR/date format) + `routing/` (auth-gated GoRouter, bottom-tab shell with live cart badge, custom fade/rise transitions) + `features/` (auth login/register/OTP, home merchant-themed storefront sections, browse filters + Load-more, search + suggestions + SQLite fallback, product detail carousel + variants + qty, cart swipe-to-delete + steppers, checkout addresses + store picker + place-order, orders + detail timeline + cancel, account + address CRUD).
+
+**Fixes on the way:** 30 analyzer issues → 0 (Riverpod 3 API: `.value` not `.valueOrNull`, `AsyncNotifierProvider.autoDispose`, RadioGroup refactor, unescaped `$` in RegExp); regenerated `android/` scaffold (Gradle mismatch), fixed malformed NDK download; deleted stale scaffold widget test. `flutter build apk --debug` ✅ produces `app-debug.apk`. Not yet click-tested on a live device.
+
+## 0. LATEST — Order Engine (2026-09-23): fulfilment queue + 3 layout fixes
 
 **Stack (latest, researched 2026-09):** `flutter_riverpod ^3.0.0` (Notifier/AsyncNotifier, no codegen), `go_router ^17.0.0` (StatefulShell tabs + custom fade/rise transitions), `dio ^5.7.0` (JWT interceptor + one-shot 401 refresh), `flutter_secure_storage ^10.0.0`, `cached_network_image ^3.4.1`, `intl`. Pinned below Riverpod 3.4/go_router 18 (need newer Dart than the local 3.10.7). `flutter pub get` ✅ resolved.
 
