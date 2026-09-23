@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.db.models import Min, Q
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,6 +16,14 @@ from .serializers import (
     ProductListSerializer,
     ProductWriteSerializer,
 )
+
+
+class ProductPagination(PageNumberPagination):
+    """200+ item catalogs took ~3.5s per unpaginated request on Supabase."""
+
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 
 class ProductViewSet(ModelViewSet):
@@ -33,6 +42,7 @@ class ProductViewSet(ModelViewSet):
     lookup_field = "slug"
     queryset = Product.objects.all()
     parser_classes = [JSONParser, FormParser, MultiPartParser]
+    pagination_class = ProductPagination
 
     def get_permissions(self):
         if self.request.method in {"GET", "HEAD", "OPTIONS"}:
@@ -51,7 +61,9 @@ class ProductViewSet(ModelViewSet):
     def get_queryset(self):
         qs = (
             Product.objects.select_related("category")
-            .prefetch_related("variants", "images")
+            # Images feed `primary_image` via the prefetched cache; variants
+            # are covered by the annotation, so prefetch only images.
+            .prefetch_related("images")
             .annotate(min_variant_price=Min(
                 "variants__price",
                 filter=Q(variants__is_active=True) & Q(variants__price__isnull=False),

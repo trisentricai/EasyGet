@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from products.models import ProductVariant
 from stores.models import Store
+from tenants.models import Tenant
 
 
 class Order(models.Model):
@@ -32,6 +33,14 @@ class Order(models.Model):
         Store,
         on_delete=models.PROTECT,
         related_name="orders",
+    )
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="orders",
+        help_text="Denormalized from store.tenant; items/history inherit via order.",
     )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING
@@ -65,6 +74,12 @@ class Order(models.Model):
             self.order_number = self.generate_order_number()
         if not self.total:
             self.total = self.subtotal + self.delivery_fee - self.discount
+        if self.store_id:
+            store_tenant_id = Store.objects.filter(pk=self.store_id).values_list(
+                "tenant_id", flat=True
+            ).first()
+            if store_tenant_id:
+                self.tenant_id = store_tenant_id
         super().save(*args, **kwargs)
 
     def generate_order_number(self):

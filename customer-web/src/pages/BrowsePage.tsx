@@ -4,7 +4,7 @@ import {
   asArray,
   errText,
   listCategories,
-  listProducts,
+  listProductsPaged,
   type Category,
   type Product,
 } from "../services/api";
@@ -18,7 +18,56 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   const [maxPrice, setMaxPrice] = useState("");
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [products, setProducts] = useState<Product[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const baseParams = (): Record<string, string> => {
+    const params: Record<string, string> = {};
+    if (category) params.category = category;
+    if (sort === "price_asc" || sort === "price_desc" || sort === "newest") params.sort = sort;
+    if (minPrice) params.min_price = minPrice;
+    if (maxPrice) params.max_price = maxPrice;
+    if (featuredOnly) params.is_featured = "true";
+    return params;
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setError(null);
+    setProducts(null);
+    setPage(1);
+    listProductsPaged(baseParams())
+      .then((d) => {
+        if (cancelled) return;
+        setProducts(d.results);
+        setTotal(d.count);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(errText(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, category, sort, minPrice, maxPrice, featuredOnly]);
+
+  async function loadMore() {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const d = await listProductsPaged({ ...baseParams(), page: String(page + 1) });
+      setProducts((prev) => [...(prev ?? []), ...d.results]);
+      setTotal(d.count);
+      setPage((p) => p + 1);
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     if (initialCategory !== undefined) setCategory(initialCategory);
@@ -30,29 +79,6 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
       .then((d) => setCategories(asArray(d)))
       .catch(() => setCategories([]));
   }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    setError(null);
-    setProducts(null);
-    const params: Record<string, string> = {};
-    if (category) params.category = category;
-    if (sort === "price_asc" || sort === "price_desc" || sort === "newest") params.sort = sort;
-    if (minPrice) params.min_price = minPrice;
-    if (maxPrice) params.max_price = maxPrice;
-    if (featuredOnly) params.is_featured = "true";
-    listProducts(params)
-      .then((d) => {
-        if (!cancelled) setProducts(asArray(d));
-      })
-      .catch((e) => {
-        if (!cancelled) setError(errText(e));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, category, sort, minPrice, maxPrice, featuredOnly]);
 
   if (!user) return <SignInGate title="Browse the catalog" text="Sign in to see products and prices." />;
 
@@ -92,11 +118,21 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
         <EmptyState icon="search" title="No products found" text="Try clearing the filters." />
       ) : (
         <Section>
+          <p className="muted" style={{ margin: "0 0 10px" }}>
+            Showing {products.length} of {total}
+          </p>
           <div className="grid grid-products">
             {products.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
+          {products.length < total && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
+              <button className="btn" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? "Loading…" : `Load more (${total - products.length} left)`}
+              </button>
+            </div>
+          )}
         </Section>
       )}
     </div>

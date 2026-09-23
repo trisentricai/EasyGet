@@ -274,9 +274,38 @@ export type ProductDetail = Product & {
   images: { id: number; image: string; caption: string; is_primary: boolean; sort_order: number }[];
 };
 
-export function listProducts(params: Record<string, string> = {}) {
+export type Paged<T> = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+};
+
+export function listProductsPaged(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
-  return api<{ results?: Product[] } | Product[]>(`/products/${qs ? `?${qs}` : ""}`);
+  return api<Paged<Product>>(`/products/${qs ? `?${qs}` : ""}`);
+}
+
+/** Back-compat first-page call (shape fits existing asArray callers). */
+export function listProducts(params: Record<string, string> = {}) {
+  return listProductsPaged(params);
+}
+
+/** Fetch every page (page_size=100, follows `next`, capped) for flows that
+ *  need the whole catalog client-side, e.g. the search fallback. */
+export async function listAllProducts(
+  params: Record<string, string> = {},
+  maxPages = 10,
+): Promise<Product[]> {
+  const out: Product[] = [];
+  let page = 1;
+  for (;;) {
+    const res = await listProductsPaged({ ...params, page: String(page), page_size: "100" });
+    out.push(...res.results);
+    if (!res.next || page >= maxPages) break;
+    page += 1;
+  }
+  return out;
 }
 
 export const getProduct = (slug: string) => api<ProductDetail>(`/products/${slug}/`);
@@ -312,7 +341,7 @@ export async function searchWithFallback(body: {
   } catch {
     const params: Record<string, string> = {};
     if (body.sort && body.sort !== "relevance") params.sort = body.sort;
-    const all = asArray(await listProducts(params));
+    const all = await listAllProducts(params);
     const q = (body.q ?? "").trim().toLowerCase();
     const matched = q
       ? all.filter(

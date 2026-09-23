@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from products.models import ProductVariant
 from stores.models import Store
+from tenants.models import Tenant
 
 
 class Cart(models.Model):
@@ -27,6 +28,14 @@ class Cart(models.Model):
         null=True,
         blank=True,
     )
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="carts",
+        help_text="Denormalized from store.tenant; store-less carts stay tenant-free.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     expires_at = models.DateTimeField(null=True, blank=True)
@@ -46,6 +55,14 @@ class Cart(models.Model):
     def save(self, *args, **kwargs):
         if not self.expires_at:
             self.expires_at = timezone.now() + timezone.timedelta(days=7)
+        # Denormalize ownership: a cart bound to a store belongs to that
+        # store's tenant (same pattern as Store/Product/StockItem).
+        if self.store_id:
+            store_tenant_id = Store.objects.filter(pk=self.store_id).values_list(
+                "tenant_id", flat=True
+            ).first()
+            if store_tenant_id:
+                self.tenant_id = store_tenant_id
         super().save(*args, **kwargs)
 
     @property

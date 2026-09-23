@@ -7,8 +7,8 @@ import {
   errText,
   getSections,
   getStoreSlug,
+  listAllProducts,
   listCategories,
-  listProducts,
   listStores,
   reorderItems,
   reorderSections,
@@ -69,9 +69,9 @@ export function StorefrontPage() {
   }, [slug]);
 
   useEffect(() => {
-    Promise.all([load(), listProducts(), listCategories()])
+    Promise.all([load(), listAllProducts(), listCategories()])
       .then(([, p, c]) => {
-        setProducts(Array.isArray(p) ? p : p.results);
+        setProducts(p);
         setCategories(Array.isArray(c) ? c : c.results);
       })
       .catch((e) => push(e?.message ?? "Failed to load storefront", "err"));

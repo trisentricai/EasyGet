@@ -3,8 +3,8 @@ import {
   createProduct,
   deleteProduct,
   errText,
+  listAllProducts,
   listCategories,
-  listProducts,
   updateProduct,
   type Category,
   type Product,
@@ -51,8 +51,8 @@ export function ProductsPage() {
   const [deleting, setDeleting] = useState<Product | null>(null);
 
   const load = useCallback(async () => {
-    const [p, c] = await Promise.all([listProducts(), listCategories()]);
-    setProducts(toArray(p));
+    const [p, c] = await Promise.all([listAllProducts(), listCategories()]);
+    setProducts(p);
     setCategories(toArray(c));
   }, []);
 

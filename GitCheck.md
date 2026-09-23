@@ -75,6 +75,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Tenant-wiring: Cart tenant FK + cross-tenant guards, Order tenant FK + scoped querysets, Payments inherit-via-order + scoped refunds, refunds-router order fix; products pagination (20/page, Load-more browse, listAll helpers); 58 tests pass |
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Customer-web polish (icons/branding/fonts, UUID order ids) + CORS :3000 |
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Docs refresh: README build-order statuses + Quick Start (run/logins/tests), local-development venv paths + logins + test instructions |
 |---|---|---|---|

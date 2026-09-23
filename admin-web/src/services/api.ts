@@ -190,7 +190,28 @@ export type Product = {
 
 export function listProducts(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
-  return api<{ results: Product[] } | Product[]>(`/products/${qs ? `?${qs}` : ""}`);
+  return api<{ count: number; next: string | null; results: Product[] } | Product[]>(
+    `/products/${qs ? `?${qs}` : ""}`,
+  );
+}
+
+/** Fetch every page (page_size=100, capped) — for internal tools like the
+ *  products table and the storefront item picker that need the full catalog. */
+export async function listAllProducts(
+  params: Record<string, string> = {},
+  maxPages = 10,
+): Promise<Product[]> {
+  const out: Product[] = [];
+  let page = 1;
+  for (;;) {
+    const res = await listProducts({ ...params, page: String(page), page_size: "100" });
+    const items = Array.isArray(res) ? res : res.results;
+    out.push(...items);
+    const hasNext = !Array.isArray(res) && res.next;
+    if (!hasNext || page >= maxPages) break;
+    page += 1;
+  }
+  return out;
 }
 
 export async function createProduct(body: Record<string, unknown>) {

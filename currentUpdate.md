@@ -1,7 +1,7 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-23
-**Phase in progress:** Tenant-wiring — Cart → Orders → Payments (customer-web polish committed; docs refreshed)
+**Phase in progress:** Tenant-wiring DONE — Cart/Orders/Payments (migrations applied to Supabase, 58 tests pass); products paginated (20/page) with frontend paging wired
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.

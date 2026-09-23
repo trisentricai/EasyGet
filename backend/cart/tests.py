@@ -1,12 +1,17 @@
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
+from rest_framework.test import APIClient
 
 from categories.models import Category
 from products.models import Product, ProductVariant
 from stores.models import Store
+from tenants.services import provision_tenant
 
 from .models import Cart, CartItem
+
+User = get_user_model()
 
 
 class CartModelTests(TestCase):
@@ -77,3 +82,81 @@ class CartModelTests(TestCase):
         cart1.merge_with(cart2)
         cart1.refresh_from_db()
         self.assertEqual(cart1.items.get(variant=self.variant).quantity, 3)
+
+
+class CartTenancyTests(TestCase):
+    """Carts are customer-owned; the tenant guard blocks cross-catalog mixing."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.merchant_a = User.objects.create_user(
+            "cart.a@example.com", "strongpass123", is_email_verified=True
+        )
+        self.merchant_b = User.objects.create_user(
+            "cart.b@example.com", "strongpass123", is_email_verified=True
+        )
+        self.customer = User.objects.create_user(
+            "cart.cust@example.com", "strongpass123", is_email_verified=True
+        )
+        self.tenant_a = provision_tenant(self.merchant_a, "Cart Tenant A")
+        self.tenant_b = provision_tenant(self.merchant_b, "Cart Tenant B")
+        self.store_a = Store.objects.create(
+            name="Cart Store A", city="Pune", state="MH", postal_code="411001",
+            latitude=Decimal("18.5204"), longitude=Decimal("73.8567"),
+            tenant=self.tenant_a,
+        )
+        category = Category.objects.create(name="Grocery", is_active=True)
+        product_a = Product.objects.create(
+            name="Tenant A Rice", category=category, tenant=self.tenant_a,
+            mrp=Decimal("800.00"), is_active=True,
+        )
+        self.variant_a = ProductVariant.objects.create(
+            product=product_a, name="5kg", sku="CART-A-5KG",
+            price=Decimal("700.00"), is_active=True,
+        )
+        product_b = Product.objects.create(
+            name="Tenant B Rice", category=category, tenant=self.tenant_b,
+            mrp=Decimal("800.00"), is_active=True,
+        )
+        self.variant_b = ProductVariant.objects.create(
+            product=product_b, name="5kg", sku="CART-B-5KG",
+            price=Decimal("700.00"), is_active=True,
+        )
+
+    def test_cart_bound_to_store_inherits_tenant(self):
+        cart = Cart.objects.create(user=self.customer, store=self.store_a)
+        self.assertEqual(cart.tenant_id, self.tenant_a.id)
+
+    def test_add_same_tenant_variant_ok(self):
+        Cart.objects.create(user=self.customer, store=self.store_a)
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/cart/items/",
+            {"variant_id": self.variant_a.id, "quantity": 1},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+
+    def test_add_cross_tenant_variant_rejected(self):
+        Cart.objects.create(user=self.customer, store=self.store_a)
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/cart/items/",
+            {"variant_id": self.variant_b.id, "quantity": 1},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_merge_cross_tenant_carts_rejected(self):
+        store_b = Store.objects.create(
+            name="Cart Store B", city="Pune", state="MH", postal_code="411001",
+            latitude=Decimal("18.5204"), longitude=Decimal("73.8567"),
+            tenant=self.tenant_b,
+        )
+        Cart.objects.create(user=self.customer, store=self.store_a)
+        Cart.objects.create(session_key="anon-b", store=store_b)
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/cart/merge/", {"session_key": "anon-b"}, format="json"
+        )
+        self.assertEqual(res.status_code, 400)

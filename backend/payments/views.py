@@ -1,8 +1,11 @@
+from django.db.models import Q
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from tenants.services import user_tenant_ids
 from users.permissions import IsAdminOnly, IsAdminOrStoreManager
 
 from .models import Payment, PaymentMethod, Refund
@@ -50,9 +53,18 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff or user.role == user.Role.STORE_MANAGER:
-            return Payment.objects.all()
-        return Payment.objects.filter(user=user)
+        qs = Payment.objects.select_related("order", "order__store", "user")
+        if user.is_staff:
+            return qs
+        # Tenant members see their merchants' payments; everyone else sees
+        # only their own. (Previously any STORE_MANAGER saw ALL payments —
+        # a cross-tenant leak.) Tenancy inherits via order (no direct FK).
+        tenant_ids = user_tenant_ids(user)
+        if tenant_ids:
+            return qs.filter(
+                Q(order__tenant_id__in=tenant_ids) | Q(user=user)
+            ).distinct()
+        return qs.filter(user=user)
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -124,4 +136,11 @@ class RefundViewSet(viewsets.ModelViewSet):
         return [IsAdminOrStoreManager()]
 
     def get_queryset(self):
-        return Refund.objects.all()
+        user = self.request.user
+        qs = Refund.objects.select_related("payment", "payment__order")
+        if user.is_staff:
+            return qs
+        tenant_ids = user_tenant_ids(user)
+        if tenant_ids:
+            return qs.filter(payment__order__tenant_id__in=tenant_ids)
+        return qs.none()

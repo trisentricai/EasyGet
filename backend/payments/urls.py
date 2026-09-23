@@ -5,8 +5,10 @@ from . import views
 
 router = DefaultRouter()
 router.register("methods", views.PaymentMethodViewSet, basename="payment-method")
-router.register("", views.PaymentViewSet, basename="payment")
+# "refunds" must come before "" — the empty-prefix detail route would
+# otherwise swallow /refunds/ as a payment id lookup (404).
 router.register("refunds", views.RefundViewSet, basename="refund")
+router.register("", views.PaymentViewSet, basename="payment")
 
 urlpatterns = [
     path("", include(router.urls)),

@@ -2,11 +2,13 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from rest_framework.test import APIClient
 
 from categories.models import Category
 from orders.models import Order
 from products.models import Product, ProductVariant
 from stores.models import Store
+from tenants.services import provision_tenant
 
 from .models import Payment, PaymentMethod, Refund
 
@@ -172,3 +174,59 @@ class RefundTests(TestCase):
             reason="Too much",
         )
         self.assertEqual(refund.amount, Decimal("800.00"))
+
+
+class PaymentTenancyTests(TestCase):
+    """Payments inherit tenancy via order; refunds scoped the same way."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.merchant_a = User.objects.create_user(
+            "pay.a@example.com", "strongpass123", is_email_verified=True
+        )
+        self.merchant_b = User.objects.create_user(
+            "pay.b@example.com", "strongpass123",
+            role=User.Role.STORE_MANAGER, is_email_verified=True,
+        )
+        self.customer = User.objects.create_user(
+            "pay.cust@example.com", "strongpass123", is_email_verified=True
+        )
+        self.tenant_a = provision_tenant(self.merchant_a, "Pay Tenant A")
+        self.tenant_b = provision_tenant(self.merchant_b, "Pay Tenant B")
+        self.store_a = Store.objects.create(
+            name="Pay Store A", city="Pune", state="MH", postal_code="411001",
+            latitude=Decimal("18.5204"), longitude=Decimal("73.8567"),
+            tenant=self.tenant_a,
+        )
+        self.order_a = Order.objects.create(
+            user=self.customer, store=self.store_a,
+            subtotal=Decimal("700.00"), total=Decimal("700.00"),
+        )
+        self.payment_a = Payment.objects.create(
+            order=self.order_a, user=self.customer,
+            gateway=Payment.Gateway.COD, amount=Decimal("700.00"),
+        )
+
+    def test_other_merchant_cannot_see_foreign_payment(self):
+        self.client.force_authenticate(user=self.merchant_b)
+        res = self.client.get(f"/api/v1/payments/{self.payment_a.id}/")
+        self.assertEqual(res.status_code, 404)
+
+    def test_own_merchant_sees_tenant_payment(self):
+        self.client.force_authenticate(user=self.merchant_a)
+        res = self.client.get(f"/api/v1/payments/{self.payment_a.id}/")
+        self.assertEqual(res.status_code, 200)
+
+    def test_customer_sees_own_payment(self):
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.get(f"/api/v1/payments/{self.payment_a.id}/")
+        self.assertEqual(res.status_code, 200)
+
+    def test_other_merchant_sees_no_refunds(self):
+        Refund.objects.create(
+            payment=self.payment_a, amount=Decimal("100.00"), reason="Test",
+        )
+        self.client.force_authenticate(user=self.merchant_b)
+        res = self.client.get("/api/v1/payments/refunds/")
+        data = res.data["results"] if isinstance(res.data, dict) else res.data
+        self.assertEqual(list(data), [])
