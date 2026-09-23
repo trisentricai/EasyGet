@@ -1,13 +1,23 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-09-22
-**Phase in progress:** 3 — Store + Product + Inventory — tenancy foundation landed, catalog seeded, Supabase verified (Phase 2 Auth **✅ done**)
+**Last updated:** 2026-09-23
+**Phase in progress:** Order Engine — fulfilment queue UI landed in admin-web; 3 admin layout bugs fixed
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — Order Engine (2026-09-23): fulfilment queue + 3 layout fixes
+
+**Admin layout fixes (admin-web):**
+1. **Modal off-screen (`#/inventory`):** root cause was NOT `absolute` positioning — `.overlay` was already `position: fixed`. The fragility was rendering the overlay inside `.content` (animated/transformable ancestor), which can re-anchor `fixed` to the document. Fixed by portaling `Modal` to `document.body` (`ui.tsx` via `createPortal`) + body scroll-lock + `overflow-y: auto` on the overlay.
+2. **Storefront horizontal overflow:** the board+theme grid used `grid-template-columns: 1fr 300px` — `1fr` has implicit `min-width: auto`, forcing page-wide overflow. Replaced with `.sf-layout` (`minmax(0,1fr) 300px`), collapses to one column under 1100px; section title input `min-width: 140px` → `0` with ellipsis.
+3. **Sidebar squish:** same grid blowout pushed the page grid wider than the viewport. Fixed at source (above) + `.main { overflow-x: clip }` guard (clip keeps sticky topbar working, unlike hidden).
+4. Product names: stripped trailing `|` from all 200 Supabase products + `shop_stock_checklist.json` source.
+
+**Order Engine (fulfilment queue):** new `OrdersPage` in admin-web (`#/orders`, NAV + Dashboard card link): status filter pills with counts, orders table, detail modal with items + status timeline + advance-status (mirrors backend transition map) + cancel-with-reason. Uses existing `/api/v1/orders/` staff endpoints — no backend change. Verified live: staff sees 1 order. `npm run build` passes.
 
 ## 0. LATEST — Phase 3 progress (2026-09-22): Supabase verified + products perf fix
 

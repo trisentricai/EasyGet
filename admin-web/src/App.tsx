@@ -4,6 +4,7 @@ import { useTheme } from "./context/ThemeContext";
 import { navigate, useHashRoute } from "./hooks/useHashRoute";
 import { LoginPage, ThemeToggle } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { OrdersPage } from "./pages/OrdersPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { InventoryPage } from "./pages/InventoryPage";
@@ -12,6 +13,7 @@ import { Spinner } from "./components/ui";
 
 const NAV: Array<{ route: string; icon: string; label: string }> = [
   { route: "dashboard", icon: "📊", label: "Dashboard" },
+  { route: "orders", icon: "📦", label: "Orders" },
   { route: "categories", icon: "🧩", label: "Categories" },
   { route: "products", icon: "🛍️", label: "Products" },
   { route: "inventory", icon: "📦", label: "Inventory" },
@@ -20,6 +22,7 @@ const NAV: Array<{ route: string; icon: string; label: string }> = [
 
 const TITLES: Record<string, string> = {
   dashboard: "Overview",
+  orders: "Orders",
   categories: "Categories",
   products: "Products",
   inventory: "Inventory",
@@ -43,6 +46,7 @@ export default function App() {
   return (
     <Shell route={route} email={user.email} role={user.role} onSignOut={signOut}>
       {route === "dashboard" && <DashboardPage />}
+      {route === "orders" && <OrdersPage />}
       {route === "categories" && <CategoriesPage />}
       {route === "products" && <ProductsPage />}
       {route === "inventory" && <InventoryPage />}

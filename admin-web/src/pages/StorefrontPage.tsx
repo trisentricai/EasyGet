@@ -281,7 +281,7 @@ export function StorefrontPage() {
         </select>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 18, alignItems: "start" }}>
+      <div className="sf-layout">
         {/* -------- board -------- */}
         <div className="section-board">
           {sections.length === 0 && (

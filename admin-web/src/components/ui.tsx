@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export function Card({
   children,
@@ -61,10 +62,20 @@ export function Modal({
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Lock background scroll so the page behind can't shift while open.
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
   }, [onClose]);
 
-  return (
+  // Portal to <body>: keeps `position: fixed` viewport-relative even when the
+  // opener sits inside a transformed/filtered/animated ancestor (which would
+  // otherwise turn `fixed` into document-relative and strand the modal
+  // off-screen after scrolling a long list).
+  return createPortal(
     <div
       className="overlay"
       onMouseDown={(e) => {
@@ -76,7 +87,8 @@ export function Modal({
         {subtitle ? <p className="muted">{subtitle}</p> : null}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

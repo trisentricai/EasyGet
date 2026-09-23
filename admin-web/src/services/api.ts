@@ -296,3 +296,70 @@ export const updateTheme = (slug: string, body: Partial<Theme>) =>
 
 export const listStores = () =>
   api<{ results: { id: number; name: string; slug: string; is_active: boolean }[] } | { id: number; name: string; slug: string; is_active: boolean }[]>("/stores/");
+
+/* ---------------- Orders (fulfilment queue) ---------------- */
+
+export type OrderItem = {
+  id: number;
+  product_name: string;
+  variant_name: string;
+  sku: string;
+  unit_price: string;
+  quantity: number;
+  line_total: string;
+};
+
+export type OrderStatusEvent = {
+  id: number;
+  from_status: string;
+  to_status: string;
+  changed_by_email?: string;
+  note: string;
+  created_at: string;
+};
+
+export type Order = {
+  id: string;
+  order_number: string;
+  store: string | null;
+  store_name?: string;
+  status: string;
+  subtotal: string;
+  delivery_fee: string;
+  discount: string;
+  total: string;
+  item_count?: number;
+  delivery_address?: Record<string, unknown>;
+  delivery_instructions?: string;
+  estimated_delivery_at?: string | null;
+  created_at: string;
+};
+
+export type OrderDetail = Order & {
+  items: OrderItem[];
+  status_history: OrderStatusEvent[];
+  cancelled_at?: string | null;
+  cancellation_reason?: string;
+};
+
+/** Next states the fulfilment UI may offer for a given status. */
+export const NEXT_STATUS: Record<string, string[]> = {
+  PENDING: ["CONFIRMED"],
+  CONFIRMED: ["PREPARING"],
+  PREPARING: ["READY"],
+  READY: ["OUT_FOR_DELIVERY"],
+  OUT_FOR_DELIVERY: ["DELIVERED"],
+  DELIVERED: ["REFUNDED"],
+};
+
+export function listOrders() {
+  return api<{ results: Order[] } | Order[]>("/orders/");
+}
+
+export const getOrder = (id: string) => api<OrderDetail>(`/orders/${id}/`);
+
+export const updateOrderStatus = (id: string, status: string, note = "") =>
+  api<OrderDetail>(`/orders/${id}/`, { method: "PATCH", body: { status, note } });
+
+export const cancelOrder = (id: string, reason: string) =>
+  api<OrderDetail>(`/orders/${id}/cancel/`, { method: "POST", body: { reason } });

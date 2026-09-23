@@ -68,11 +68,16 @@ export function DashboardPage() {
           <p className="muted">
             {summary.orders.pending === 0
               ? "No pending orders — all caught up."
-              : `${summary.orders.pending} order${summary.orders.pending === 1 ? "" : "s"} waiting to be confirmed. Order fulfilment screens land with the Order Engine phase.`}
+              : `${summary.orders.pending} order${summary.orders.pending === 1 ? "" : "s"} waiting to be confirmed.`}
           </p>
-          <span className={`badge ${summary.orders.pending === 0 ? "ok" : "warn"}`}>
-            {summary.orders.pending === 0 ? "All clear" : "Needs attention"}
-          </span>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+            <a className="btn btn-primary btn-sm" href="#/orders">
+              Open fulfilment queue
+            </a>
+            <span className={`badge ${summary.orders.pending === 0 ? "ok" : "warn"}`}>
+              {summary.orders.pending === 0 ? "All clear" : "Needs attention"}
+            </span>
+          </div>
         </Card>
       </div>
     </div>
