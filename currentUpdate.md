@@ -1,7 +1,7 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-23
-**Phase in progress:** Flutter app DONE — analyzer zero, debug APK built; all surfaces live
+**Phase in progress:** Docs — new `GETTING_STARTED.md` (run everything + what shows/doesn't + pending list); all surfaces live
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.

@@ -515,6 +515,10 @@ Next up per `PROJECT.md` §3.3: **Cart/Orders/Payments tenant-wiring** (model-by
 
 ## Quick Start (run it)
 
+> **New here? Start with [`GETTING_STARTED.md`](GETTING_STARTED.md)** —
+> exact commands, logins, what each screen shows, known quirks, and the
+> not-yet-built list. The short version is below.
+
 Prerequisites: Python 3.11+ (`.venv` at repo root), Node 22+. No Docker needed — the live DB is Supabase (see `.env`).
 
 ```powershell
