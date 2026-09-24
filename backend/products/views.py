@@ -87,17 +87,19 @@ class ProductViewSet(ModelViewSet):
             qs = qs.filter(min_variant_price__lte=max_price)
 
         user = self.request.user
+        # Explicit stable ordering: required for correct pagination
+        # (silences UnorderedObjectListWarning; id breaks updated_at ties).
         if user.is_staff:
-            return qs
+            return qs.order_by("-updated_at", "-id")
         tenant_ids = user_tenant_ids(user)
         if tenant_ids:
             return qs.filter(
                 Q(tenant_id__in=tenant_ids)
                 | Q(is_active=True, variants__stock_items__store__is_active=True)
-            ).distinct()
+            ).distinct().order_by("-updated_at", "-id")
         return qs.filter(
             is_active=True, variants__stock_items__store__is_active=True
-        ).distinct()
+        ).distinct().order_by("-updated_at", "-id")
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

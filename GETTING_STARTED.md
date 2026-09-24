@@ -98,6 +98,7 @@ Orders, Account) with bottom-tab navigation. Network note:
 | Target | Command |
 |---|---|
 | Android emulator (default) | `flutter run` (uses `http://10.0.2.2:8000`) |
+| Chrome on this PC (easiest) | `flutter run -d chrome --dart-define=API_BASE=http://127.0.0.1:8000/api/v1` |
 | iOS simulator / desktop | `flutter run --dart-define=API_BASE=http://127.0.0.1:8000/api/v1` |
 | Physical phone on Wi-Fi | `flutter run --dart-define=API_BASE=http://<your-PC-LAN-IP>:8000/api/v1` |
 

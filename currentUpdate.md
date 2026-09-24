@@ -1,7 +1,7 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-09-23
-**Phase in progress:** Docs — new `GETTING_STARTED.md` (run everything + what shows/doesn't + pending list); all surfaces live
+**Last updated:** 2026-09-24
+**Phase in progress:** Run support — Flutter web enabled (Chrome), products ordering fix; backend served full live journey
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.

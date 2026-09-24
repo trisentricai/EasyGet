@@ -75,6 +75,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-24 | main | — (uncommitted) | Run support: Flutter `web/` platform (Chrome), products stable ordering (kills UnorderedObjectListWarning), GETTING_STARTED Chrome row |
 | 2026-09-23 | phase-3-store-product-inventory | PR #2 | Closed PR #1 (stale CI history), opened fresh PR #2 — same branch, full description; CI restarting clean |
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Fix backend CI: pin missing deps (channels, channels-redis, drf-spectacular, django-ratelimit) + SQLite env for CI tests |
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | `GETTING_STARTED.md`: full run guide (4 terminals, logins, per-screen map) + works/quirks/pending lists; README pointer |
