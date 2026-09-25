@@ -8,6 +8,11 @@ import {
 } from "../services/api";
 import { CardSkeletonGrid, EmptyState, ProductCard, Section } from "../components/ui";
 import { Icon } from "../components/icons";
+import {
+  TRENDING_SEARCHES,
+  getRecentSearches,
+  recordSearch,
+} from "../utils/history";
 
 export function SearchPage({ initialQuery }: { initialQuery?: string }) {
   const { user } = useAuth();
@@ -28,11 +33,12 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
-  const runSearch = async () => {
+  const runSearch = async (record = false) => {
     if (!user) return;
     setBusy(true);
     setError(null);
     try {
+      if (record) recordSearch(q);
       const body: Record<string, unknown> = { q, sort, page: 1, page_size: 40 };
       if (category) body.category = category;
       const res = await searchWithFallback({ q, sort });
@@ -110,7 +116,7 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               setShowSuggest(false);
-              void runSearch();
+              void runSearch(true);
             }
           }}
         />
@@ -157,6 +163,14 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
 
       {error ? (
         <EmptyState icon="warning" title="Search failed" text={error} />
+      ) : !products && !busy ? (
+        <SearchStart
+          onPick={(term) => {
+            setQ(term);
+            setShowSuggest(false);
+            recordSearch(term);
+          }}
+        />
       ) : busy && !products ? (
         <CardSkeletonGrid />
       ) : products && products.length === 0 ? (
@@ -170,6 +184,34 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
           </div>
         </Section>
       ) : null}
+    </div>
+  );
+}
+
+function SearchStart({ onPick }: { onPick: (term: string) => void }) {
+  const [recent] = useState(() => getRecentSearches());
+  return (
+    <div>
+      {recent.length > 0 && (
+        <Section title="Recent searches">
+          <div className="term-chips">
+            {recent.map((t) => (
+              <button key={t} className="term-chip" onClick={() => onPick(t)}>
+                🕘 {t}
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+      <Section title="Trending now" subtitle="Popular across the store">
+        <div className="term-chips">
+          {TRENDING_SEARCHES.map((t) => (
+            <button key={t} className="term-chip term-hot" onClick={() => onPick(t)}>
+              🔥 {t}
+            </button>
+          ))}
+        </div>
+      </Section>
     </div>
   );
 }

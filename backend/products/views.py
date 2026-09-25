@@ -1,6 +1,6 @@
 from django.db import transaction
-from django.db.models import Min, Q
-from rest_framework import status
+from django.db.models import ExpressionWrapper, F, FloatField, Min, Q
+from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -24,6 +24,22 @@ class ProductPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = "page_size"
     max_page_size = 100
+
+
+class ProductBrandListView(generics.ListAPIView):
+    """GET /api/v1/products/brands/ — distinct non-empty brands (for filters)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        brands = (
+            Product.objects.exclude(brand__exact="")
+            .exclude(brand__isnull=True)
+            .order_by("brand")
+            .values_list("brand", flat=True)
+            .distinct()
+        )
+        return Response([{"name": b} for b in brands if (b or "").strip()])
 
 
 class ProductViewSet(ModelViewSet):
@@ -85,6 +101,32 @@ class ProductViewSet(ModelViewSet):
         max_price = params.get("max_price")
         if max_price:
             qs = qs.filter(min_variant_price__lte=max_price)
+
+        brand = (params.get("brand") or "").strip()
+        if brand:
+            qs = qs.filter(brand__iexact=brand)
+
+        min_discount = params.get("min_discount")
+        if min_discount:
+            try:
+                threshold = float(min_discount)
+            except (TypeError, ValueError):
+                threshold = 0
+            # Guard first: NULL/zero MRP would divide by zero on Postgres.
+            qs = qs.filter(mrp__gt=0, min_variant_price__isnull=False).annotate(
+                discount_pct=ExpressionWrapper(
+                    (F("mrp") - F("min_variant_price")) * 100.0 / F("mrp"),
+                    output_field=FloatField(),
+                )
+            ).filter(discount_pct__gte=threshold)
+
+        sort = params.get("sort")
+        if sort == "price_asc":
+            return qs.order_by(F("min_variant_price").asc(nulls_last=True), "-id")
+        if sort == "price_desc":
+            return qs.order_by(F("min_variant_price").desc(nulls_last=True), "-id")
+        if sort == "newest":
+            return qs.order_by("-created_at", "-id")
 
         user = self.request.user
         # Explicit stable ordering: required for correct pagination

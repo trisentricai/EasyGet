@@ -3,6 +3,12 @@ import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Monogram, Price, ProductCard, Section, Spinner } from "../components/ui";
+import {
+  CategoryRail,
+  DealsRail,
+  RecentlyViewedRail,
+  RecommendedRail,
+} from "../components/marketplace";
 
 /**
  * Home page = the store's designed storefront. The backend returns an ordered
@@ -31,7 +37,13 @@ export function HomePage() {
   return (
     <div className="page">
       {hasContent ? (
-        sections.map((s) => <SectionRenderer key={s.id} section={s} />)
+        <>
+          {sections.map((s) => <SectionRenderer key={s.id} section={s} />)}
+          <DealsRail />
+          <CategoryRail />
+          <RecommendedRail />
+          <RecentlyViewedRail />
+        </>
       ) : (
         <WelcomeFallback storeName={data.store.name} city={data.store.city} description={data.store.description} />
       )}

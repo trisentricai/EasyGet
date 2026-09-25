@@ -5,6 +5,7 @@ import { useToast } from "../context/ToastContext";
 import { navigate } from "../hooks/useHashRoute";
 import { errText, getProduct, img, type ProductDetail } from "../services/api";
 import { EmptyState, Monogram, Price, SignInGate, Spinner } from "../components/ui";
+import { recordView } from "../utils/history";
 
 export function ProductPage({ slug }: { slug: string }) {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ export function ProductPage({ slug }: { slug: string }) {
       .then((p) => {
         if (cancelled) return;
         setProduct(p);
+        recordView(p);
         const firstActive = p.variants.find((v) => v.is_active) ?? p.variants[0];
         setVariantId(firstActive?.id ?? null);
         setActiveImage(img(p.primary_image));

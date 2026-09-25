@@ -310,6 +310,10 @@ export async function listAllProducts(
 
 export const getProduct = (slug: string) => api<ProductDetail>(`/products/${slug}/`);
 
+export type Brand = { name: string };
+
+export const listBrands = () => api<Brand[] | { results: Brand[] }>("/products/brands/");
+
 export function listCategories() {
   return api<{ results?: Category[] } | Category[]>("/categories/");
 }
