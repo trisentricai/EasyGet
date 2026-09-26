@@ -24,9 +24,25 @@ def _product_allowed_for_store(product, store, user):
     product name/slug/price are served publicly by the render endpoint."""
     if product is None or user.is_staff:
         return True
+    if store.is_platform:
+        # The platform storefront aggregates the whole marketplace: any
+        # active product from any tenant may be featured there.
+        return bool(product.is_active)
     if product.tenant_id is None:
         return True  # platform-level product
     return product.tenant_id == store.tenant_id
+
+
+class PlatformStorefrontView(APIView):
+    """GET /api/v1/storefront/platform/ — public render of the single
+    platform-level (EASYGET) storefront row. Lookup by flag, not slug, so a
+    rename of the platform row can never break the customer app."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        store = get_object_or_404(Store, is_platform=True, is_active=True)
+        return Response(StorefrontRenderSerializer(store).data)
 
 
 class StorefrontRenderView(APIView):

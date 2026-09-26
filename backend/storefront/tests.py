@@ -342,3 +342,57 @@ class ProductTenantSecurityTests(StorefrontTestBase):
         response = self.as_user(self.owner).get(items_url(self.hidden_section.id))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
+
+
+class PlatformRouteTests(StorefrontTestBase):
+    PLATFORM_URL = "/api/v1/storefront/platform/"
+
+    def test_platform_route_renders(self):
+        response = self.client.get(self.PLATFORM_URL)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["store"]["slug"], "easyget")
+        self.assertIn("theme", response.data)
+        self.assertIn("sections", response.data)
+
+    def test_platform_route_404_when_missing(self):
+        Store.objects.filter(is_platform=True).delete()
+        response = self.client.get(self.PLATFORM_URL)
+        self.assertEqual(response.status_code, 404)
+
+
+class PlatformSectionGuardTests(StorefrontTestBase):
+    """Spec 4.2: platform links any active product; merchants stay strict."""
+
+    def setUp(self):
+        super().setUp()
+        self.platform = Store.objects.get(is_platform=True)
+        self.foreign_tenant = provision_tenant(self.outsider, "Foreign Tenant")
+        self.foreign_product = Product.objects.create(
+            name="Foreign Apples", category=self.category,
+            tenant=self.foreign_tenant, mrp=Decimal("100.00"), is_active=True,
+        )
+        self.inactive_foreign = Product.objects.create(
+            name="Dead Oranges", category=self.category,
+            tenant=self.foreign_tenant, mrp=Decimal("50.00"), is_active=False,
+        )
+
+    def test_platform_allows_any_active_product(self):
+        from .views import _product_allowed_for_store
+
+        self.assertTrue(
+            _product_allowed_for_store(self.foreign_product, self.platform, self.outsider)
+        )
+
+    def test_platform_rejects_inactive_product(self):
+        from .views import _product_allowed_for_store
+
+        self.assertFalse(
+            _product_allowed_for_store(self.inactive_foreign, self.platform, self.outsider)
+        )
+
+    def test_merchant_store_still_rejects_foreign_product(self):
+        from .views import _product_allowed_for_store
+
+        self.assertFalse(
+            _product_allowed_for_store(self.foreign_product, self.store, self.outsider)
+        )
