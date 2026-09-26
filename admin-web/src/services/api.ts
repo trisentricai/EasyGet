@@ -268,7 +268,7 @@ export type Theme = {
 };
 
 export function getStoreSlug(): string {
-  return localStorage.getItem("eg-store") || "rahuls-store";
+  return localStorage.getItem("eg-store") || "easyget";
 }
 
 export function setStoreSlug(slug: string) {
@@ -316,7 +316,7 @@ export const updateTheme = (slug: string, body: Partial<Theme>) =>
   api<Theme>(`/storefront/${slug}/theme/`, { method: "PATCH", body });
 
 export const listStores = () =>
-  api<{ results: { id: number; name: string; slug: string; is_active: boolean }[] } | { id: number; name: string; slug: string; is_active: boolean }[]>("/stores/");
+  api<{ results: { id: number; name: string; slug: string; is_active: boolean; is_platform?: boolean }[] } | { id: number; name: string; slug: string; is_active: boolean; is_platform?: boolean }[]>("/stores/");
 
 /* ---------------- Orders (fulfilment queue) ---------------- */
 

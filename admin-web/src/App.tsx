@@ -54,7 +54,8 @@ export default function App() {
       {route === "products" && <ProductsPage />}
         {route === "reviews" && <ReviewsPage />}
       {route === "inventory" && <InventoryPage />}
-      {route === "storefront" && <StorefrontPage />}
+      {route === "storefront" && user.role === "ADMIN" && <StorefrontPage />}
+      {route === "storefront" && user.role !== "ADMIN" && <DashboardPage />}
       {!TITLES[route] && <DashboardPage />}
     </Shell>
   );
@@ -92,7 +93,9 @@ function Shell({
             <small>ADMIN</small>
           </div>
         </div>
-        {NAV.map((item) => (
+        {NAV.filter(
+          (item) => item.route !== "storefront" || role === "ADMIN",
+        ).map((item) => (
           <button
             key={item.route}
             className={`nav-item ${route === item.route ? "active" : ""}`}

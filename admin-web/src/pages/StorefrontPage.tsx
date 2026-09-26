@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createItem,
   createSection,
@@ -47,7 +47,9 @@ function itemLabel(item: SectionItem): string {
 
 export function StorefrontPage() {
   const { push } = useToast();
-  const [stores, setStores] = useState<{ id: number; name: string; slug: string }[]>([]);
+  const [stores, setStores] = useState<
+    { id: number; name: string; slug: string; is_platform?: boolean }[]
+  >([]);
   const [slug, setSlug] = useState(getStoreSlug());
   const [sections, setSections] = useState<StoreSection[] | null>(null);
   const [theme, setTheme] = useState<Theme | null>(null);
@@ -57,11 +59,25 @@ export function StorefrontPage() {
   const [deleting, setDeleting] = useState<StoreSection | null>(null);
   const [addItemFor, setAddItemFor] = useState<StoreSection | null>(null);
 
+  const resolvedInitial = useRef(false);
+
   const load = useCallback(async () => {
     const [s, sec] = await Promise.all([listStores(), getSections(slug)]);
     const storeList = Array.isArray(s) ? s : s.results;
     setStores(storeList);
-    if (!storeList.some((st) => st.slug === slug) && storeList[0]) {
+    if (!resolvedInitial.current && storeList.length > 0) {
+      resolvedInitial.current = true;
+      // Designer default: platform storefront > saved pick > first store.
+      const platform = storeList.find((st) => st.is_platform);
+      const stored = localStorage.getItem("eg-store");
+      const preferred = [platform?.slug, stored, storeList[0]?.slug].find((c) =>
+        c ? storeList.some((st) => st.slug === c) : false,
+      );
+      if (preferred && preferred !== slug) {
+        setSlug(preferred);
+        setStoreSlug(preferred);
+      }
+    } else if (!storeList.some((st) => st.slug === slug) && storeList[0]) {
       setSlug(storeList[0].slug);
       setStoreSlug(storeList[0].slug);
     }
