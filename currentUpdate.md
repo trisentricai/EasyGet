@@ -1,13 +1,38 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-26
-**Phase in progress:** Phase B1 — Marketplace depth DONE: wishlist backend + server-synced heart, `sort=rating`, coupon-backed PDP offers, live pincode ETA, admin review moderation; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Phase in progress:** Security hardening DONE (14 findings reviewed → 13 fixed, `ab14c95`) + signup overflow + guest route gate/logout purge; Phase B1 marketplace depth DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — Security hardening + UX guards (2026-09-26)
+
+**Goal hit:** full auth/authz review (14 findings: 1 Critical, 6 High, 7 Medium) → **all 13 actionable findings fixed** (VULN-014 orders-cancel = Low, accepted). Plus 2 UX tasks. **Backend 221/221 green (1 skipped, +26 security tests); both builds green; 13/13 live-verified.**
+
+**Vulnerability fixes (VULN-001…013):**
+- **001 pwa** — `AppUpdateViewSet.get_permissions`: AllowAny only for `list/retrieve/check`; writes + `mark_deployed` = `IsAdminOnly`. Live: anon create 401, admin create 201 / delete 204.
+- **002 inventory** — `StockItemWriteSerializer.create` rejects stores outside caller's tenant (staff bypass), `"Store not found."`.
+- **003 delivery** — permission tiers: assign=`IsTenantWriter`, list/retrieve/advance=`IsAuthenticated`, else admin; **agents list PII scoped**: own-tenant assignments OR unassigned pool (staff: all). Live: customer raw POST 403, merchant agents 200, customer agents 403.
+- **004/007 chat** — add/remove participant + message edit/delete = staff-or-author; `ChatRoom.participants` read-only; `ChatMessage.validate_room` participant-or-staff; `reply_to` must be same room; room↔order validation (caller must be order owner/staff).
+- **005 WS** — `subscribe_order` gated by `can_access_order()`; `join_room`/`typing` gated by existing `check_room_access`.
+- **006 webhook** — `IsAdminOnly` (was AllowAny: unsigned, unscoped charge-confirmable). Live: merchant POST 403.
+- **008 payment attach** — `PaymentCreateSerializer.validate`: order must belong to requester (or staff) → `{"order": "Order not found."}` (no enumeration).
+- **009 refund** — `RefundCreateSerializer` fields `["amount","reason"]`, validated against `context["payment"]` (was: any refundable order id → payment oracle); **latent 500 fixed**: `refund(request, id=None)` → `pk=None`.
+- **011 storefront** — `_product_allowed_for_store()` on section/item POST/PATCH (400 cross-tenant product); inactive-section GET → 404 unless staff/store-manager.
+- **012 OTP/throttle** — uniform `OTP_INVALID_MESSAGE` for unknown-email/no-OTP/expired/wrong-code (attempts message kept); ResendOTP silent quota (≥4 OTPs/10 min → generic success message, no enumeration); **DRF throttles finally live**: `ScopedRateThrottle` added to `DEFAULT_THROTTLE_CLASSES` + `throttle_scope` register 3/min, login 5/min, otp 10/min (scopes existed but were dead config). Live proof: burst → `401×5, 429, 429`.
+- **013 validators** — `AUTH_PASSWORD_VALIDATORS` (was `[]`): Similarity + MinimumLength(10) + CommonPassword + `NumericPasswordValidator`; `RegisterSerializer.validate()` runs `validate_password`; register form `minLength=10` + helper copy. Live: weak/numeric register 400.
+
+**Environment bug found during live verify (critical for dev):** cache = Redis with `IGNORE_EXCEPTIONS` fail-soft — redis-py 8.1 handshakes via `HELLO` (RESP3) which this machine's pre-6 Redis rejects → **every cache write silently failed → ALL cache-backed rate limiting was silently off**. Fixed: `CONNECTION_POOL_KWARGS: {"protocol": 2}` in `CACHES` (fail-soft retained so prod Redis-out still degrades to allow, not 500).
+
+**UX tasks:**
+1. **Signup overflow** — `.form-grid` → `repeat(2, minmax(0,1fr))`, `.field { min-width: 0 }`, inputs `width:100%` ("Last name" no longer escapes the card).
+2. **Guest gate + logout purge** — personal routes (`cart checkout orders order account wishlist`) redirect to `#/login` when ready&&!user (Spinner while gating); `purgeLocalUserData()` removes all `eg-*` localStorage + sessionStorage on sign-out (customer + admin contexts; admin also purges on 401).
+
+**Verification:** 221/221 tests run WITH working cache · live: pwa 401/201/204, storefront render+theme+sections 200, weak reg 400, logins OK, agents 200/403, webhook 403, `/users/me` 200, delivery 403, login burst 429. **Known open issues:** none.
 
 ## 0. LATEST — Marketplace depth, B1 (2026-09-26)
 
