@@ -266,6 +266,8 @@ export type Product = {
   discount_percent: number;
   is_featured: boolean;
   primary_image: string | null;
+  rating_avg: number | null;
+  rating_count: number;
 };
 
 export type ProductDetail = Product & {
@@ -313,6 +315,26 @@ export const getProduct = (slug: string) => api<ProductDetail>(`/products/${slug
 export type Brand = { name: string };
 
 export const listBrands = () => api<Brand[] | { results: Brand[] }>("/products/brands/");
+
+/* ---------------- Reviews (ratings & reviews) ---------------- */
+
+export type Review = {
+  id: number;
+  rating: number;
+  title: string;
+  body: string;
+  reviewer_name: string;
+  is_verified_purchase: boolean;
+  created_at: string;
+};
+
+export const listReviews = (slug: string, page = 1) =>
+  api<Paged<Review>>(`/products/${slug}/reviews/?page=${page}`);
+
+export const postReview = (
+  slug: string,
+  data: { rating: number; title?: string; body?: string },
+) => api<Review>(`/products/${slug}/reviews/`, { method: "POST", body: data });
 
 export function listCategories() {
   return api<{ results?: Category[] } | Category[]>("/categories/");

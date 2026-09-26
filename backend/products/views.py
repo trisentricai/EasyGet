@@ -1,5 +1,15 @@
 from django.db import transaction
-from django.db.models import ExpressionWrapper, F, FloatField, Min, Q
+from django.db.models import (
+    Avg,
+    Count,
+    ExpressionWrapper,
+    F,
+    FloatField,
+    Min,
+    OuterRef,
+    Q,
+    Subquery,
+)
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -10,12 +20,30 @@ from rest_framework.viewsets import ModelViewSet
 from tenants.permissions import IsTenantObjectMember, IsTenantWriter
 from tenants.services import resolve_tenant_for_create, user_tenant_ids
 
-from .models import Product
+from .models import Product, ProductReview
 from .serializers import (
     ProductDetailSerializer,
     ProductListSerializer,
     ProductWriteSerializer,
+    ReviewCreateSerializer,
+    ReviewSerializer,
 )
+
+
+def with_rating_stats(qs):
+    """Subquery-based rating aggregate — immune to join-row duplication
+    from the stock/store visibility joins (an Avg over a multi-join would
+    be skewed by duplicated rows)."""
+    stats = (
+        ProductReview.objects.filter(product=OuterRef("pk"), is_approved=True)
+        .values("product")
+        .annotate(avg=Avg("rating"), n=Count("id"))
+        .values("avg", "n")[:1]
+    )
+    return qs.annotate(
+        review_rating_avg=Subquery(stats.values("avg")),
+        review_rating_count=Subquery(stats.values("n")),
+    )
 
 
 class ProductPagination(PageNumberPagination):
@@ -24,6 +52,12 @@ class ProductPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = "page_size"
     max_page_size = 100
+
+
+class ReviewPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 50
 
 
 class ProductBrandListView(generics.ListAPIView):
@@ -75,7 +109,7 @@ class ProductViewSet(ModelViewSet):
         return ProductWriteSerializer
 
     def get_queryset(self):
-        qs = (
+        qs = with_rating_stats(
             Product.objects.select_related("category")
             # Images feed `primary_image` via the prefetched cache; variants
             # are covered by the annotation, so prefetch only images.
@@ -165,3 +199,66 @@ class ProductViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class ProductReviewListCreateView(generics.ListCreateAPIView):
+    """GET/POST /api/v1/products/<slug>/reviews/ — Flipkart rules:
+    approved reviews only, one per shopper per product, verified-purchase
+    badge derived from delivered orders server-side."""
+
+    permission_classes = [IsAuthenticated]
+    pagination_class = ReviewPagination
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return ReviewCreateSerializer
+        return ReviewSerializer
+
+    def _get_product(self):
+        return generics.get_object_or_404(
+            Product.objects.only("id", "slug", "is_active"), slug=self.kwargs["slug"]
+        )
+
+    def get_queryset(self):
+        product = self._get_product()
+        return (
+            ProductReview.objects.filter(product=product, is_approved=True)
+            .select_related("user")
+            .order_by("-created_at", "-id")
+        )
+
+    def create(self, request, *args, **kwargs):
+        product = self._get_product()
+        if not product.is_active and not request.user.is_staff:
+            return Response(
+                {"detail": "Product not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if ProductReview.objects.filter(
+            product=product, user=request.user
+        ).exists():
+            return Response(
+                {"detail": "You have already reviewed this product. Edit your existing review instead."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        review = serializer.save(
+            product=product,
+            user=request.user,
+            is_verified_purchase=self._is_verified_purchase(request.user, product),
+        )
+        return Response(
+            ReviewSerializer(review).data, status=status.HTTP_201_CREATED
+        )
+
+    def _is_verified_purchase(self, user, product) -> bool:
+        from orders.models import Order
+
+        return Order.objects.filter(
+            user=user,
+            status=Order.Status.DELIVERED,
+            items__variant__product=product,
+        ).exists()

@@ -4,7 +4,7 @@ import { CartProvider, useCart } from "./context/CartContext";
 import { StorefrontProvider, useStorefront } from "./context/StorefrontContext";
 import { ToastProvider } from "./context/ToastContext";
 import { href, navigate, useHashRoute } from "./hooks/useHashRoute";
-import { setUnauthorizedHandler } from "./services/api";
+import { listCategories, setUnauthorizedHandler, type Category } from "./services/api";
 import { HomePage } from "./pages/HomePage";
 import { AuthPage } from "./pages/AuthPage";
 import { BrowsePage } from "./pages/BrowsePage";
@@ -36,11 +36,33 @@ function Shell() {
   const { data, loading, error } = useStorefront();
   const { user, ready, signOut } = useAuth();
   const { count } = useCart();
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Global 401 → sign out silently.
   useEffect(() => {
     setUnauthorizedHandler(() => signOut());
   }, [signOut]);
+
+  // Category strip under the header (Flipkart-style nav row).
+  useEffect(() => {
+    if (!user) {
+      setCategories([]);
+      return;
+    }
+    let cancelled = false;
+    listCategories()
+      .then((d) => {
+        if (cancelled) return;
+        const raw = Array.isArray(d) ? d : (d.results ?? []);
+        setCategories(raw);
+      })
+      .catch(() => {
+        if (!cancelled) setCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Apply the store's theme as CSS variables.
   useEffect(() => {
@@ -52,7 +74,7 @@ function Shell() {
       root.style.setProperty("--bg", theme.background_color);
       root.style.setProperty("--font", theme.font_family);
       if (theme.button_style === "PILL") root.style.setProperty("--radius-btn", "999px");
-      else if (theme.button_style === "SQUARE") root.style.setProperty("--radius-btn", "2px");
+      else if (theme.button_style === "SQUARE") root.style.setProperty("--radius-btn", "3px");
       else root.style.setProperty("--radius-btn", "10px");
     } else {
       root.style.removeProperty("--primary");
@@ -66,6 +88,7 @@ function Shell() {
   const storeName = data?.store?.name ?? "EasyGet";
   const storeCity = data?.store?.city ?? "";
   const routeKey = `${route.name}:${route.params.join("/") ?? ""}`;
+  const activeRoute = route.name;
 
   const page = (() => {
     if (route.name === "login") return <AuthPage />;
@@ -88,7 +111,7 @@ function Shell() {
           <div className="brand-mark">EG</div>
           <div>
             <span className="brand-name">{loading ? "EasyGet" : storeName}</span>
-            <span className="brand-city">{loading ? "" : storeCity || "store"}</span>
+            <span className="brand-city">{loading ? "explore" : `${storeCity || "online"} · delivery`}</span>
           </div>
         </div>
 
@@ -100,34 +123,132 @@ function Shell() {
             if (input?.value.trim()) navigate(`search?q=${encodeURIComponent(input.value.trim())}`);
           }}
         >
-          <input name="q" placeholder="Search products…" aria-label="Search products" />
+          <span className="search-ico"><Icon name="search" size={17} /></span>
+          <input name="q" placeholder="Search for products, brands and more" aria-label="Search products" />
           <button type="submit">Search</button>
         </form>
 
-        <div className="nav-spacer" />
-
-        <a className="icon-btn" title="Orders" aria-label="Orders" href={href("orders")}>
-          <Icon name="box" size={19} />
-        </a>
-        <a className="icon-btn" title="Cart" aria-label={`Cart${count ? `, ${count} items` : ""}`} href={href("cart")}>
-          <Icon name="cart" size={19} />
-          {count > 0 ? <CartBubble count={count} /> : null}
-        </a>
-        {!ready ? null : user ? (
-          <a className="icon-btn" title="Account" aria-label="Account" href={href("account")}>
-            <Icon name="user" size={19} />
+        <div className="nav-actions">
+          {!ready ? null : user ? (
+            <a className="nav-login" href={href("account")}>
+              <b>{(user.first_name || user.email.split("@")[0])}</b>
+              <small>Account &amp; Orders</small>
+            </a>
+          ) : (
+            <button className="nav-login" onClick={() => navigate("login")}>
+              <b>Login</b>
+              <small>Signup</small>
+            </button>
+          )}
+          <a className="nav-orders" href={href("orders")}>
+            <Icon name="box" size={19} />
+            <span>Orders</span>
           </a>
-        ) : (
-          <button className="btn btn-sm" onClick={() => navigate("login")}>Sign in</button>
-        )}
+          <a className="nav-cart" href={href("cart")}>
+            <span className="nav-cart-ico">
+              <Icon name="cart" size={20} />
+              {count > 0 ? <CartBubble count={count} /> : null}
+            </span>
+            <span>
+              <b>Cart</b>
+            </span>
+          </a>
+        </div>
       </header>
+
+      {categories.length > 0 && (
+        <nav className="catstrip" aria-label="Categories">
+          <div className="catstrip-inner">
+            {categories.map((c) => (
+              <a
+                key={c.slug}
+                className="catstrip-item"
+                href={href(`browse?category=${c.slug}`)}
+                aria-current={activeRoute === "browse" && route.query.get("category") === c.slug ? "page" : undefined}
+              >
+                <span className="catstrip-dot">{c.name.slice(0, 1).toUpperCase()}</span>
+                <span>{c.name}</span>
+              </a>
+            ))}
+          </div>
+        </nav>
+      )}
+
+      <div className="offer-strip" aria-hidden="true">
+        <div className="offer-track">
+          <span>Free delivery over ₹499</span><i>✦</i>
+          <span>7-day easy returns</span><i>✦</i>
+          <span>Cash on delivery available</span><i>✦</i>
+          <span>Everyday low prices</span><i>✦</i>
+          <span>Free delivery over ₹499</span><i>✦</i>
+          <span>7-day easy returns</span><i>✦</i>
+          <span>Cash on delivery available</span><i>✦</i>
+          <span>Everyday low prices</span><i>✦</i>
+        </div>
+      </div>
 
       {page}
 
       <footer className="footer">
-        <span className="brand-mark">EG</span>
-        Powered by <b>EasyGet</b> — quick-commerce, beautifully simple.
+        <div className="footer-cols">
+          <div className="footer-col">
+            <h4>About</h4>
+            <a href={href("home")}>Contact Us</a>
+            <a href={href("home")}>About Us</a>
+            <a href={href("home")}>Careers</a>
+          </div>
+          <div className="footer-col">
+            <h4>Help</h4>
+            <a href={href("orders")}>Track Order</a>
+            <a href={href("home")}>Returns</a>
+            <a href={href("home")}>FAQ</a>
+          </div>
+          <div className="footer-col">
+            <h4>Consumer Policy</h4>
+            <a href={href("home")}>Return Policy</a>
+            <a href={href("home")}>Terms of Use</a>
+            <a href={href("home")}>Privacy</a>
+          </div>
+          <div className="footer-col footer-col-contact">
+            <h4>Mail Us</h4>
+            <p>{storeName}{storeCity ? `, ${storeCity}` : ""}</p>
+            <p className="footer-social">
+              <span className="soc">f</span>
+              <span className="soc">𝕏</span>
+              <span className="soc">in</span>
+            </p>
+          </div>
+        </div>
+        <div className="footer-bar">
+          <span className="footer-pay">
+            <span className="pay-badge">UPI</span>
+            <span className="pay-badge">VISA</span>
+            <span className="pay-badge">MC</span>
+            <span className="pay-badge">RuPay</span>
+            <span className="pay-badge">COD</span>
+          </span>
+          <span className="footer-note">© {new Date().getFullYear()} <b>EasyGet</b> — quick-commerce, beautifully simple.</span>
+        </div>
       </footer>
+
+      <nav className="bottomnav" aria-label="Primary">
+        <a className={activeRoute === "home" ? "on" : ""} href={href("home")}>
+          <Icon name="home" size={20} /><span>Home</span>
+        </a>
+        <a className={activeRoute === "search" ? "on" : ""} href={href("search")}>
+          <Icon name="search" size={20} /><span>Search</span>
+        </a>
+        <a className={activeRoute === "cart" || activeRoute === "checkout" ? "on" : ""} href={href("cart")}>
+          <span className="nav-cart-ico">
+            <Icon name="cart" size={20} />
+            {count > 0 ? <CartBubble count={count} /> : null}
+          </span>
+          <span>Cart</span>
+        </a>
+        <a className={activeRoute === "account" || activeRoute === "orders" ? "on" : ""} href={href("account")}>
+          <Icon name="user" size={20} /><span>Account</span>
+        </a>
+      </nav>
     </>
   );
 }

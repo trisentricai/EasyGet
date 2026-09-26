@@ -21,6 +21,8 @@ export type RecentView = {
   price: string | null;
   mrp: string | null;
   discount: number;
+  ratingAvg: number | null;
+  ratingCount: number;
   at: number;
 };
 
@@ -51,6 +53,8 @@ export function recordView(p: {
   base_price?: string | null;
   mrp?: string | null;
   discount_percent?: number;
+  rating_avg?: number | null;
+  rating_count?: number;
 }): void {
   const list = read<RecentView[]>(RECENT_KEY, []).filter((v) => v.slug !== p.slug);
   list.unshift({
@@ -63,6 +67,8 @@ export function recordView(p: {
     price: p.base_price ?? null,
     mrp: p.mrp ?? null,
     discount: p.discount_percent ?? 0,
+    ratingAvg: p.rating_avg ?? null,
+    ratingCount: p.rating_count ?? 0,
     at: Date.now(),
   });
   write(RECENT_KEY, list.slice(0, MAX_RECENT));
@@ -106,6 +112,8 @@ export function toProductCard(v: RecentView): Product {
     discount_percent: v.discount,
     is_featured: false,
     primary_image: v.image,
+    rating_avg: v.ratingAvg,
+    rating_count: v.ratingCount ?? 0,
   };
 }
 
@@ -137,3 +145,23 @@ export const TRENDING_SEARCHES = [
   "Shampoo",
   "Detergent",
 ];
+
+/* ---------------- Wishlist (device-local) ---------------- */
+
+const WISH_KEY = "eg-wishlist";
+
+export function getWishlist(): string[] {
+  return read<string[]>(WISH_KEY, []);
+}
+
+export function isWished(slug: string): boolean {
+  return getWishlist().includes(slug);
+}
+
+/** Toggle a slug in the wishlist; returns the new state. */
+export function toggleWishlist(slug: string): boolean {
+  const list = getWishlist();
+  const has = list.includes(slug);
+  write(WISH_KEY, has ? list.filter((s) => s !== slug) : [slug, ...list]);
+  return !has;
+}

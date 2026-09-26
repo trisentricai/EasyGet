@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { href } from "../hooks/useHashRoute";
 import { img, type Product } from "../services/api";
+import { isWished, toggleWishlist } from "../utils/history";
 import { Icon, type IconName } from "./icons";
 
 export function money(value: string | number | null | undefined): string {
@@ -41,21 +42,68 @@ export function Price({
   );
 }
 
+/** Flipkart-style green rating pill: ★ 4.3 (128) */
+export function RatingPill({
+  avg,
+  count,
+  size = "sm",
+}: {
+  avg: number | null | undefined;
+  count: number | undefined;
+  size?: "sm" | "lg";
+}) {
+  if (!avg || !count) return null;
+  return (
+    <span className={`rating-pill rating-pill-${size}`}>
+      {avg.toFixed(1)}
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.3l7.1-.7z" />
+      </svg>
+      <em>({count > 999 ? `${(count / 1000).toFixed(1)}k` : count})</em>
+    </span>
+  );
+}
+
+function WishButton({ slug, className = "" }: { slug: string; className?: string }) {
+  const [wished, setWished] = useState(() => isWished(slug));
+  return (
+    <button
+      type="button"
+      className={`wish-btn ${wished ? "on" : ""} ${className}`}
+      aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setWished(toggleWishlist(slug));
+      }}
+    >
+      <Icon name="heart" size={16} />
+    </button>
+  );
+}
+
 export function ProductCard({ product }: { product: Product }) {
   const image = img(product.primary_image);
+  const freeDelivery = Number(product.base_price ?? 0) >= 499;
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
       <div className="product-thumb">
         {image ? <img src={image} alt={product.name} loading="lazy" /> : <Monogram text={product.name} />}
-        {product.is_featured ? <span className="chip chip-featured">★ Featured</span> : null}
+        {(product.discount_percent ?? 0) >= 50 ? (
+          <span className="chip chip-deal">{product.discount_percent}% off</span>
+        ) : product.is_featured ? (
+          <span className="chip chip-featured">★ Featured</span>
+        ) : null}
+        <WishButton slug={product.slug} className="wish-card" />
       </div>
       <div className="product-body">
+        <div className="product-brand">{product.brand || product.category?.name || ""}</div>
         <div className="product-name" title={product.name}>{product.name}</div>
-        <div className="product-meta">
-          {product.brand ? <span className="brand">{product.brand}</span> : null}
-          {product.category ? <span className="cat">{product.category.name}</span> : null}
+        <div className="product-rate-row">
+          <RatingPill avg={product.rating_avg} count={product.rating_count} />
         </div>
         <Price price={product.base_price} mrp={product.mrp} discount={product.discount_percent} size="sm" />
+        {freeDelivery ? <div className="free-ship">Free delivery</div> : null}
       </div>
     </a>
   );

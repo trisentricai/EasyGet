@@ -1,13 +1,36 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-24
-**Phase in progress:** Phase A marketplace discovery (web) — deals/category/recent/recommended rails, brand+discount filters, working sort, search recents; demo catalog enriched (replace with real data)
+**Phase in progress:** Phase A2 — Flipkart-grade marketplace look (web) DONE: reviews/ratings API + full visual overhaul; next B1 (wishlist/moderation/offers), C (payments template), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — Flipkart-grade marketplace look (2026-09-24)
+
+**Goal hit:** customer-web now looks/behaves like Flipkart/Meesho (reference: ecomhtml.baseecom.com template). Decisions: Flipkart style · marketplace = default theme · reviews API first.
+
+**Backend (177/177 tests green, migrations applied to Supabase):**
+- **Reviews & ratings API** — `ProductReview` model (`products/0003_productreview`): one review per user per product (UNIQUE), rating 1-5 (CHECK), masked reviewer name (`Rahul B.`), `is_verified_purchase` derived from DELIVERED orders server-side, `is_approved` for admin moderation.
+- Endpoints: `GET/POST /api/v1/products/<slug>/reviews/` (auth; GET approved-only paginated; POST returns 409 on duplicate). Product list/detail gain `rating_avg`/`rating_count` via **subquery annotation** (immune to stock-join row duplication).
+- Admin: `ProductReviewAdmin` (approve queue); fixed latent `alt_text` -> `caption` bug in ProductImageInline.
+- **Theme -> Flipkart palette** (`storefront/0002` + `0003_marketplace_palette`): model defaults `primary=#2874F0`, `secondary=#FB641B`, `font=Inter, system-ui, sans-serif`, `button_style=SQUARE`; data migration remaps ONLY legacy-default rows (custom rebrands preserved). Demo store `rahuls-store` manually set to the same palette.
+
+**Frontend (customer-web, `npm run build` green):**
+- **Header**: blue sticky bar - logo + tagline, wide search with orange Search button, Login/Account block, Orders, Cart with badge; **2nd-row category strip**; **scrolling offer ticker** (free delivery/returns/COD).
+- **Home**: auto-rotating **banner carousel** (dots/arrows, from HERO/BANNER sections) + rails (Deals w/ countdown, categories, recommended, recently viewed).
+- **ProductCard**: brand uppercase, green **rating pill**, discount ribbon >=50%, wishlist **heart** (device-local), Free-delivery tag, hover elevation.
+- **PDP rebuilt**: gallery+thumbs | info (rating pill, price block, variants, highlights) | **buy box** (pincode check w/ ETA, qty stepper, ADD TO CART yellow + BUY NOW orange, seller box); **Ratings & Reviews** (avg + distribution bars, review list, verified badges, star-picker write form); Similar products rail.
+- **Browse**: **left filter sidebar** (category/brand/discount radios, price inputs, featured) + sort bar with count; mobile Filters toggle.
+- **Footer**: 4-col marketplace footer + payment badges (UPI/VISA/MC/RuPay/COD); **mobile bottom nav** (Home/Search/Cart/Account <=640px).
+- New/changed: `components/marketplace.tsx` (BannerCarousel), `utils/history.ts` (+wishlist), `ui.tsx` (RatingPill/WishButton), icons (+14), Inter font in `index.html`.
+
+**Run notes:** customer-web dev = **`localhost:3000`** (vite config, NOT 5173), backend `:8000`. Verified live: reviews CRUD + 409 + aggregates, theme colors served.
+
+**Known gaps / next (B1):** wishlist is device-local (no backend), no admin-web review moderation UI yet, offers are static copy (no offers API), pincode ETA is client-side mock, no `sort=rating`.
 
 ## 0. LATEST — Flutter app (2026-09-23): analyzer zero, APK built ✅
 

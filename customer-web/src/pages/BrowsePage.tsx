@@ -9,7 +9,8 @@ import {
   type Category,
   type Product,
 } from "../services/api";
-import { CardSkeletonGrid, EmptyState, ProductCard, Section, SignInGate } from "../components/ui";
+import { CardSkeletonGrid, EmptyState, ProductCard, SignInGate } from "../components/ui";
+import { Icon } from "../components/icons";
 export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -26,6 +27,7 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   const [page, setPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sideOpen, setSideOpen] = useState(false);
 
   const baseParams = (): Record<string, string> => {
     const params: Record<string, string> = {};
@@ -122,82 +124,160 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
 
   if (!user) return <SignInGate title="Browse the catalog" text="Sign in to see products and prices." />;
 
+  const categoryName = categories.find((c) => c.slug === category)?.name;
+
   return (
     <div className="page">
-      <div className="pagehead">
-        <h1>Browse</h1>
-        <p className="muted">{category ? `Category: ${category}` : "Everything in the catalog"}</p>
-      </div>
-
-      <div className="toolbar">
-        <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category">
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.slug}>{c.name}</option>
-          ))}
-        </select>
-        <select value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="Brand">
-          <option value="">All brands</option>
-          {brands.map((b) => (
-            <option key={b} value={b}>{b}</option>
-          ))}
-        </select>
-        <select value={discount} onChange={(e) => setDiscount(e.target.value)} aria-label="Discount">
-          <option value="">Any discount</option>
-          <option value="10">10% off or more</option>
-          <option value="25">25% off or more</option>
-          <option value="50">50% off or more</option>
-        </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
-          <option value="">Sort: default</option>
-          <option value="price_asc">Price: low → high</option>
-          <option value="price_desc">Price: high → low</option>
-          <option value="newest">Newest</option>
-        </select>
-        <input type="number" min="0" placeholder="Min ₹" style={{ width: 90 }} value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
-        <input type="number" min="0" placeholder="Max ₹" style={{ width: 90 }} value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5 }}>
-          <input type="checkbox" checked={featuredOnly} onChange={(e) => setFeaturedOnly(e.target.checked)} />
-          Featured only
-        </label>
-      </div>
-
-      {activeFilters.length > 0 && (
-        <div className="filter-chips">
-          {activeFilters.map((f) => (
-            <button key={f.label} className="filter-chip" onClick={f.clear} title="Remove filter">
-              {f.label} ✕
-            </button>
-          ))}
-          <button className="link" onClick={clearAll}>Clear all</button>
-        </div>
-      )}
-
-      {error ? (
-        <EmptyState icon="warning" title="Couldn't load products" text={error} />
-      ) : products === null ? (
-        <CardSkeletonGrid />
-      ) : products.length === 0 ? (
-        <EmptyState icon="search" title="No products found" text="Try clearing the filters." />
-      ) : (
-        <Section>
-          <p className="muted" style={{ margin: "0 0 10px" }}>
-            Showing {products.length} of {total}
-          </p>
-          <div className="grid grid-products">
-            {products.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+      <div className="browse-layout">
+        <aside className={`filter-side ${sideOpen ? "open" : ""}`} aria-label="Filters">
+          <div className="filter-group">
+            <h4><Icon name="grid" size={13} /> Category</h4>
+            <div className="filter-opts">
+              <label className={`filter-opt ${!category ? "on" : ""}`}>
+                <input type="radio" name="f-cat" checked={!category} onChange={() => setCategory("")} />
+                All categories
+              </label>
+              {categories.map((c) => (
+                <label key={c.id} className={`filter-opt ${category === c.slug ? "on" : ""}`}>
+                  <input
+                    type="radio"
+                    name="f-cat"
+                    checked={category === c.slug}
+                    onChange={() => setCategory(c.slug)}
+                  />
+                  {c.name}
+                </label>
+              ))}
+            </div>
           </div>
-          {products.length < total && (
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
-              <button className="btn" onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? "Loading…" : `Load more (${total - products.length} left)`}
+
+          <div className="filter-group">
+            <h4><Icon name="tag" size={13} /> Brand</h4>
+            <div className="filter-opts">
+              <label className={`filter-opt ${!brand ? "on" : ""}`}>
+                <input type="radio" name="f-brand" checked={!brand} onChange={() => setBrand("")} />
+                All brands
+              </label>
+              {brands.map((b) => (
+                <label key={b} className={`filter-opt ${brand === b ? "on" : ""}`}>
+                  <input type="radio" name="f-brand" checked={brand === b} onChange={() => setBrand(b)} />
+                  {b}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <h4><Icon name="percent" size={13} /> Discount</h4>
+            <div className="filter-opts">
+              {[["", "Any discount"], ["10", "10% off or more"], ["25", "25% off or more"], ["50", "50% off or more"]].map(
+                ([val, label]) => (
+                  <label key={val || "any"} className={`filter-opt ${discount === val ? "on" : ""}`}>
+                    <input
+                      type="radio"
+                      name="f-disc"
+                      checked={discount === val}
+                      onChange={() => setDiscount(val)}
+                    />
+                    {label}
+                  </label>
+                ),
+              )}
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <h4><Icon name="percent" size={13} /> Price</h4>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Min ₹"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value.replace(/\D/g, ""))}
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Max ₹"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <div className="filter-opts">
+              <label className={`filter-opt ${featuredOnly ? "on" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={featuredOnly}
+                  onChange={(e) => setFeaturedOnly(e.target.checked)}
+                />
+                Featured only
+              </label>
+            </div>
+          </div>
+        </aside>
+
+        <div className="browse-main">
+          <div className="sortbar">
+            <span className="count">
+              {categoryName ? (
+                <>Showing <b>{total}</b> in <b>{categoryName}</b></>
+              ) : (
+                <>Showing <b>{total}</b> products</>
+              )}
+            </span>
+            <div className="sortbar-right">
+              <button className="filter-toggle" onClick={() => setSideOpen((o) => !o)} type="button">
+                <Icon name="grid" size={14} /> Filters
               </button>
+              <label htmlFor="sortsel">Sort By</label>
+              <select id="sortsel" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
+                <option value="">Relevance</option>
+                <option value="price_asc">Price — Low to High</option>
+                <option value="price_desc">Price — High to Low</option>
+                <option value="newest">Newest First</option>
+              </select>
+            </div>
+          </div>
+
+          {activeFilters.length > 0 && (
+            <div className="filter-chips">
+              {activeFilters.map((f) => (
+                <button key={f.label} className="filter-chip" onClick={f.clear} title="Remove filter">
+                  {f.label} ✕
+                </button>
+              ))}
+              <button className="link" onClick={clearAll}>Clear all</button>
             </div>
           )}
-        </Section>
-      )}
+
+          {error ? (
+            <EmptyState icon="warning" title="Couldn't load products" text={error} />
+          ) : products === null ? (
+            <CardSkeletonGrid />
+          ) : products.length === 0 ? (
+            <EmptyState icon="search" title="No products found" text="Try clearing the filters." />
+          ) : (
+            <>
+              <div className="grid grid-products">
+                {products.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+              {products.length < total && (
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
+                  <button className="btn" onClick={loadMore} disabled={loadingMore}>
+                    {loadingMore ? "Loading…" : `Load more (${total - products.length} left)`}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

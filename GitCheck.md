@@ -1,6 +1,6 @@
 # GIT CHECK — EASYGET (Git & GitHub Reference)
 
-**Last updated:** 2026-09-23
+**Last updated:** 2026-09-24
 **Read BEFORE working:** together with `README.md` (roadmap) and `currentUpdate.md` (live code status). Update this file after every commit/change.
 
 ---
@@ -75,7 +75,8 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
-| 2026-09-24 | fix/flutter-web-and-ordering | — (uncommitted) | Phase A discovery (web): deals/category/recent/recommended rails, brand+discount+sort backend filters, brands endpoint, search recents/trending; demo-enriched catalog (20 brands, varied prices/MRP) |
+| 2026-09-24 | fix/flutter-web-and-ordering | `bbb2afa` | Phase A discovery (web): deals/category/recent/recommended rails, brand+discount+sort backend filters, brands endpoint, search recents/trending; demo-enriched catalog (20 brands, varied prices/MRP) |
+| 2026-09-24 | fix/flutter-web-and-ordering | — (this commit) | Phase A2 Flipkart look: reviews/ratings API (one-per-user, verified badge, subquery aggregates, 409 dup) + theme palette migration (#2874F0/#FB641B/Inter) + full UI overhaul (header/category strip/offer ticker, carousel, rating-pill cards + wishlist heart, PDP buy box + reviews UI, sidebar filters, 4-col footer, bottom nav); 177 tests green |
 | 2026-09-23 | phase-3-store-product-inventory | PR #2 | Closed PR #1 (stale CI history), opened fresh PR #2 — same branch, full description; CI restarting clean |
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Fix backend CI: pin missing deps (channels, channels-redis, drf-spectacular, django-ratelimit) + SQLite env for CI tests |
 | 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | `GETTING_STARTED.md`: full run guide (4 terminals, logins, per-screen map) + works/quirks/pending lists; README pointer |

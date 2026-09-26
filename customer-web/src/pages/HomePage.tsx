@@ -4,6 +4,7 @@ import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Monogram, Price, ProductCard, Section, Spinner } from "../components/ui";
 import {
+  BannerCarousel,
   CategoryRail,
   DealsRail,
   RecentlyViewedRail,
@@ -11,9 +12,9 @@ import {
 } from "../components/marketplace";
 
 /**
- * Home page = the store's designed storefront. The backend returns an ordered
- * list of sections; each section type maps to a renderer here, so a rebrand
- * or layout change made in the admin dashboard shows up with no code change.
+ * Home page = the store's designed storefront, marketplace layout:
+ * rotating banner carousel (HERO/BANNER sections), then the admin's
+ * designed sections, then the discovery rails.
  */
 export function HomePage() {
   const { data, loading, error } = useStorefront();
@@ -31,14 +32,23 @@ export function HomePage() {
     );
   }
 
-  const sections = [...data.sections].sort((a, b) => a.position - b.position);
+  const sections = [...data.sections]
+    .filter((s) => s.is_active)
+    .sort((a, b) => a.position - b.position);
+  const banners = sections.filter(
+    (s) => s.section_type === "HERO" || s.section_type === "BANNER",
+  );
+  const rest = sections.filter(
+    (s) => s.section_type !== "HERO" && s.section_type !== "BANNER",
+  );
   const hasContent = sections.length > 0;
 
   return (
     <div className="page">
       {hasContent ? (
         <>
-          {sections.map((s) => <SectionRenderer key={s.id} section={s} />)}
+          <BannerCarousel sections={banners} />
+          {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
           <DealsRail />
           <CategoryRail />
           <RecommendedRail />
@@ -207,6 +217,8 @@ function ProductRowSection({ section }: { section: StoreSection }) {
                 discount_percent: 0,
                 is_featured: false,
                 primary_image: p.image,
+                rating_avg: null,
+                rating_count: 0,
               }}
             />
           ))}

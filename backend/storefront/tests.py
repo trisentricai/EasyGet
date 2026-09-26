@@ -89,7 +89,7 @@ class PublicRenderTests(StorefrontTestBase):
         response = self.client.get(RENDER_URL)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["store"]["slug"], "rahuls-store")
-        self.assertEqual(response.data["theme"]["primary_color"], "#1A73E8")
+        self.assertEqual(response.data["theme"]["primary_color"], "#2874F0")
         self.assertEqual(len(response.data["sections"]), 2)
         self.assertEqual(response.data["sections"][0]["title"], "Welcome")
         item_types = {
@@ -274,7 +274,7 @@ class ThemeTests(StorefrontTestBase):
     def test_public_get_theme(self):
         response = self.client.get(THEME_URL)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["button_style"], "ROUNDED")
+        self.assertEqual(response.data["button_style"], "SQUARE")
 
     def test_owner_updates_theme(self):
         response = self.as_user(self.owner).patch(

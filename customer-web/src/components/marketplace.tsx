@@ -1,17 +1,98 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   asArray,
+  img,
   listCategories,
   listProductsPaged,
   type Product,
+  type StoreSection,
 } from "../services/api";
 import { href } from "../hooks/useHashRoute";
+import { Icon } from "./icons";
 import { ProductCard, Section } from "./ui";
 import {
   getRecentViews,
   toProductCard,
   topCategory,
 } from "../utils/history";
+
+/** Auto-rotating hero carousel built from the store's HERO/BANNER sections. */
+export function BannerCarousel({ sections }: { sections: StoreSection[] }) {
+  const slides = useMemo(
+    () => sections.filter((s) => s.is_active && (s.image || s.title)),
+    [sections],
+  );
+  const count = slides.length;
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (count < 2) return;
+    const t = window.setInterval(() => setIdx((i) => (i + 1) % count), 4500);
+    return () => window.clearInterval(t);
+  }, [count]);
+
+  if (count === 0) return null;
+
+  return (
+    <div className="carousel">
+      <div className="carousel-track">
+        {slides.map((s, i) => (
+          <div key={s.id} className={`carousel-slide ${i === idx ? "on" : ""}`}>
+            <HeroSlide section={s} />
+          </div>
+        ))}
+      </div>
+      {count > 1 && (
+        <>
+          <button
+            className="carousel-arrow prev"
+            aria-label="Previous banner"
+            onClick={() => setIdx((i) => (i - 1 + count) % count)}
+          >
+            <Icon name="chevronLeft" size={18} />
+          </button>
+          <button
+            className="carousel-arrow next"
+            aria-label="Next banner"
+            onClick={() => setIdx((i) => (i + 1) % count)}
+          >
+            <Icon name="chevronRight" size={18} />
+          </button>
+          <div className="carousel-dots">
+            {slides.map((s, i) => (
+              <button
+                key={s.id}
+                className={`carousel-dot ${i === idx ? "on" : ""}`}
+                aria-label={`Go to slide ${i + 1}`}
+                onClick={() => setIdx(i)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function HeroSlide({ section }: { section: StoreSection }) {
+  const cfg = section.config ?? {};
+  const image = img(section.image) ?? img((cfg.hero_image as string) ?? null);
+  const cta = (cfg.cta_label as string) ?? "Shop now";
+  const ctaLink = (cfg.cta_link as string) ?? "browse";
+  const link = ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink);
+  return (
+    <div className="hero hero-slide">
+      {image ? <img className="hero-img" src={image} alt="" /> : null}
+      <div className="hero-content">
+        {section.subtitle ? <p>{section.subtitle}</p> : null}
+        <h1>{section.title}</h1>
+        <div className="hero-actions">
+          <a className="btn btn-secondary" href={link}>{cta}</a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Seconds left until local midnight (deal countdown). */
 function useMidnightCountdown(): string {

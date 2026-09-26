@@ -125,3 +125,52 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"{self.product.name} image #{self.sort_order}"
+
+
+class ProductReview(models.Model):
+    """One review per shopper per product (Flipkart rule): rating 1-5.
+
+    `is_verified_purchase` is set server-side from delivered orders, and
+    product-level aggregates (rating_avg / rating_count) are annotated on
+    product queries rather than denormalized, so they can never drift.
+    """
+
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="reviews"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="product_reviews",
+    )
+    rating = models.PositiveSmallIntegerField()
+    title = models.CharField(max_length=150, blank=True, default="")
+    body = models.TextField(blank=True, default="")
+    is_verified_purchase = models.BooleanField(default=False)
+    is_approved = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "user"], name="one_review_per_user_per_product"
+            ),
+            models.CheckConstraint(
+                check=models.Q(rating__gte=1, rating__lte=5),
+                name="review_rating_1_to_5",
+            ),
+        ]
+
+    @property
+    def reviewer_name(self) -> str:
+        """Masked display name: 'Rahul B.' (Flipkart-style)."""
+        first = (self.user.first_name or "").strip()
+        last = (self.user.last_name or "").strip()
+        if first:
+            return f"{first} {last[:1]}." if last else first
+        return (self.user.email or "Shopper").split("@")[0]
+
+    def __str__(self):
+        return f"{self.product.name} ★{self.rating} by {self.reviewer_name}"
