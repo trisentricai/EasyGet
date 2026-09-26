@@ -70,9 +70,10 @@ Build check: `flutter build apk --debug` → `app-debug.apk`.
 - **Wishlist**: heart on cards + PDP (server-backed, optimistic), `#/wishlist` page, header link
 - **Offers**: PDP "Available offers" from active coupons (`WELCOME10`, `FLAT50`, `FREESHIP` seeded)
 - **Pincode**: live lookup (city/state from postal API), ETA 2-day same state / 4-day else (state codes normalized), ₹29 fee < ₹499 / free above, offline fallback, 404 for undeliverable pins
-- **Cart/checkout/orders**: guest cart + merge, order state machine + timeline, address book, delivery assignment
-- **Theme**: Flipkart palette (`#2874F0` / `#FB641B` / Inter / square buttons) on the demo store
-- **Admin**: dashboard stats, orders queue, category/product/inventory CRUD, storefront designer, config/audit/coupons/banners
+- **Cart/checkout/orders**: guest cart + merge, marketplace cart (sellers mix freely, `Sold by` grouping), **split checkout** (one order per seller → `N orders placed!`), order state machine + timeline, address book, delivery assignment
+- **EASYGET platform storefront**: the customer home always renders the platform store (`GET /storefront/platform/`, title/brand EASYGET); `rahuls-store` slug still serves `EasyGet Demo Store` (legacy/Flutter)
+- **Theme**: Flipkart palette (`#2874F0` / `#FB641B` / Inter / square buttons) on the demo store; storefront designer (admin only) defaults to the EASYGET platform store
+- **Admin**: dashboard stats, orders queue, category/product/inventory CRUD, storefront designer (staff-only), config/audit/coupons/banners
 
 ## 5. Tests
 
@@ -85,7 +86,7 @@ $env:DATABASE_URL='sqlite:///db.sqlite3'
   pwa realtime search storefront stores tenants users webhooks
 ```
 
-Expected: `Ran 195 tests ... OK (skipped=1)`.
+Expected: `Ran 242 tests ... OK (skipped=1)`.
 
 Web builds (both must pass):
 
