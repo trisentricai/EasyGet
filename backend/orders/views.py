@@ -68,6 +68,11 @@ class OrderViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         cart = serializer.validated_data.pop("cart_id")
         store = serializer.validated_data.get("store")
+        # The platform storefront row never fulfils orders.
+        if store and store.is_platform:
+            raise serializers.ValidationError(
+                {"store": "Cannot place orders against the platform store."}
+            )
         # The cart must belong to the caller and match the order's store.
         if cart.store_id and store and cart.store_id != store.id:
             raise serializers.ValidationError(

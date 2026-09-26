@@ -201,3 +201,17 @@ class OrderTenancyTests(TestCase):
         self.client.force_authenticate(user=self.customer)
         res = self.client.get(f"/api/v1/orders/{self.order_a.id}/")
         self.assertEqual(res.status_code, 200)
+    def test_order_create_rejects_platform_store(self):
+        platform = Store.objects.get(is_platform=True)
+        cart = Cart.objects.create(user=self.customer)
+        CartItem.objects.create(cart=cart, variant=self.variant_a, quantity=1)
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/orders/",
+            {"cart_id": str(cart.id), "store": platform.id,
+             "delivery_address": {"line1": "1 Main St"}},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+        details = res.data.get("error", {}).get("details", res.data)
+        self.assertIn("store", details)

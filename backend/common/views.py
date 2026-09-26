@@ -41,7 +41,11 @@ def _store_state():
     try:
         from stores.models import Store
 
-        store = Store.objects.filter(is_active=True).order_by("created_at").first()
+        store = (
+            Store.objects.filter(is_active=True, is_platform=False)
+            .order_by("created_at")
+            .first()
+        )
         return (getattr(store, "state", "") or "").strip() if store else ""
     except Exception:
         return ""

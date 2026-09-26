@@ -130,3 +130,26 @@ class PincodeStateAliasTests(TestCase):
             res = self.client.get("/api/v1/pincode/600001/")
         self.assertEqual(res.status_code, 200, res.data)
         self.assertEqual(res.data["eta_days"], 2)
+
+
+class PincodeStoreStateTests(TestCase):
+    """_store_state must skip the platform (EASYGET) row created by migration."""
+
+    def setUp(self):
+        from common.views import _PINCODE_CACHE
+
+        _PINCODE_CACHE.clear()
+
+    def test_store_state_ignores_platform_store(self):
+        from decimal import Decimal
+
+        from common.views import _store_state
+        from stores.models import Store
+
+        Store.objects.create(
+            name="Demo TN", city="Chennai", state="Tamil Nadu",
+            postal_code="600001", latitude=Decimal("13.0827"),
+            longitude=Decimal("80.2707"), is_active=True,
+        )
+        # The migration's platform store (Karnataka) is older; it must not win.
+        self.assertEqual(_store_state(), "Tamil Nadu")
