@@ -293,7 +293,7 @@ export function ProductPage({ slug }: { slug: string }) {
           <div className="seller-box">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
               <span className="muted">Sold by</span>
-              <b>EasyGet Retail</b>
+              <b>EASYGET</b>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
               <span className="muted">Returns</span>

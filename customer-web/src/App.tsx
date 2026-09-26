@@ -94,7 +94,7 @@ function Shell() {
     }
   }, [data]);
 
-  const storeName = data?.store?.name ?? "EasyGet";
+  const storeName = data?.store?.name ?? "EASYGET";
   const storeCity = data?.store?.city ?? "";
   const routeKey = `${route.name}:${route.params.join("/") ?? ""}`;
   const activeRoute = route.name;
@@ -123,7 +123,7 @@ function Shell() {
         <div className="brand" onClick={() => navigate("home")}>
           <div className="brand-mark">EG</div>
           <div>
-            <span className="brand-name">{loading ? "EasyGet" : storeName}</span>
+            <span className="brand-name">{loading ? "EASYGET" : storeName}</span>
             <span className="brand-city">{loading ? "explore" : `${storeCity || "online"} · delivery`}</span>
           </div>
         </div>
@@ -244,7 +244,7 @@ function Shell() {
             <span className="pay-badge">RuPay</span>
             <span className="pay-badge">COD</span>
           </span>
-          <span className="footer-note">© {new Date().getFullYear()} <b>EasyGet</b> — quick-commerce, beautifully simple.</span>
+          <span className="footer-note">© {new Date().getFullYear()} <b>EASYGET</b> — quick-commerce, beautifully simple.</span>
         </div>
       </footer>
 

@@ -185,7 +185,7 @@ export type StorefrontPayload = {
   sections: StoreSection[];
 };
 
-export const getStorefront = (slug: string) => api<StorefrontPayload>(`/storefront/${slug}/`);
+export const getPlatformStorefront = () => api<StorefrontPayload>("/storefront/platform/");
 
 /* ---------------- Auth ---------------- */
 
