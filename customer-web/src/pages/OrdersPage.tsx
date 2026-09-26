@@ -53,7 +53,7 @@ export function OrdersPage() {
             <div>
               <div className="num">{o.order_number}</div>
               <div className="meta">
-                {new Date(o.created_at).toLocaleString()} · {o.item_count ?? "—"} item(s) · {o.store_name ?? "Store"}
+                {new Date(o.created_at).toLocaleString()} · {o.item_count ?? "—"} item(s) · Seller: {o.store_name ?? "EASYGET"}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -136,6 +136,10 @@ export function OrderDetailPage({ id }: { id: string }) {
             <span>{money(item.line_total)}</span>
           </div>
         ))}
+        <div className="summary-line">
+          <span className="muted">Seller: {order.store_name ?? "EASYGET"}</span>
+          <span />
+        </div>
         <div className="summary-line">
           <span className="muted">Subtotal</span>
           <span>{money(order.subtotal)}</span>

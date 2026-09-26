@@ -10,10 +10,8 @@ import {
   errText,
   listAddresses,
   listOrders,
-  listStores,
   type Address,
   type Order,
-  type Store,
 } from "../services/api";
 import { money, SignInGate, Spinner } from "../components/ui";
 
@@ -23,7 +21,6 @@ export function CheckoutPage() {
   const toast = useToast();
 
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [stores, setStores] = useState<Store[]>([]);
   const [selected, setSelected] = useState<Address["id"] | null>(null);
   const [instructions, setInstructions] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -54,18 +51,23 @@ export function CheckoutPage() {
         setError(errText(e, "Could not load addresses"));
         setShowForm(true);
       });
-    // Orders are placed against a store; default to the first active one.
-    listStores()
-      .then((d) => {
-        const list = asArray<Store>(d).filter((s) => s.is_active);
-        setStores(list);
-      })
-      .catch(() => setStores([]));
   }, [user]);
 
   if (!user) return <SignInGate title="Checkout" text="Sign in to place your order." />;
 
   const items = cart?.items ?? [];
+
+  // One group per seller; the backend splits checkout into one order each.
+  const groups: { key: string; seller: string; items: typeof items }[] = [];
+  for (const item of items) {
+    const key = item.tenant_id != null ? String(item.tenant_id) : "__none";
+    let group = groups.find((g) => g.key === key);
+    if (!group) {
+      group = { key, seller: item.seller_name || "EASYGET", items: [] };
+      groups.push(group);
+    }
+    group.items.push(item);
+  }
 
   const saveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,20 +92,19 @@ export function CheckoutPage() {
     setError(null);
     try {
       const address = addresses.find((a) => a.id === selected)!;
-      if (stores.length === 0) {
-        setError("No active store available to place the order against.");
-        setPlacing(false);
-        return;
-      }
       const created = await createOrder({
         cart_id: cart.id,
-        store: stores[0].id,
         delivery_address: { ...address },
         delivery_instructions: instructions || undefined,
       });
       await refresh();
-      // The create endpoint echoes the input payload, so resolve the real
-      // order (id/number) from the user's order list (newest first).
+      if (created.orders && created.orders.length > 0) {
+        toast.push(`${created.orders.length} order${created.orders.length === 1 ? "" : "s"} placed! 🎉`);
+        navigate("orders");
+        return;
+      }
+      // Defensive fallback: legacy single-order response shape — resolve
+      // the real order (id/number) from the user's order list (newest first).
       let orderNumber = "";
       let orderId: string | null = null;
       try {
@@ -119,7 +120,6 @@ export function CheckoutPage() {
       toast.push(`Order ${orderNumber || ""} placed! 🎉`.replace("  ", " "));
       if (orderId !== null) navigate(`order/${orderId}`);
       else navigate("orders");
-      void created;
     } catch (err) {
       setError(errText(err, "Could not place order"));
       setPlacing(false);
@@ -228,12 +228,24 @@ export function CheckoutPage() {
 
           <div className="panel">
             <h2>3 · Review & place order</h2>
-            {items.map((item) => (
-              <div key={item.id} className="summary-line">
-                <span>
-                  {item.variant.name || item.variant.sku} <span className="muted">× {item.quantity}</span>
-                </span>
-                <span>{money(item.line_total)}</span>
+            {groups.length > 1 ? (
+              <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+                This will be placed as {groups.length} orders — one per seller.
+              </p>
+            ) : null}
+            {groups.map((group) => (
+              <div key={group.key}>
+                <div className="sub" style={{ fontWeight: 700, margin: "8px 0 4px" }}>
+                  Sold by {group.seller}
+                </div>
+                {group.items.map((item) => (
+                  <div key={item.id} className="summary-line">
+                    <span>
+                      {item.variant.name || item.variant.sku} <span className="muted">× {item.quantity}</span>
+                    </span>
+                    <span>{money(item.line_total)}</span>
+                  </div>
+                ))}
               </div>
             ))}
             <div className="summary-line summary-total">

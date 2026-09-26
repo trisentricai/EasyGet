@@ -464,6 +464,9 @@ export type CartItem = {
   variant: CartVariant;
   quantity: number;
   line_total: string;
+  /** Seller split key: the variant's tenant (null = platform line). */
+  tenant_id: number | null;
+  seller_name: string;
 };
 
 export type Cart = {
@@ -523,14 +526,15 @@ export type OrderDetail = Order & {
 
 export type OrderCreateInput = {
   cart_id: string;
-  /** The backend requires the store the order is placed against. */
-  store: number;
+  /** Optional: omit to let the backend split the cart one order per seller. */
+  store?: number;
   delivery_address: Record<string, unknown>;
   delivery_instructions?: string;
 };
 
+/** Split mode returns `{orders}`; the legacy path echoes a single order. */
 export const createOrder = (body: OrderCreateInput) =>
-  api<OrderDetail>("/orders/", { method: "POST", body });
+  api<{ orders?: Order[] } & Partial<OrderDetail>>("/orders/", { method: "POST", body });
 
 export const listOrders = () => api<{ results?: Order[] } | Order[]>("/orders/");
 
