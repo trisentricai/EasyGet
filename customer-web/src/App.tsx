@@ -39,6 +39,14 @@ function Shell() {
   const { count } = useCart();
   const [categories, setCategories] = useState<Category[]>([]);
 
+  // Routes that show personal data — guests are sent to login before
+  // anything renders (no cached-viewing window).
+  const personal = ["cart", "checkout", "orders", "order", "account", "wishlist"].includes(route.name);
+
+  useEffect(() => {
+    if (ready && !user && personal) navigate("login", { replace: true });
+  }, [ready, user, personal]);
+
   // Global 401 → sign out silently.
   useEffect(() => {
     setUnauthorizedHandler(() => signOut());
@@ -92,6 +100,9 @@ function Shell() {
   const activeRoute = route.name;
 
   const page = (() => {
+    // Personal routes: hold rendering until auth resolves; guests are
+    // redirected to login by the effect above.
+    if (personal && (!ready || !user)) return <Spinner />;
     if (route.name === "login") return <AuthPage />;
     if (route.name === "home") return <HomePage />;
     if (route.name === "browse") return <BrowsePage key={route.query.get("category") ?? ""} initialCategory={route.query.get("category") ?? undefined} />;
@@ -102,7 +113,7 @@ function Shell() {
     if (route.name === "orders") return <OrdersPage />;
     if (route.name === "order") return <OrderDetailPage key={routeKey} id={route.params[0] ?? "0"} />;
     if (route.name === "account") return <AccountPage />;
-  if (route.name === "wishlist") return <WishlistPage />;
+    if (route.name === "wishlist") return <WishlistPage />;
     return <HomePage />;
   })();
 

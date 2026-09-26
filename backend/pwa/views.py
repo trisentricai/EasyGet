@@ -1,10 +1,13 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+
+from users.permissions import IsAdminOnly
 
 from .models import AppUpdate, OfflineData, PWAConfigModel, PushSubscription
 from .serializers import (
@@ -93,11 +96,18 @@ class OfflineDataViewSet(viewsets.ModelViewSet):
 
 
 class AppUpdateViewSet(viewsets.ModelViewSet):
-    """App update management."""
+    """App update management. Reads/checks are public; every write is staff-only
+    (anonymous clients must never create, edit, or delete update records —
+    download_url is served back to all devices by the check action)."""
 
     queryset = AppUpdate.objects.all()
     serializer_class = AppUpdateSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminOnly]
+
+    def get_permissions(self):
+        if self.action in {"list", "retrieve", "check"}:
+            return [AllowAny()]
+        return [IsAdminOnly()]
 
     def get_serializer_class(self):
         if self.action == "check":
@@ -145,7 +155,7 @@ class AppUpdateViewSet(viewsets.ModelViewSet):
 
         return Response({"update_available": False})
 
-    @action(detail=True, methods=["post"], permission_classes=[AllowAny])
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminOnly])
     def mark_deployed(self, request, pk=None):
         update = self.get_object()
         if request.user.is_staff:

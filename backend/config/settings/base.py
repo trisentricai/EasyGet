@@ -79,7 +79,17 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
 
-AUTH_PASSWORD_VALIDATORS = []
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
@@ -110,6 +120,10 @@ CACHES = {
             # cache reads/writes degrade to cache-miss instead of raising.
             # Throttling/ratelimiting then allow traffic rather than 500-ing.
             "IGNORE_EXCEPTIONS": True,
+            # RESP2: redis-py 8 handshakes with HELLO (RESP3), which older
+            # Redis servers reject — without this every cache write silently
+            # fails and ALL rate limiting silently disables itself.
+            "CONNECTION_POOL_KWARGS": {"protocol": 2},
         },
     },
 }
@@ -126,12 +140,16 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
+        # Applies only to views that declare a `throttle_scope`; views without
+        # one are untouched. login/register/otp scopes are set on auth views.
+        "rest_framework.throttling.ScopedRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/minute",
         "user": "1000/minute",
         "login": "5/minute",
         "register": "3/minute",
+        "otp": "10/minute",
         "password_reset": "2/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",

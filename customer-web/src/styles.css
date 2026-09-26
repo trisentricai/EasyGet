@@ -605,11 +605,14 @@ button { font-family: inherit; }
 .panel + .panel { margin-top: 16px; }
 .panel h2 { margin: 0 0 14px; font-family: var(--display); font-size: 17px; letter-spacing: -0.01em; }
 .panel h3 { margin: 18px 0 10px; font-size: 14px; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .form-grid .full { grid-column: 1 / -1; }
-.field { display: flex; flex-direction: column; gap: 5px; }
+.form-grid .field { min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
 .field input, .field select, .field textarea {
+  width: 100%;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: 9px;
   padding: 10px 12px;

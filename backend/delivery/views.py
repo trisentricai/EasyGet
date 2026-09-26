@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from tenants.permissions import IsTenantWriter
 from tenants.services import is_tenant_member, user_tenant_ids
+from users.permissions import IsAdminOnly
 
 from .models import DeliveryAssignment
 from .serializers import (
@@ -47,7 +48,11 @@ class DeliveryAssignmentViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == "assign":
             return [IsAuthenticated(), IsTenantWriter()]
-        return [IsAuthenticated()]
+        if self.action in {"list", "retrieve", "advance"}:
+            return [IsAuthenticated()]
+        # Raw create/update/destroy would accept arbitrary order/agent PKs with
+        # no tenant check — assignment writes go through assign/advance only.
+        return [IsAdminOnly()]
 
     def get_queryset(self):
         return _scoped_delivery_qs(self.request.user)
@@ -149,13 +154,21 @@ class DeliveryAgentListView(viewsets.GenericViewSet):
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
-        agents = (
-            User.objects.filter(
-                role=User.Role.DELIVERY_AGENT,
-                is_email_verified=True,
-                is_active=True,
-            )
-            .order_by("email")
-            .values("id", "email", "first_name", "last_name")[:200]
+        agents = User.objects.filter(
+            role=User.Role.DELIVERY_AGENT,
+            is_email_verified=True,
+            is_active=True,
         )
+        user = request.user
+        if not user.is_staff:
+            # Tenant members see agents already assigned within their tenants,
+            # plus the unassigned pool. Never other tenants' agent emails.
+            tenant_ids = user_tenant_ids(user)
+            agents = agents.filter(
+                Q(delivery_assignments__tenant_id__in=tenant_ids)
+                | Q(delivery_assignments__isnull=True)
+            ).distinct()
+        agents = agents.order_by("email").values(
+            "id", "email", "first_name", "last_name"
+        )[:200]
         return Response(list(agents))

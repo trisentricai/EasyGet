@@ -1,6 +1,7 @@
 import re
 
 from django.core import mail
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -24,6 +25,9 @@ def otp_from_last_email():
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class AuthFlowTests(TestCase):
     def setUp(self):
+        # Scoped auth throttles (login/register/otp) are per-process counters;
+        # reset so tests never trip each other's limits.
+        cache.clear()
         self.client = APIClient()
         self.payload = {
             "email": "customer@example.com",
@@ -95,10 +99,53 @@ class AuthFlowTests(TestCase):
         response = self._login(password="wrongpassword")
         self.assertEqual(response.status_code, 401)
 
+    def test_register_rejects_short_password(self):
+        response = self._register(password="abc123")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            User.objects.filter(email=self.payload["email"]).exists()
+        )
+
+    def test_register_rejects_all_numeric_password(self):
+        response = self._register(password="12345678901234")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            User.objects.filter(email=self.payload["email"]).exists()
+        )
+
+    def test_verify_unknown_email_returns_same_generic_error(self):
+        self._register()
+        wrong = self._verify(code="000000")
+        ghost = self.client.post(
+            VERIFY_URL, {"email": "ghost@example.com", "code": "123456"}, format="json"
+        )
+        self.assertEqual(wrong.status_code, 400)
+        self.assertEqual(ghost.status_code, 400)
+        # Identical message shape: no way to tell registered vs unregistered.
+        self.assertEqual(str(wrong.data), str(ghost.data))
+
+    def test_resend_otp_is_rate_limited_and_never_enumerates(self):
+        self._register()
+        resend_url = reverse("resend-otp")
+        for _ in range(5):
+            res = self.client.post(
+                resend_url, {"email": self.payload["email"]}, format="json"
+            )
+            self.assertEqual(res.status_code, 200)
+        # register(1) + 3 resends inside the 10-minute window; later ones are
+        # silently dropped instead of issuing fresh codes.
+        self.assertEqual(len(mail.outbox), 4)
+        ghost = self.client.post(
+            resend_url, {"email": "ghost@example.com"}, format="json"
+        )
+        self.assertEqual(ghost.status_code, 200)
+        self.assertEqual(ghost.data["message"], res.data["message"])
+
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class LogoutTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         user = User.objects.create_user(
             email="logout@example.com", password="strongpass123", is_email_verified=True
@@ -121,6 +168,7 @@ class LogoutTests(TestCase):
 
 class ProfileAndAddressTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             email="profile@example.com", password="strongpass123", is_email_verified=True
         )

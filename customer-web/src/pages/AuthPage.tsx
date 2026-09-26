@@ -160,7 +160,7 @@ export function AuthPage() {
               </div>
               <div className="field full">
                 <label>Password</label>
-                <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
+                <input type="password" required minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 10 characters" />
               </div>
             </div>
             <button className="btn btn-block" disabled={busy} type="submit">

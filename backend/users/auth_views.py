@@ -22,6 +22,7 @@ class RegisterView(CreateAPIView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+    throttle_scope = "register"
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -39,6 +40,7 @@ class RegisterView(CreateAPIView):
 class VerifyOTPView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_scope = "otp"
 
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
@@ -50,23 +52,28 @@ class VerifyOTPView(APIView):
 class ResendOTPView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_scope = "otp"
 
     def post(self, request):
         serializer = ResendOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data["user"]
-        OTPCode.objects.filter(
-            user=user, purpose=OTPCode.Purpose.EMAIL_VERIFICATION, is_used=False
-        ).update(is_used=True)
-        otp = OTPCode.issue(user)
-        send_otp_email(user, otp.code)
-        return Response({"message": "A new OTP has been emailed to you."})
+        user = serializer.validated_data.get("user")
+        if user is not None:
+            OTPCode.objects.filter(
+                user=user, purpose=OTPCode.Purpose.EMAIL_VERIFICATION, is_used=False
+            ).update(is_used=True)
+            otp = OTPCode.issue(user)
+            send_otp_email(user, otp.code)
+        # Same response whether or not the email exists/needs verification —
+        # prevents account enumeration through this endpoint.
+        return Response({"message": "If this email needs verification, a new OTP has been emailed to you."})
 
 
 class LoginView(TokenObtainPairView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_scope = "login"
 
 
 class LogoutView(APIView):

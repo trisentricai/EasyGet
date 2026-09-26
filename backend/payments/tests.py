@@ -230,3 +230,96 @@ class PaymentTenancyTests(TestCase):
         res = self.client.get("/api/v1/payments/refunds/")
         data = res.data["results"] if isinstance(res.data, dict) else res.data
         self.assertEqual(list(data), [])
+
+class PaymentApiSecurityTests(TestCase):
+    """Order ownership on payment create, staff-only webhook, URL-payment
+    refund validation."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.customer = User.objects.create_user(
+            "sec.cust@example.com", "strongpass123", is_email_verified=True
+        )
+        self.stranger = User.objects.create_user(
+            "sec.stranger@example.com", "strongpass123", is_email_verified=True
+        )
+        self.merchant = User.objects.create_user(
+            "sec.merchant@example.com", "strongpass123",
+            role=User.Role.STORE_MANAGER, is_email_verified=True,
+        )
+        self.admin = User.objects.create_user(
+            "sec.admin@example.com", "strongpass123",
+            role=User.Role.ADMIN, is_staff=True, is_email_verified=True,
+        )
+        self.tenant = provision_tenant(self.merchant, "Sec Tenant")
+        self.store = Store.objects.create(
+            name="Sec Store", city="Pune", state="MH", postal_code="411001",
+            latitude=Decimal("18.5204"), longitude=Decimal("73.8567"),
+            tenant=self.tenant,
+        )
+        self.order = Order.objects.create(
+            user=self.customer, store=self.store,
+            subtotal=Decimal("700.00"), total=Decimal("700.00"),
+        )
+
+    def test_cannot_attach_payment_to_foreign_order(self):
+        self.client.force_authenticate(user=self.stranger)
+        res = self.client.post(
+            "/api/v1/payments/",
+            {"order": str(self.order.id), "gateway": "COD", "amount": "700.00"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(Payment.objects.filter(order=self.order).exists())
+
+    def test_owner_can_attach_payment(self):
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/payments/",
+            {"order": str(self.order.id), "gateway": "COD", "amount": "700.00"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+
+    def test_webhook_rejected_for_store_manager(self):
+        self.client.force_authenticate(user=self.merchant)
+        res = self.client.post(
+            "/api/v1/payments/webhook/",
+            {
+                "gateway": "RAZORPAY",
+                "event": "payment.succeeded",
+                "payload": {"payment_id": "whatever"},
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 403)
+
+    def test_refund_validates_against_url_payment(self):
+        payment = Payment.objects.create(
+            order=self.order, user=self.customer,
+            gateway=Payment.Gateway.COD, amount=Decimal("700.00"),
+        )
+        payment.mark_succeeded()
+        self.client.force_authenticate(user=self.merchant)
+        res = self.client.post(
+            f"/api/v1/payments/{payment.id}/refund/",
+            {"amount": "100.00", "reason": "Return"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        refund = Refund.objects.get(payment=payment)
+        self.assertEqual(refund.amount, Decimal("100.00"))
+
+    def test_refund_amount_cap_enforced(self):
+        payment = Payment.objects.create(
+            order=self.order, user=self.customer,
+            gateway=Payment.Gateway.COD, amount=Decimal("700.00"),
+        )
+        payment.mark_succeeded()
+        self.client.force_authenticate(user=self.merchant)
+        res = self.client.post(
+            f"/api/v1/payments/{payment.id}/refund/",
+            {"amount": "9999.00", "reason": "Greedy"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)

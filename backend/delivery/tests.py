@@ -137,3 +137,40 @@ class DeliveryTenancyTests(TestCase):
         emails = [r["email"] for r in res.data]
         self.assertIn(self.agent.email, emails)
         self.assertNotIn(self.plain.email, emails)
+
+    def test_agents_endpoint_hides_other_tenants_agents(self):
+        # Once assigned inside tenant A, the agent must disappear from
+        # merchant B's list (unassigned agents remain a shared pool).
+        self._assign(self.merchant_a)
+        self.client.force_authenticate(user=self.merchant_b)
+        res = self.client.get("/api/v1/delivery/agents/")
+        self.assertEqual(res.status_code, 200)
+        emails = [r["email"] for r in res.data]
+        self.assertNotIn(self.agent.email, emails)
+
+        self.client.force_authenticate(user=self.merchant_a)
+        res = self.client.get("/api/v1/delivery/agents/")
+        self.assertIn(self.agent.email, [r["email"] for r in res.data])
+
+    def test_raw_create_blocked_for_non_admin(self):
+        self.client.force_authenticate(user=self.plain)
+        res = self.client.post(
+            "/api/v1/delivery/",
+            {"order": str(self.order_a.id), "agent": self.agent.id},
+            format="json",
+        )
+        self.assertIn(res.status_code, (401, 403))
+        self.assertFalse(DeliveryAssignment.objects.exists())
+
+    def test_customer_cannot_repoint_own_assignment(self):
+        self._assign(self.merchant_a)
+        a = DeliveryAssignment.objects.get(order=self.order_a)
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.patch(
+            f"/api/v1/delivery/{a.id}/",
+            {"agent": self.plain.id},
+            format="json",
+        )
+        self.assertIn(res.status_code, (401, 403))
+        a.refresh_from_db()
+        self.assertEqual(a.agent_id, self.agent.id)

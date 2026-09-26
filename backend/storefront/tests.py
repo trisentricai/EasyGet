@@ -292,3 +292,53 @@ class ThemeTests(StorefrontTestBase):
             THEME_URL, {"primary_color": "#000000"}, format="json"
         )
         self.assertEqual(response.status_code, 403)
+
+
+class ProductTenantSecurityTests(StorefrontTestBase):
+    """Section items must not expose foreign-tenant products or unpublished
+    sections through the public item/render endpoints."""
+
+    def setUp(self):
+        super().setUp()
+        self.other_owner = User.objects.create_user(
+            "other.owner@example.com", "strongpass123", is_email_verified=True
+        )
+        self.other_tenant = provision_tenant(self.other_owner, "Other Tenant")
+        self.foreign_product = Product.objects.create(
+            name="Foreign Product", category=self.category,
+            tenant=self.other_tenant, mrp=Decimal("500.00"), is_active=True,
+        )
+        self.hidden_section = StoreSection.objects.create(
+            store=self.store, section_type=StoreSection.SectionType.HERO,
+            title="Unpublished", position=5, is_active=False,
+        )
+        SectionItem.objects.create(
+            section=self.hidden_section,
+            item_type=SectionItem.ItemType.PRODUCT,
+            product=self.product, position=0,
+        )
+
+    def as_user(self, user):
+        self.client.force_authenticate(user=user)
+        return self.client
+
+    def test_owner_cannot_link_foreign_product(self):
+        response = self.as_user(self.owner).post(
+            items_url(self.grid.id),
+            {"item_type": "PRODUCT", "product": self.foreign_product.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            SectionItem.objects.filter(product=self.foreign_product).exists()
+        )
+
+    def test_inactive_section_items_hidden_from_public(self):
+        self.client.force_authenticate()
+        response = self.client.get(items_url(self.hidden_section.id))
+        self.assertEqual(response.status_code, 404)
+
+    def test_inactive_section_items_visible_to_manager(self):
+        response = self.as_user(self.owner).get(items_url(self.hidden_section.id))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)

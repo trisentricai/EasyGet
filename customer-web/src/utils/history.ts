@@ -178,3 +178,18 @@ export function syncWishlistCache(slug: string, wished: boolean): void {
 export function setWishlistCache(slugs: string[]): void {
   write(WISH_KEY, slugs);
 }
+
+/**
+ * Remove EVERY piece of user data this app persisted (logout / global 401):
+ * tokens, wishlist, recent views/searches (all `eg-*` keys), plus anything
+ * a future feature stashes in sessionStorage.
+ */
+export function purgeLocalUserData(): void {
+  const doomed: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("eg-")) doomed.push(key);
+  }
+  for (const key of doomed) localStorage.removeItem(key);
+  sessionStorage.clear();
+}

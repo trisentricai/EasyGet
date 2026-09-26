@@ -19,6 +19,16 @@ from .serializers import (
 )
 
 
+def _product_allowed_for_store(product, store, user):
+    """Section items must not become a cross-tenant read channel: linked
+    product name/slug/price are served publicly by the render endpoint."""
+    if product is None or user.is_staff:
+        return True
+    if product.tenant_id is None:
+        return True  # platform-level product
+    return product.tenant_id == store.tenant_id
+
+
 class StorefrontRenderView(APIView):
     """GET /api/v1/storefront/{store_slug}/ — public. One request returns the
     theme + ordered sections (+ items) that customer-web/Flutter render."""
@@ -163,12 +173,32 @@ class SectionItemsView(APIView):
 
     def get(self, request, pk):
         section = get_object_or_404(StoreSection, pk=pk)
+        # Unpublished sections are management state — only their store's
+        # managers (or staff) may read them by ID.
+        if not section.is_active:
+            user = request.user
+            if not (
+                user
+                and user.is_authenticated
+                and (user.is_staff or can_manage_store(user, section.store))
+            ):
+                from django.http import Http404
+
+                raise Http404("No StoreSection matches the given query.")
         return Response(SectionItemSerializer(section.items.all(), many=True).data)
 
     def post(self, request, pk):
         section = self.get_object()
         serializer = SectionItemWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        product = serializer.validated_data.get("product")
+        if product is not None and not _product_allowed_for_store(
+            product, section.store, request.user
+        ):
+            return Response(
+                {"product": "Product does not belong to this store's tenant."},
+                status=400,
+            )
         max_pos = section.items.aggregate(m=Max("position"))["m"]
         item = serializer.save(section=section, position=0 if max_pos is None else max_pos + 1)
         return Response(SectionItemSerializer(item).data, status=201)
@@ -189,6 +219,14 @@ class ItemDetailView(APIView):
         item = self.get_object()
         serializer = SectionItemWriteSerializer(item, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        product = serializer.validated_data.get("product")
+        if product is not None and not _product_allowed_for_store(
+            product, item.section.store, request.user
+        ):
+            return Response(
+                {"product": "Product does not belong to this store's tenant."},
+                status=400,
+            )
         serializer.save()
         return Response(SectionItemSerializer(item).data)
 
