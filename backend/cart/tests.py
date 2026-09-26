@@ -85,7 +85,8 @@ class CartModelTests(TestCase):
 
 
 class CartTenancyTests(TestCase):
-    """Carts are customer-owned; the tenant guard blocks cross-catalog mixing."""
+    """Carts are customer-owned; marketplace carts mix sellers freely
+    (split orders happen at checkout, not at add-to-cart time)."""
 
     def setUp(self):
         self.client = APIClient()
@@ -137,7 +138,7 @@ class CartTenancyTests(TestCase):
         )
         self.assertEqual(res.status_code, 201)
 
-    def test_add_cross_tenant_variant_rejected(self):
+    def test_add_cross_tenant_variant_allowed(self):
         Cart.objects.create(user=self.customer, store=self.store_a)
         self.client.force_authenticate(user=self.customer)
         res = self.client.post(
@@ -145,9 +146,9 @@ class CartTenancyTests(TestCase):
             {"variant_id": self.variant_b.id, "quantity": 1},
             format="json",
         )
-        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.status_code, 201)
 
-    def test_merge_cross_tenant_carts_rejected(self):
+    def test_merge_cross_tenant_carts_allowed(self):
         store_b = Store.objects.create(
             name="Cart Store B", city="Pune", state="MH", postal_code="411001",
             latitude=Decimal("18.5204"), longitude=Decimal("73.8567"),
@@ -159,4 +160,58 @@ class CartTenancyTests(TestCase):
         res = self.client.post(
             "/api/v1/cart/merge/", {"session_key": "anon-b"}, format="json"
         )
-        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.status_code, 200)
+
+    def test_cart_item_exposes_seller_fields(self):
+        Cart.objects.create(user=self.customer, store=self.store_a)
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/cart/items/",
+            {"variant_id": self.variant_a.id, "quantity": 1},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data["tenant_id"], self.tenant_a.id)
+        self.assertEqual(res.data["seller_name"], "Cart Store A")
+
+    def test_seller_name_falls_back_to_tenant_then_platform(self):
+        merchant_c = User.objects.create_user(
+            "cart.c@example.com", "strongpass123", is_email_verified=True
+        )
+        tenant_c = provision_tenant(merchant_c, "Cart Tenant C")
+        category = Category.objects.get(name="Grocery")
+        # (a) tenant with no store yet -> tenant name
+        product_c = Product.objects.create(
+            name="Tenant C Salt", category=category, tenant=tenant_c,
+            mrp=Decimal("50.00"), is_active=True,
+        )
+        variant_c = ProductVariant.objects.create(
+            product=product_c, name="1kg", sku="CART-C-1KG",
+            price=Decimal("40.00"), is_active=True,
+        )
+        # (b) no tenant at all -> platform name
+        solo = Product.objects.create(
+            name="Platform Honey", category=category,
+            mrp=Decimal("90.00"), is_active=True,
+        )
+        variant_solo = ProductVariant.objects.create(
+            product=solo, name="500g", sku="CART-SOLO-500",
+            price=Decimal("80.00"), is_active=True,
+        )
+        self.client.force_authenticate(user=self.customer)
+        res_c = self.client.post(
+            "/api/v1/cart/items/",
+            {"variant_id": variant_c.id, "quantity": 1},
+            format="json",
+        )
+        self.assertEqual(res_c.status_code, 201)
+        self.assertEqual(res_c.data["tenant_id"], tenant_c.id)
+        self.assertEqual(res_c.data["seller_name"], "Cart Tenant C")
+        res_solo = self.client.post(
+            "/api/v1/cart/items/",
+            {"variant_id": variant_solo.id, "quantity": 1},
+            format="json",
+        )
+        self.assertEqual(res_solo.status_code, 201)
+        self.assertIsNone(res_solo.data["tenant_id"])
+        self.assertEqual(res_solo.data["seller_name"], "EasyGet")
