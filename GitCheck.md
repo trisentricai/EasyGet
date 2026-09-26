@@ -75,6 +75,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-26 | fix/flutter-web-and-ordering | `— (uncommitted)` | Phase B1 marketplace depth: wishlist model + `/products/wishlist/` endpoints + server-synced heart + `#/wishlist` page; `sort=rating` (products+search) + sort-visibility leak fix; PDP offers from active coupons + demo coupons seeded; live pincode `GET /pincode/<6>/` (postal API + UA fix + state alias + fallback + cache); admin `GET/PATCH/DELETE /admin/reviews/` + admin-web ReviewsPage; 195 tests green, both builds green; root junk cleanup (JWT dumps, scratch scripts); docs rewritten (README/GETTING_STARTED/PROJECT/currentUpdate) |
 | 2026-09-24 | fix/flutter-web-and-ordering | `bbb2afa` | Phase A discovery (web): deals/category/recent/recommended rails, brand+discount+sort backend filters, brands endpoint, search recents/trending; demo-enriched catalog (20 brands, varied prices/MRP) |
 | 2026-09-24 | fix/flutter-web-and-ordering | `b896cd6` | Phase A2 Flipkart look: reviews/ratings API (one-per-user, verified badge, subquery aggregates, 409 dup) + theme palette migration (#2874F0/#FB641B/Inter) + full UI overhaul (header/category strip/offer ticker, carousel, rating-pill cards + wishlist heart, PDP buy box + reviews UI, sidebar filters, 4-col footer, bottom nav); 177 tests green |
 | 2026-09-23 | phase-3-store-product-inventory | PR #2 | Closed PR #1 (stale CI history), opened fresh PR #2 — same branch, full description; CI restarting clean |

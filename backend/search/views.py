@@ -1,6 +1,6 @@
 import time
 from django.contrib.postgres.search import SearchQuery, SearchRank
-from django.db.models import Count
+from django.db.models import Avg, Count, F, OuterRef, Subquery
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -8,7 +8,7 @@ from rest_framework.response import Response
 
 from users.permissions import IsAdminOnly
 
-from products.models import Product
+from products.models import Product, ProductReview
 from .models import PopularSearch, ProductSearchIndex, SearchQueryLog
 from .serializers import (
     PopularSearchSerializer,
@@ -72,6 +72,18 @@ class SearchViewSet(viewsets.GenericViewSet):
             queryset = queryset.annotate(
                 order_count=Count("order_items")
             ).order_by("-order_count", "-rank")
+        elif sort == "rating":
+            stats = (
+                ProductReview.objects.filter(
+                    product=OuterRef("pk"), is_approved=True
+                )
+                .values("product")
+                .annotate(avg=Avg("rating"))
+                .values("avg")[:1]
+            )
+            queryset = queryset.annotate(review_avg=Subquery(stats)).order_by(
+                F("review_avg").desc(nulls_last=True), "-created_at"
+            )
 
         # Pagination
         page = params.get("page", 1)

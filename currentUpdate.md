@@ -1,13 +1,43 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-09-24
-**Phase in progress:** Phase A2 — Flipkart-grade marketplace look (web) DONE: reviews/ratings API + full visual overhaul; next B1 (wishlist/moderation/offers), C (payments template), E (Flutter port)
+**Last updated:** 2026-09-26
+**Phase in progress:** Phase B1 — Marketplace depth DONE: wishlist backend + server-synced heart, `sort=rating`, coupon-backed PDP offers, live pincode ETA, admin review moderation; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — Marketplace depth, B1 (2026-09-26)
+
+**Goal hit:** the 5 gaps left by A2 are closed. Decisions: pincode = external lookup (api.postalpincode.in) + heuristic ETA · offers = display-only coupons this phase (checkout apply = Phase C). **Backend 195/195 green (1 skipped); both web builds green; all items verified live.**
+
+**Wishlist (server-backed heart):**
+- New `WishlistItem` model (`products/0004_wishlistitem`, UNIQUE user+product) + endpoints `GET /api/v1/products/wishlist/`, `POST`/`DELETE /api/v1/products/wishlist/<slug>/` (idempotent, registered **before the router** like `brands/` so slug lookup can't shadow them; auth required).
+- customer-web: heart on cards + new PDP heart is **optimistic server-sync** (localStorage is only an offline cache: `syncWishlistCache`/`setWishlistCache`); new **`#/wishlist` page** (grid + empty state) + header **Wishlist** link.
+
+**`sort=rating`:**
+- `products/views.py` orders by `review_rating_avg desc nulls_last` → count → id; `search` app got the same branch + `ChoiceField` gained `"rating"`. Browse + Search selects now offer **"Avg. Customer Review"**.
+- **Bug fixed en route:** the old `sort` branches `return`ed *before* the customer visibility filters — any customer sorting saw inactive/unstocked merchant catalogs. Visibility now applies before sorting (regression test added).
+
+**Offers (PDP "Available offers"):**
+- `ProductDetailSerializer` embeds up to 5 **active, in-window coupons** applicable to the product (`applies_to` ALL / CATEGORY match / PRODUCT match) — the previously-dead `admin_panel.Coupon` table finally has a consumer. Customer PDP renders them as offer lines + `CODE:` chips (display only; applying at checkout = Phase C).
+- Seeded demo coupons: `WELCOME10` (10% up to ₹100), `FLAT50` (₹50 off ≥ ₹299), `FREESHIP`.
+
+**Live pincode → ETA:**
+- New `GET /api/v1/pincode/<6-digit>/` (`common` app): validates format (400), looks up **api.postalpincode.in** (404 if undeliverable), returns `{city, state, eta_days, delivery_fee, free_delivery_over, source}`. ETA = **2 days same state / 4 days otherwise** (store state vs postal state, normalized — store `TN` matches API `Tamil Nadu` via alias table); fee ₹29 < ₹499 else free. **Process-local cache** + `source: "fallback"` heuristic if the API is unreachable (never hard-fails the PDP). Two gotchas found live: postal API drops python-requests' default User-Agent (fixed with a browser-ish UA), and state code/name mismatches (fixed with alias map).
+- PDP Check button now calls this (was a client-side mock); PDP also shows city + real fee.
+
+**Admin review moderation:**
+- Backend: `GET/PATCH/DELETE /api/v1/admin/reviews/` (`ProductReviewViewSet`, `IsAdminOnly`, filters `?approved=true|false` & `?product=<slug>`; bare array — no default DRF pagination).
+- admin-web: new **ReviewsPage** (`⭐ Reviews` in NAV, `#/reviews`): All/Needs-approval/Approved filters, table (product, stars, body, reviewer + verified, Live/Hidden badge, date), **Approve/Hide** toggle + **Delete** (ConfirmDialog).
+
+**Tests:** +18 (wishlist CRUD/auth/idempotency, rating sort, sort-visibility regression, coupon offers embedding, pincode format/api/fallback/alias, admin moderation perms) → **195 green, 1 skipped**. Migrations `products/0004` applied to Supabase. Also cleaned ~20 root junk files (incl. `token.txt`/`login.json` with live JWTs).
+
+**Run notes:** backend `:8000`, customer-web **`:3000`**, admin-web `:5174` (vite binds IPv6 `localhost` — probe `http://localhost:3000/`, not `127.0.0.1`).
+
+**Known gaps / next (Phase C+):** coupon **apply at checkout** (cart/orders/discount math), real payment gateways (Razorpay/Stripe/COD template), post-order (D), Flutter port of B1 features (E), review images.
 
 ## 0. LATEST — Flipkart-grade marketplace look (2026-09-24)
 
@@ -30,7 +60,7 @@
 
 **Run notes:** customer-web dev = **`localhost:3000`** (vite config, NOT 5173), backend `:8000`. Verified live: reviews CRUD + 409 + aggregates, theme colors served.
 
-**Known gaps / next (B1):** wishlist is device-local (no backend), no admin-web review moderation UI yet, offers are static copy (no offers API), pincode ETA is client-side mock, no `sort=rating`.
+**Known gaps (closed by B1 on 2026-09-26):** wishlist was device-local (no backend), no admin-web review moderation UI, offers were static copy (no offers API), pincode ETA was a client-side mock, no `sort=rating`.
 
 ## 0. LATEST — Flutter app (2026-09-23): analyzer zero, APK built ✅
 

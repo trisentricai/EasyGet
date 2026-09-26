@@ -1173,3 +1173,59 @@ button { font-family: inherit; }
     cursor: pointer;
   }
 }
+
+/* ---------- Wishlist (header link, PDP heart) ---------- */
+.nav-wish {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  align-self: center;
+}
+.nav-wish:hover { text-decoration: none; }
+.nav-wish:hover span { text-decoration: underline; }
+.nav-wish:hover { color: #ffd7de; }
+.wish-pdp {
+  position: static;
+  width: 38px;
+  height: 38px;
+  opacity: 1;
+  border: 1px solid var(--border, #e0e0e0);
+  background: var(--surface, #fff);
+  flex: 0 0 auto;
+}
+
+/* ---------- PDP: Available offers ---------- */
+.offer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.offer-list li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.offer-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--secondary, #fb641b);
+}
+.offer-code {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--primary, #2874f0);
+  background: rgb(40 116 240 / 0.08);
+  border: 1px dashed rgb(40 116 240 / 0.4);
+  padding: 1px 6px;
+  border-radius: 4px;
+}

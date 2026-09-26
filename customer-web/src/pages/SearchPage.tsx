@@ -126,6 +126,7 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
           <option value="price_desc">Price: high → low</option>
           <option value="newest">Newest</option>
           <option value="popular">Popular</option>
+          <option value="rating">Avg. Customer Review</option>
         </select>
         {showSuggest && suggestions.length > 0 ? (
           <div

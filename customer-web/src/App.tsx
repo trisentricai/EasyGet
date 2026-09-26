@@ -14,6 +14,7 @@ import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { OrderDetailPage, OrdersPage } from "./pages/OrdersPage";
 import { AccountPage } from "./pages/AccountPage";
+import { WishlistPage } from "./pages/WishlistPage";
 import { Icon } from "./components/icons";
 import { Spinner, usePopOnChange } from "./components/ui";
 
@@ -101,6 +102,7 @@ function Shell() {
     if (route.name === "orders") return <OrdersPage />;
     if (route.name === "order") return <OrderDetailPage key={routeKey} id={route.params[0] ?? "0"} />;
     if (route.name === "account") return <AccountPage />;
+  if (route.name === "wishlist") return <WishlistPage />;
     return <HomePage />;
   })();
 
@@ -140,6 +142,10 @@ function Shell() {
               <small>Signup</small>
             </button>
           )}
+          <a className="nav-wish" href={href("wishlist")} aria-label="Wishlist">
+            <Icon name="heart" size={19} />
+            <span>Wishlist</span>
+          </a>
           <a className="nav-orders" href={href("orders")}>
             <Icon name="box" size={19} />
             <span>Orders</span>

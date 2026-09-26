@@ -436,3 +436,31 @@ export const advanceDelivery = (id: string, status: string, note = "") =>
     method: "POST",
     body: { status, note },
   });
+
+
+/* ---------------- Review moderation ---------------- */
+
+export type AdminReview = {
+  id: number;
+  product_name: string;
+  product_slug: string;
+  rating: number;
+  title: string;
+  body: string;
+  reviewer_name: string;
+  user_email: string;
+  is_verified_purchase: boolean;
+  is_approved: boolean;
+  created_at: string;
+};
+
+export function listReviews(approved?: boolean) {
+  const qs = approved === undefined ? "" : `?approved=${approved}`;
+  return api<AdminReview[]>(`/admin/reviews/${qs}`);
+}
+
+export const updateReview = (id: number, body: Partial<Pick<AdminReview, "is_approved">>) =>
+  api<AdminReview>(`/admin/reviews/${id}/`, { method: "PATCH", body });
+
+export const deleteReview = (id: number) =>
+  api<void>(`/admin/reviews/${id}/`, { method: "DELETE" });

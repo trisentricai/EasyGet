@@ -10,11 +10,14 @@ import {
   listProductsPaged,
   listReviews,
   postReview,
+  ApiError,
+  checkPincode as fetchPincode,
+  offerLine,
   type Product,
   type ProductDetail,
   type Review,
 } from "../services/api";
-import { EmptyState, Monogram, RatingPill, SignInGate, Spinner } from "../components/ui";
+import { EmptyState, Monogram, RatingPill, SignInGate, Spinner, WishButton } from "../components/ui";
 import { Icon } from "../components/icons";
 import { recordView } from "../utils/history";
 
@@ -30,6 +33,7 @@ export function ProductPage({ slug }: { slug: string }) {
   const [qty, setQty] = useState(1);
   const [pincode, setPincode] = useState("");
   const [pinResult, setPinResult] = useState<string | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,17 +89,38 @@ export function ProductPage({ slug }: { slug: string }) {
     }
   };
 
-  const checkPincode = () => {
+  const checkPincode = async () => {
     const code = pincode.trim();
     if (!/^\d{6}$/.test(code)) {
       setPinResult("Enter a valid 6-digit pincode");
       return;
     }
-    const eta = new Date();
-    eta.setDate(eta.getDate() + 3);
-    setPinResult(
-      `Delivery by ${eta.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })} · ${Number(price ?? 0) >= 499 ? "Free delivery" : "₹29 delivery"}`,
-    );
+    setPinBusy(true);
+    setPinResult("Checking…");
+    try {
+      const res = await fetchPincode(code);
+      const eta = new Date();
+      eta.setDate(eta.getDate() + (res.eta_days ?? 4));
+      const feeLimit = Number(res.free_delivery_over ?? 499);
+      const fee = Number(res.delivery_fee ?? 29);
+      const feeLabel =
+        Number(price ?? 0) >= feeLimit
+          ? "Free delivery"
+          : `₹${fee.toLocaleString("en-IN")} delivery`;
+      const where = res.city ? ` to ${res.city}` : "";
+      setPinResult(
+        `Delivery by ${eta.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}${where} · ${feeLabel}`,
+      );
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) {
+        const reason = (e.payload as { reason?: string } | null)?.reason;
+        setPinResult(reason ?? "We do not deliver to this pincode yet.");
+      } else {
+        setPinResult("Couldn't check this pincode — try again.");
+      }
+    } finally {
+      setPinBusy(false);
+    }
   };
 
   const discount = activeVariant?.discount_percent || product.discount_percent;
@@ -137,7 +162,10 @@ export function ProductPage({ slug }: { slug: string }) {
         {/* info column */}
         <div>
           <div className="buybox-brand">{product.brand || product.category?.name || "EasyGet"}</div>
-          <h1 className="detail-title">{product.name}</h1>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <h1 className="detail-title" style={{ flex: 1 }}>{product.name}</h1>
+            <WishButton slug={product.slug} className="wish-pdp" />
+          </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <RatingPill avg={product.rating_avg} count={product.rating_count} size="lg" />
             {product.rating_count ? (
@@ -156,6 +184,20 @@ export function ProductPage({ slug }: { slug: string }) {
             ) : null}
             {discount > 0 ? <span className="off">{discount}% off</span> : null}
           </div>
+
+          {product.offers?.length ? (
+            <div className="buybox-section" style={{ marginTop: 16 }}>
+              <h4>Available offers</h4>
+              <ul className="offer-list">
+                {product.offers.map((o) => (
+                  <li key={o.code}>
+                    <b>{offerLine(o)}</b>
+                    <span className="offer-code">CODE: {o.code}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {product.variants.length > 1 ? (
             <div style={{ marginTop: 18 }}>
@@ -211,7 +253,14 @@ export function ProductPage({ slug }: { slug: string }) {
                 }}
                 aria-label="Delivery pincode"
               />
-              <button className="link" onClick={checkPincode} type="button">Check</button>
+              <button
+                className="link"
+                onClick={() => void checkPincode()}
+                type="button"
+                disabled={pinBusy}
+              >
+                {pinBusy ? "Checking…" : "Check"}
+              </button>
             </div>
             {pinResult ? (
               <div className={`pincode-eta ${/valid/i.test(pinResult) ? "muted" : ""}`}>{pinResult}</div>

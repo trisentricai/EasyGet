@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from users.permissions import IsAdminOnly, IsAdminOrStoreManager
 
 from orders.models import Order
-from products.models import Product, ProductVariant
+from products.models import Product, ProductReview, ProductVariant
 from users.models import User
 from .models import AdminAction, Banner, Coupon, ScheduledTask, SystemConfig
 from .serializers import (
@@ -18,6 +18,7 @@ from .serializers import (
     BannerSerializer,
     CouponSerializer,
     CouponValidateSerializer,
+    ReviewAdminSerializer,
     ScheduledTaskSerializer,
     SystemConfigPublicSerializer,
     SystemConfigSerializer,
@@ -214,3 +215,21 @@ class AdminDashboardViewSet(viewsets.GenericViewSet):
                 "low_stock": low_stock,
             },
         })
+
+class ProductReviewViewSet(viewsets.ModelViewSet):
+    """Review moderation: list, approve/hide (PATCH), delete."""
+
+    queryset = ProductReview.objects.select_related("product", "user").all()
+    serializer_class = ReviewAdminSerializer
+    permission_classes = [IsAdminOnly]
+    http_method_names = ["get", "patch", "delete", "head", "options"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        approved = self.request.query_params.get("approved")
+        if approved in ("true", "false"):
+            qs = qs.filter(is_approved=(approved == "true"))
+        product = self.request.query_params.get("product")
+        if product:
+            qs = qs.filter(product__slug=product)
+        return qs.order_by("-created_at", "-id")

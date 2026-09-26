@@ -146,6 +146,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     base_price = serializers.SerializerMethodField()
     rating_avg = serializers.SerializerMethodField()
     rating_count = serializers.SerializerMethodField()
+    offers = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -164,6 +165,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "primary_image",
             "rating_avg",
             "rating_count",
+            "offers",
             "variants",
             "images",
             "created_at",
@@ -185,6 +187,41 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_rating_count(self, obj):
         _, n = _review_stats(obj)
         return n
+
+    def get_offers(self, obj):
+        """Active coupons applicable to this product — the PDP
+        'Available offers' chips (display only; applying is Phase C)."""
+        from django.db.models import Q
+        from django.utils import timezone
+
+        from admin_panel.models import Coupon
+
+        now = timezone.now()
+        coupons = (
+            Coupon.objects.filter(
+                is_active=True, start_date__lte=now, end_date__gte=now
+            )
+            .filter(
+                Q(applies_to=Coupon.AppliesTo.ALL)
+                | Q(
+                    applies_to=Coupon.AppliesTo.CATEGORY,
+                    category_id=obj.category_id,
+                )
+                | Q(applies_to=Coupon.AppliesTo.PRODUCT, product_id=obj.id)
+            )
+            .order_by("-created_at")[:5]
+        )
+        return [
+            {
+                "code": c.code,
+                "name": c.name,
+                "description": c.description,
+                "discount_type": c.discount_type,
+                "discount_value": str(c.discount_value),
+                "max_discount": str(c.max_discount) if c.max_discount else None,
+            }
+            for c in coupons
+        ]
 
 
 class ReviewSerializer(serializers.ModelSerializer):

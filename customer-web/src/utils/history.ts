@@ -146,7 +146,7 @@ export const TRENDING_SEARCHES = [
   "Detergent",
 ];
 
-/* ---------------- Wishlist (device-local) ---------------- */
+/* ---------------- Wishlist (offline cache; server is truth) ---------------- */
 
 const WISH_KEY = "eg-wishlist";
 
@@ -164,4 +164,17 @@ export function toggleWishlist(slug: string): boolean {
   const has = list.includes(slug);
   write(WISH_KEY, has ? list.filter((s) => s !== slug) : [slug, ...list]);
   return !has;
+}
+
+/** Align the local cache with a server response (add/remove succeeded). */
+export function syncWishlistCache(slug: string, wished: boolean): void {
+  const list = getWishlist();
+  const has = list.includes(slug);
+  if (wished && !has) write(WISH_KEY, [slug, ...list]);
+  if (!wished && has) write(WISH_KEY, list.filter((s) => s !== slug));
+}
+
+/** Replace the cache wholesale (e.g. after loading the server wishlist). */
+export function setWishlistCache(slugs: string[]): void {
+  write(WISH_KEY, slugs);
 }

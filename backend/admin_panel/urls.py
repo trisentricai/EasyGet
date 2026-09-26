@@ -8,6 +8,7 @@ router.register("config", views.SystemConfigViewSet, basename="system-config")
 router.register("audit", views.AdminActionViewSet, basename="admin-action")
 router.register("banners", views.BannerViewSet, basename="banner")
 router.register("coupons", views.CouponViewSet, basename="coupon")
+router.register("reviews", views.ProductReviewViewSet, basename="admin-review")
 router.register("tasks", views.ScheduledTaskViewSet, basename="scheduled-task")
 
 urlpatterns = [

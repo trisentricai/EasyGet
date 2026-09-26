@@ -108,23 +108,26 @@ Note: several domain *models* (webhooks, pwa, admin_panel, notifications, search
 
 ### 2.4 Current capabilities (verified working)
 
-> Updated 2026-09-23 — the paragraphs below replace the original Day-1 snapshot.
+> Updated 2026-09-26 — covers foundation through Phase B1 (marketplace depth).
 - **Health endpoint** `GET /api/v1/health/` → `{ "status": "ok", "service": "easyget-api" }` (public).
 - **Authentication** (JWT via SimpleJWT, blacklist on logout): register, OTP verify/resend, login, refresh, logout; email-verification gate; profile + addresses (one default enforced); role-based access (CUSTOMER/ADMIN/STORE_MANAGER/DELIVERY_AGENT).
 - **Multi-tenancy IS implemented** (`tenants` app: Tenant/TenantMembership, server-side permission classes + services; direct FK on Store/Product/StockItem/Cart/Order/DeliveryAssignment, inheritance for line items/variants/images; User/payment-methods stay platform-level). Cross-tenant reads/writes covered by isolation tests.
-- **Catalog**: 10 categories / 200 products live in Supabase; products paginated (20/page); customer Browse (Load more), Search (+SQLite fallback), admin CRUD, storefront designer (sections/items DnD, theme) rendering on web + app home.
-- **Cart → Orders → Payments → Delivery**: full flow verified live on Supabase (confirm → assign agent → accept → pickup → out-for-delivery → delivered, order mirrored). Admin fulfilment queue at `#/orders` with delivery section.
-- **Frontends**: customer-web (Home/Browse/Search/Product/Cart/Checkout/Orders/Account) and admin-web (Overview/Orders/Categories/Products/Inventory/Storefront) built, both `npm run build` clean. Flutter customer app: full build landed (Riverpod 3 + go_router + Dio), analyzer fixes pending.
-- **Tests: 120+ pass** across backend apps (SQLite); `manage.py check` 0 issues; Redis/Celery fail-soft without Docker.
+- **Catalog**: 200+ products live in Supabase (20 brands, discounted MRPs); products paginated (20/page); filters (category/brand/min-discount/price), sorts incl. **rating**, brands endpoint; search with suggestions + recents/trending + SQLite fallback; admin CRUD; storefront designer (sections/items DnD, theme).
+- **Marketplace experience (Flipkart/Meesho-grade)**: themed customer-web (blue header, category strip, offer ticker, banner carousel, rating-pill cards, buy-box PDP, sidebar filters, marketplace footer, mobile bottom nav); **reviews & ratings API** (one per user, masked names, verified-purchase, moderation flags, aggregates); **server-backed wishlist** + `#/wishlist` page; **PDP "Available offers"** from live coupons; **live pincode ETA** (postal API + offline fallback, 2-day same-state heuristic); **admin review moderation** page.
+- **Cart → Orders → Payments → Delivery**: full flow verified live on Supabase (confirm → assign agent → accept → pickup → out-for-delivery → delivered, order mirrored). Admin fulfilment queue at `#/orders`.
+- **Frontends**: customer-web (`:3000`) and admin-web (`:5174`) — both `npm run build` clean (tsc + vite). Flutter customer app builds (analyzer 0, debug APK); not click-tested on device.
+- **Tests: 195 pass** across backend apps (SQLite, 1 skipped); `manage.py check` 0 issues; Redis/Celery fail-soft without Docker.
 
 ### 2.5 What is NOT built yet (honest status)
 
 - **No production deployment, no load tests, no verified backups, no SMS/email prod backend, no media CDN.**
+- **Coupon apply at checkout**: coupons exist, are displayed on PDPs, but the discount is not yet applied to cart/order totals (Phase C).
+- **Payment gateways**: `Payment` model + saved methods are gateway-agnostic but no live Razorpay/Stripe integration; COD is manual (Phase C).
 - **Notifications**: models only, no live flow (needs Redis/Celery + Docker).
-- **Delivery auto-assignment, live tracking, COD gateway**: manual assignment only (v1).
-- Flutter app not yet click-tested on device; no signed release build.
+- **Delivery**: manual assignment only (no auto-assign, no live tracking); returns/refunds UI absent.
+- Flutter app not yet click-tested on device; no signed release build; does not yet ship the A2/B1 marketplace features (Phase E).
 
-Do not confuse *model existence* with *feature readiness*: e.g. `webhooks`/`pwa`/`admin_panel` models exist, but their endpoints, UI, and operations do not yet.
+Do not confuse *model existence* with *feature readiness*: e.g. `webhooks`/`pwa` models exist, but their endpoints, UI, and operations do not yet.
 
 ---
 
@@ -147,8 +150,8 @@ The phases are designed so each leaves the repo in a **working, testable** state
 1. **Phase 0 — Foundation assignment**: repo, Git+GitHub (SSH), `.gitignore`, docs, branch model (`main` + per-phase branches).
 2. **Phase 1 — Foundation app**: `backend` (Django + DRF + SimpleJWT + Celery + Redis config + CORS + `/health/`), `customer-web` + `admin-web` (React/Vite/TS starters), `customer-app` (Flutter starter). CI workflow. Env config from `.env` (gitignored, example committed).
 3. **Phase 2 — Auth & Users**: custom `User` (email login), roles, OTP email verification, JWT + token blacklist, addresses, RBAC permissions, 18→80 tests. *Merged to `main`.*
-4. **Phase 3 — Store + Product + Inventory** *(next)*: multi-store catalog, per-store inventory — this is where the **multi-tenancy foundation** must be designed in.
-5. Phases 4-15 as per the roadmap (cart, orders, payments, delivery, notifications/search/analytics/realtime, admin dashboard, builder, SaaS).
+4. **Phase 3 — Store + Product + Inventory** ✅: multi-store catalog, per-store inventory — this is where the **multi-tenancy foundation** was designed in (see 3.3).
+5. Phases 4-15 as per the roadmap (cart, orders, payments, delivery, notifications/search/analytics/realtime, admin dashboard, builder, SaaS) — cart/orders/payments/delivery/search/admin/dashboard are built; marketplace UX waves A/A2/B1 shipped 2026-09-24..26.
 
 ### 3.3 The multi-tenancy sequencing decision (important)
 
@@ -187,15 +190,16 @@ Recommended order before Phase B migrations:
 
 ```powershell
 # ---- Backend ----
-# From repo root; use SQLite override until local Postgres/Redis are up:
+# From repo root. Live DB = Supabase (from .env); use the SQLite override for
+# local/migration work if Postgres is unreachable:
 $env:DATABASE_URL = "sqlite:///db.sqlite3"
 & .\.venv\Scripts\python.exe backend\manage.py migrate      # apply migrations
 & .\.venv\Scripts\python.exe backend\manage.py check        # system checks (0 issues)
-& .\.venv\Scripts\python.exe backend\manage.py test        # run from backend/ dir (80 tests)
-& .\.venv\Scripts\python.exe backend\manage.py runserver    # http://127.0.0.1:8000
+& .\.venv\Scripts\python.exe backend\manage.py runserver 0.0.0.0:8000 --noreload
+# health → http://localhost:8000/api/v1/health/
 
 # ---- Frontends ----
-cd customer-web; npm install; npm run dev   # http://localhost:5173
+cd customer-web; npm install; npm run dev   # http://localhost:3000  (NOT 5173)
 cd admin-web;    npm install; npm run dev   # http://localhost:5174
 
 # ---- Flutter ----
@@ -205,14 +209,14 @@ cd customer-app; flutter pub get; flutter analyze; flutter run
 docker compose up -d postgres redis
 ```
 
-Test discovery gotcha: run `manage.py test`/management commands **from `backend/`** (or pass app labels); from repo root, discovery finds 0 tests. Python used is in the venv: `& .\.venv\Scripts\python.exe ...`.
+Test discovery gotcha: from repo root pass **explicit app labels** and the SQLite override (`$env:DATABASE_URL="sqlite:///db.sqlite3"; .\.venv\Scripts\python.exe backend\manage.py test products common ...`) — a bare `manage.py test` finds 0 tests. Python used is in the venv: `& .\.venv\Scripts\python.exe ...`.
 
 ### 3.7 Known open issues
 
 - Docker not installed → PostgreSQL/Redis/Celery/Channels checks are blocked; DB-touching commands hang with the Postgres URL → use SQLite override.
-- No initial CI run yet historically (repo had zero commits at one point); CI workflow `.github/workflows/ci.yml` exists (backend checks + both React builds).
-- Frontends are scaffolds only; real UI/API integration lands in later phases.
-- Multi-tenancy, builder, production deploy, and load testing remain TODO (see section 2.5).
+- CI workflow `.github/workflows/ci.yml` runs backend checks + both React builds on push.
+- vite binds IPv6 `localhost` — probe `http://localhost:3000/`, not `127.0.0.1`.
+- Coupon apply at checkout, live payment gateways, production deploy, and load testing remain TODO (see section 2.5).
 
 ---
 
@@ -226,4 +230,4 @@ Test discovery gotcha: run `manage.py test`/management commands **from `backend/
 | Tenant | A merchant/customer organization; owns its stores, products, orders |
 | Builder | The visual tool merchants use to design their storefront without code |
 
-Final note: **EASYGET is a long build.** The foundation and authentication are done and tested. The next proving ground is Phase 3 (Store + Storefront + Inventory) where multi-tenant ownership is designed correctly, because the whole trust model of the SaaS depends on getting tenant isolation right from the start.
+Final note: **EASYGET is a long build.** Foundation, auth, tenancy, cart/orders/delivery, and the Flipkart-grade marketplace UX (discovery, reviews, wishlist, offers, pincode ETA, moderation) are done and tested — 195 backend tests green. The next proving ground is **Phase C** (coupon apply at checkout + gateway-agnostic payment template), then post-order polish (D) and Flutter parity (E).

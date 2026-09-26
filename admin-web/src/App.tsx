@@ -7,6 +7,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { ProductsPage } from "./pages/ProductsPage";
+import { ReviewsPage } from "./pages/ReviewsPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { StorefrontPage } from "./pages/StorefrontPage";
 import { Spinner } from "./components/ui";
@@ -16,6 +17,7 @@ const NAV: Array<{ route: string; icon: string; label: string }> = [
   { route: "orders", icon: "📦", label: "Orders" },
   { route: "categories", icon: "🧩", label: "Categories" },
   { route: "products", icon: "🛍️", label: "Products" },
+  { route: "reviews", icon: "⭐", label: "Reviews" },
   { route: "inventory", icon: "📦", label: "Inventory" },
   { route: "storefront", icon: "🎨", label: "Storefront designer" },
 ];
@@ -25,6 +27,7 @@ const TITLES: Record<string, string> = {
   orders: "Orders",
   categories: "Categories",
   products: "Products",
+  reviews: "Reviews & moderation",
   inventory: "Inventory",
   storefront: "Storefront designer",
 };
@@ -49,6 +52,7 @@ export default function App() {
       {route === "orders" && <OrdersPage />}
       {route === "categories" && <CategoriesPage />}
       {route === "products" && <ProductsPage />}
+        {route === "reviews" && <ReviewsPage />}
       {route === "inventory" && <InventoryPage />}
       {route === "storefront" && <StorefrontPage />}
       {!TITLES[route] && <DashboardPage />}

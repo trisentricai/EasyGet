@@ -34,7 +34,7 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
     if (category) params.category = category;
     if (brand) params.brand = brand;
     if (discount) params.min_discount = discount;
-    if (sort === "price_asc" || sort === "price_desc" || sort === "newest") params.sort = sort;
+    if (sort === "price_asc" || sort === "price_desc" || sort === "newest" || sort === "rating") params.sort = sort;
     if (minPrice) params.min_price = minPrice;
     if (maxPrice) params.max_price = maxPrice;
     if (featuredOnly) params.is_featured = "true";
@@ -239,6 +239,7 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
                 <option value="price_asc">Price — Low to High</option>
                 <option value="price_desc">Price — High to Low</option>
                 <option value="newest">Newest First</option>
+                <option value="rating">Avg. Customer Review</option>
               </select>
             </div>
           </div>

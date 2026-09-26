@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { href } from "../hooks/useHashRoute";
-import { img, type Product } from "../services/api";
-import { isWished, toggleWishlist } from "../utils/history";
+import {
+  addToWishlist,
+  getTokens,
+  img,
+  removeFromWishlist,
+  type Product,
+} from "../services/api";
+import { isWished, syncWishlistCache, toggleWishlist } from "../utils/history";
 import { Icon, type IconName } from "./icons";
 
 export function money(value: string | number | null | undefined): string {
@@ -64,18 +70,43 @@ export function RatingPill({
   );
 }
 
-function WishButton({ slug, className = "" }: { slug: string; className?: string }) {
+export function WishButton({ slug, className = "" }: { slug: string; className?: string }) {
   const [wished, setWished] = useState(() => isWished(slug));
+  const [busy, setBusy] = useState(false);
+
+  const toggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (busy) return;
+    const next = !wished;
+    setWished(next);
+    if (getTokens()) {
+      // Signed in: server is the source of truth (optimistic, rolls back).
+      setBusy(true);
+      try {
+        const res = next ? await addToWishlist(slug) : await removeFromWishlist(slug);
+        setWished(next);
+        // Keep the offline cache aligned with the server.
+        syncWishlistCache(slug, next);
+        void res;
+      } catch {
+        setWished(!next);
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      toggleWishlist(slug);
+    }
+  };
+
   return (
     <button
       type="button"
       className={`wish-btn ${wished ? "on" : ""} ${className}`}
       aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setWished(toggleWishlist(slug));
-      }}
+      aria-pressed={wished}
+      disabled={busy}
+      onClick={toggle}
     >
       <Icon name="heart" size={16} />
     </button>

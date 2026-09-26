@@ -272,6 +272,7 @@ export type Product = {
 
 export type ProductDetail = Product & {
   description: string;
+  offers: Offer[];
   variants: { id: number; name: string; sku: string; price: string; discount_percent: number; is_active: boolean }[];
   images: { id: number; image: string; caption: string; is_primary: boolean; sort_order: number }[];
 };
@@ -311,6 +312,64 @@ export async function listAllProducts(
 }
 
 export const getProduct = (slug: string) => api<ProductDetail>(`/products/${slug}/`);
+
+/* ---------------- Offers (active coupons shown on the PDP) ---------------- */
+
+export type Offer = {
+  code: string;
+  name: string;
+  description: string;
+  discount_type: "PERCENTAGE" | "FIXED" | "FREE_DELIVERY";
+  discount_value: string;
+  max_discount: string | null;
+};
+
+/** One-line Flipkart-style offer text, e.g. "Flat ₹50 off (SAVE50)". */
+export function offerLine(o: Offer): string {
+  const cap = (s: string) => (s.length > 46 ? `${s.slice(0, 46)}…` : s);
+  let head: string;
+  if (o.discount_type === "PERCENTAGE") {
+    const pct = Number(o.discount_value);
+    head = `${pct}% off${o.max_discount ? ` up to ₹${Number(o.max_discount).toLocaleString("en-IN")}` : ""}`;
+  } else if (o.discount_type === "FIXED") {
+    head = `Flat ₹${Number(o.discount_value).toLocaleString("en-IN")} off`;
+  } else {
+    head = "Free delivery";
+  }
+  const body = cap(o.description || "");
+  return body ? `${head} · ${body}` : head;
+}
+
+/* ---------------- Wishlist (server-backed heart) ---------------- */
+
+export type WishlistAction = { added: boolean; slug: string; count: number };
+
+export const listWishlist = (page = 1) =>
+  api<Paged<Product>>(`/products/wishlist/?page=${page}`);
+
+export const addToWishlist = (slug: string) =>
+  api<WishlistAction>(`/products/wishlist/${slug}/`, { method: "POST" });
+
+export const removeFromWishlist = (slug: string) =>
+  api<WishlistAction>(`/products/wishlist/${slug}/`, { method: "DELETE" });
+
+/* ---------------- Pincode (live delivery ETA) ---------------- */
+
+export type PincodeResult = {
+  valid: boolean;
+  reason?: string;
+  pincode: string;
+  city?: string | null;
+  state?: string | null;
+  eta_days?: number;
+  delivery_fee?: string;
+  free_delivery_over?: string;
+  source?: "api" | "fallback";
+};
+
+/** Throws ApiError(404) for undeliverable pins; payload carries `reason`. */
+export const checkPincode = (pin: string) =>
+  api<PincodeResult>(`/pincode/${pin}/`);
 
 export type Brand = { name: string };
 

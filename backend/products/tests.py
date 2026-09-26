@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -222,3 +223,163 @@ class ProductReviewTests(TestCase):
         res = self._post({"rating": 5, "body": "Delivered perfectly"})
         self.assertEqual(res.status_code, 201, res.data)
         self.assertTrue(res.data["is_verified_purchase"])
+
+class ProductWishlistTests(TestCase):
+    """Server-backed wishlist: add, idempotency, list, remove, auth."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            "wish@example.com", "strongpass123", is_email_verified=True
+        )
+        self.client.force_authenticate(user=self.user)
+        self.category = Category.objects.create(
+            name="Grocery", is_active=True, sort_order=0
+        )
+        self.store = Store.objects.create(
+            name="Wish Store", city="Pune", state="MH",
+            postal_code="411001", latitude=Decimal("18.5204"),
+            longitude=Decimal("73.8567"), is_active=True,
+        )
+        self.product = Product.objects.create(
+            name="Wish Coffee", category=self.category, brand="BrewCo",
+            is_active=True,
+        )
+        v = ProductVariant.objects.create(
+            product=self.product, name="std", sku="WISH-1",
+            price=Decimal("200.00"), is_active=True,
+        )
+        StockItem.objects.create(store=self.store, variant=v, quantity=3)
+
+    def _url(self):
+        return f"/api/v1/products/wishlist/{self.product.slug}/"
+
+    def test_requires_auth(self):
+        anon = APIClient()
+        res = anon.get("/api/v1/products/wishlist/")
+        self.assertIn(res.status_code, (401, 403))
+        res = anon.post(self._url())
+        self.assertIn(res.status_code, (401, 403))
+
+    def test_add_then_list_then_remove(self):
+        res = self.client.post(self._url())
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertTrue(res.data["added"])
+        self.assertEqual(res.data["count"], 1)
+
+        res = self.client.get("/api/v1/products/wishlist/")
+        self.assertEqual(res.status_code, 200)
+        slugs = [r["slug"] for r in res.data["results"]]
+        self.assertEqual(slugs, [self.product.slug])
+
+        res = self.client.delete(self._url())
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.data["added"])
+        self.assertEqual(res.data["count"], 0)
+        res = self.client.get("/api/v1/products/wishlist/")
+        self.assertEqual(res.data["count"], 0)
+
+    def test_add_is_idempotent(self):
+        self.client.post(self._url())
+        res = self.client.post(self._url())
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertFalse(res.data["added"])
+        self.assertEqual(res.data["count"], 1)
+
+    def test_delete_missing_is_idempotent(self):
+        res = self.client.delete(self._url())
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["count"], 0)
+
+
+class ProductRatingSortAndOffersTests(TestCase):
+    """sort=rating ordering + coupon-backed 'offers' on product detail."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            "buyer@example.com", "strongpass123", is_email_verified=True
+        )
+        self.client.force_authenticate(user=self.user)
+        self.category = Category.objects.create(
+            name="Grocery", is_active=True, sort_order=0
+        )
+        self.store = Store.objects.create(
+            name="Sort Store", city="Pune", state="MH",
+            postal_code="411001", latitude=Decimal("18.5204"),
+            longitude=Decimal("73.8567"), is_active=True,
+        )
+        self.unrated = self._mk("Unrated Item")
+        self.four = self._mk("Four Star Item")
+        self.five = self._mk("Five Star Item")
+
+    def _mk(self, name):
+        p = Product.objects.create(
+            name=name, category=self.category, brand="SortCo",
+            is_active=True,
+        )
+        v = ProductVariant.objects.create(
+            product=p, name="std", sku=f"S-{name[:5]}",
+            price=Decimal("100.00"), is_active=True,
+        )
+        StockItem.objects.create(store=self.store, variant=v, quantity=5)
+        return p
+
+    def _review(self, product, rating):
+        from .models import ProductReview
+
+        ProductReview.objects.create(
+            product=product, user=self.user, rating=rating, body="ok",
+            is_approved=True,
+        )
+
+    def test_sort_by_rating_desc_nulls_last(self):
+        self._review(self.four, 4)
+        self._review(self.five, 5)
+        res = self.client.get("/api/v1/products/", {"sort": "rating"})
+        self.assertEqual(res.status_code, 200)
+        slugs = [r["slug"] for r in res.data["results"]]
+        self.assertEqual(slugs, [self.five.slug, self.four.slug, self.unrated.slug])
+
+    def test_sorted_list_still_hides_inactive_stockless_products(self):
+        # Regression: early sort returns used to skip visibility filters.
+        ghost = Product.objects.create(
+            name="Ghost", category=self.category, brand="SortCo",
+            is_active=False,
+        )
+        for sort in ("rating", "price_asc", "newest"):
+            res = self.client.get("/api/v1/products/", {"sort": sort})
+            slugs = [r["slug"] for r in res.data["results"]]
+            self.assertNotIn(ghost.slug, slugs)
+
+    def test_detail_embeds_active_applicable_coupons(self):
+        from django.utils import timezone
+
+        from admin_panel.models import Coupon
+
+        now = timezone.now()
+        live = Coupon.objects.create(
+            code="SAVE50", name="Flat 50 off", discount_type="FIXED",
+            discount_value=Decimal("50.00"), applies_to="ALL",
+            start_date=now - timedelta(days=1), end_date=now + timedelta(days=30),
+        )
+        Coupon.objects.create(
+            code="EXPIRED10", name="Old deal", discount_type="PERCENTAGE",
+            discount_value=Decimal("10.00"), applies_to="ALL",
+            start_date=now - timedelta(days=30), end_date=now - timedelta(days=1),
+        )
+        Coupon.objects.create(
+            code="OTHERCAT", name="Other cat", discount_type="PERCENTAGE",
+            discount_value=Decimal("5.00"), applies_to="PRODUCT",
+            start_date=now - timedelta(days=1), end_date=now + timedelta(days=30),
+            product=self.unrated,  # applies only to a different product
+        )
+        res = self.client.get(f"/api/v1/products/{self.four.slug}/")
+        self.assertEqual(res.status_code, 200)
+        codes = [o["code"] for o in res.data["offers"]]
+        self.assertEqual(codes, [live.code])
+
+        res = self.client.get(f"/api/v1/products/{self.unrated.slug}/")
+        codes = [o["code"] for o in res.data["offers"]]
+        self.assertIn("SAVE50", codes)
+        self.assertIn("OTHERCAT", codes)

@@ -20,7 +20,7 @@ from rest_framework.viewsets import ModelViewSet
 from tenants.permissions import IsTenantObjectMember, IsTenantWriter
 from tenants.services import resolve_tenant_for_create, user_tenant_ids
 
-from .models import Product, ProductReview
+from .models import Product, ProductReview, WishlistItem
 from .serializers import (
     ProductDetailSerializer,
     ProductListSerializer,
@@ -154,6 +154,21 @@ class ProductViewSet(ModelViewSet):
                 )
             ).filter(discount_pct__gte=threshold)
 
+        # Visibility (applies BEFORE sorting so sorted lists can't leak
+        # inactive/unstocked merchant catalogs to regular customers).
+        user = self.request.user
+        if not user.is_staff:
+            tenant_ids = user_tenant_ids(user)
+            if tenant_ids:
+                qs = qs.filter(
+                    Q(tenant_id__in=tenant_ids)
+                    | Q(is_active=True, variants__stock_items__store__is_active=True)
+                ).distinct()
+            else:
+                qs = qs.filter(
+                    is_active=True, variants__stock_items__store__is_active=True
+                ).distinct()
+
         sort = params.get("sort")
         if sort == "price_asc":
             return qs.order_by(F("min_variant_price").asc(nulls_last=True), "-id")
@@ -161,21 +176,18 @@ class ProductViewSet(ModelViewSet):
             return qs.order_by(F("min_variant_price").desc(nulls_last=True), "-id")
         if sort == "newest":
             return qs.order_by("-created_at", "-id")
+        if sort == "rating":
+            # Subquery annotation: NULLs (no reviews) sort last, then more
+            # reviews wins — Flipkart's "Avg. Customer Review" ordering.
+            return qs.order_by(
+                F("review_rating_avg").desc(nulls_last=True),
+                F("review_rating_count").desc(nulls_last=True),
+                "-id",
+            )
 
-        user = self.request.user
         # Explicit stable ordering: required for correct pagination
         # (silences UnorderedObjectListWarning; id breaks updated_at ties).
-        if user.is_staff:
-            return qs.order_by("-updated_at", "-id")
-        tenant_ids = user_tenant_ids(user)
-        if tenant_ids:
-            return qs.filter(
-                Q(tenant_id__in=tenant_ids)
-                | Q(is_active=True, variants__stock_items__store__is_active=True)
-            ).distinct().order_by("-updated_at", "-id")
-        return qs.filter(
-            is_active=True, variants__stock_items__store__is_active=True
-        ).distinct().order_by("-updated_at", "-id")
+        return qs.order_by("-updated_at", "-id")
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -262,3 +274,51 @@ class ProductReviewListCreateView(generics.ListCreateAPIView):
             status=Order.Status.DELIVERED,
             items__variant__product=product,
         ).exists()
+
+
+class WishlistView(generics.ListAPIView):
+    """GET /products/wishlist/ - the signed-in shopper's saved products."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProductListSerializer
+    pagination_class = ProductPagination
+
+    def get_queryset(self):
+        return with_rating_stats(
+            Product.objects.filter(wishlist_items__user=self.request.user)
+            .annotate(min_variant_price=Min("variants__price"))
+        ).order_by("-wishlist_items__created_at", "-id")
+
+
+class WishlistToggleView(generics.GenericAPIView):
+    """POST /products/wishlist/<slug>/ = add (idempotent),
+    DELETE /products/wishlist/<slug>/ = remove (idempotent)."""
+
+    permission_classes = [IsAuthenticated]
+    queryset = Product.objects.all()
+    serializer_class = ProductListSerializer
+    lookup_field = "slug"
+
+    def post(self, request, slug):
+        try:
+            product = self.get_object()
+        except Product.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        item, created = WishlistItem.objects.get_or_create(
+            user=request.user, product=product
+        )
+        return Response(
+            {"added": created, "slug": product.slug, "count": WishlistItem.objects.filter(user=request.user).count()},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def delete(self, request, slug):
+        try:
+            product = self.get_object()
+        except Product.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        WishlistItem.objects.filter(user=request.user, product=product).delete()
+        return Response(
+            {"added": False, "slug": product.slug, "count": WishlistItem.objects.filter(user=request.user).count()},
+            status=status.HTTP_200_OK,
+        )

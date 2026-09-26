@@ -1,163 +1,113 @@
 # EASYGET — Run the complete project
 
-> One page: how to run everything, what you will see, what you won't,
-> and what is still left to build. Last verified: 2026-09-23.
-
-EASYGET is a quick-commerce SaaS: one Django API serves a customer shop
-(web + mobile) and a merchant admin dashboard. The live database is
-**Supabase Postgres** (already connected via `.env`) — no Docker needed.
-
----
+Four services: Django backend, admin SPA, customer storefront, Flutter app (optional).
 
 ## 1. Prerequisites
 
-| Need | Version | Check |
-|---|---|---|
-| Python + `.venv` | 3.11+ (venv already at repo root) | `.\.venv\Scripts\python.exe --version` |
-| Node.js | 22+ | `node --version` |
-| Flutter | 3.38 (for mobile only) | `flutter --version` |
-| Backend running | — | required before any frontend works |
-
-**Two path rules that fix 90% of run errors:**
-
-1. `.venv` lives at the **repo root** — never inside `backend/`.
-2. `manage.py` lives inside **`backend/`** — never at the root.
-
----
+- **Python 3.11** (venv at `.venv/` — recreate with `python -m venv .venv; .venv\Scripts\pip install -r requirements.txt` if missing)
+- **Node 18+** (`node_modules` per web app; `npm install` in each on first run)
+- **Flutter 3.38 / Dart 3.10** (only for `customer-app/`)
+- **`.env`** at repo root (copy `.env.example`) — Django reads it **only at startup**; restart after edits
+- No Docker needed: the dev DB is Supabase (from `.env`); tests use SQLite
 
 ## 2. Run everything (4 terminals)
 
 ### Terminal 1 — Backend API (start this first, leave running)
 
 ```powershell
-cd C:\Users\Rahul\Documents\TRISENTRICS-AI\EasyGet
-.\.venv\Scripts\python.exe backend\manage.py runserver
+# from repo root
+.\.venv\Scripts\python.exe backend\manage.py runserver 0.0.0.0:8000 --noreload
 ```
 
-| URL | What shows |
-|---|---|
-| `http://127.0.0.1:8000/api/v1/health/` | `{"status":"ok","service":"easyget-api"}` — proves the API + Supabase link |
-| `http://127.0.0.1:8000/api/docs/` | Clickable Swagger docs for every endpoint |
-| `http://127.0.0.1:8000/admin/` | Django admin (login below) |
-| `http://127.0.0.1:8000/` | **404 — this is NORMAL.** The backend is API-only, it has no homepage. |
+- Health: <http://localhost:8000/api/v1/health/> → `{"status":"ok"}`
+- API docs: <http://localhost:8000/api/docs/>
+- Run `manage.py` commands **from the repo root** and pass explicit app labels for tests (see §5).
+- If the port is occupied by a stale process: `Get-NetTCPConnection -LocalPort 8000 -State Listen` then `Stop-Process -Id <pid> -Force`.
 
-### Terminal 2 — Admin dashboard → `http://localhost:5174`
+### Terminal 2 — Admin dashboard → <http://localhost:5174>
 
 ```powershell
-cd C:\Users\Rahul\Documents\TRISENTRICS-AI\EasyGet\admin-web
-npm install
+cd admin-web
+npm install        # first time only
 npm run dev
 ```
 
-Login: `admin@easyget.local` / `EasyGet!2026`
+Screens: Dashboard, Orders (fulfilment queue), Categories, Products, **Reviews (moderation)**, Inventory, Storefront designer.
 
-| Page | What shows |
-|---|---|
-| Overview `#/dashboard` | Live counts (users, orders, revenue, products), quick actions, fulfilment queue card |
-| Orders `#/orders` | Status filter pills, orders table, detail modal (items, timeline, confirm/cancel) + 🛵 delivery section (assign agent, advance delivery) |
-| Categories `#/categories` | Category CRUD + search |
-| Products `#/products` | Product CRUD (create adds a default variant), category filter |
-| Inventory `#/inventory` | Stock table + Adjust-stock modal (writes audit rows) |
-| Storefront designer `#/storefront` | Drag-and-drop sections/items, inline rename, design knobs, theme panel — renders instantly on the shop |
-
-### Terminal 3 — Customer shop → `http://localhost:5173`
+### Terminal 3 — Customer shop → <http://localhost:3000>
 
 ```powershell
-cd C:\Users\Rahul\Documents\TRISENTRICS-AI\EasyGet\customer-web
-npm install
+cd customer-web
+npm install        # first time only
 npm run dev
 ```
 
-Login: `customer@easyget.app` / `Customer@123`
-
-| Page | What shows |
-|---|---|
-| Home | The merchant-designed storefront (hero, banners, category grid, product rows) in the store theme |
-| Browse | Filters (category, sort, price, featured) + **Load more** paging (20/page) |
-| Search | Full-text search + suggestions (auto-fallback if search backend is down) |
-| Product | Image carousel, discount badge, pack-size variants, quantity, add-to-cart |
-| Cart | Qty steppers, swipe-style remove, clear, subtotal → checkout |
-| Checkout | Address pick/add/default, store picker, place order |
-| Orders | Order list, detail with tracking timeline, cancel (PENDING/CONFIRMED only) |
-| Account | Profile, address book, sign out |
-
-Merchant login (owns `Rahuls-Store`): `merchant@easyget.app` / `Merchant@123`.
-Delivery agent login: `agent@easyget.app` / `Agent@123`.
+> **Port is 3000** (vite config), NOT 5173. Vite binds IPv6 `localhost` — open <http://localhost:3000/> (not `127.0.0.1`).
 
 ### Terminal 4 — Flutter mobile app (optional, needs emulator/device)
 
 ```powershell
-cd C:\Users\Rahul\Documents\TRISENTRICS-AI\EasyGet\customer-app
+cd customer-app
 flutter pub get
 flutter run
 ```
 
-Same screens as the customer shop (Home, Browse, Search, Cart, Checkout,
-Orders, Account) with bottom-tab navigation. Network note:
+Build check: `flutter build apk --debug` → `app-debug.apk`.
 
-| Target | Command |
-|---|---|
-| Android emulator (default) | `flutter run` (uses `http://10.0.2.2:8000`) |
-| Chrome on this PC (easiest) | `flutter run -d chrome --dart-define=API_BASE=http://127.0.0.1:8000/api/v1` |
-| iOS simulator / desktop | `flutter run --dart-define=API_BASE=http://127.0.0.1:8000/api/v1` |
-| Physical phone on Wi-Fi | `flutter run --dart-define=API_BASE=http://<your-PC-LAN-IP>:8000/api/v1` |
+## 3. Logins
 
-Gate: `flutter analyze` must print **No issues found** before committing
-(currently clean). Debug APK builds via `flutter build apk --debug`.
+| Role | Email | Password | Where |
+|---|---|---|---|
+| Admin | `admin@easyget.local` | `EasyGet!2026` | admin-web |
+| Customer | `customer@easyget.app` | `Customer@123` | customer-web / app |
+| Merchant | `merchant@easyget.app` | `Merchant@123` | app |
+| Delivery agent | `agent@easyget.app` | `Agent@123` | app |
 
----
+## 4. What works right now (verified live)
 
-## 3. What works right now (verified live on Supabase)
+- **Discovery**: home rails (deals, categories, recommended, recently viewed), banner carousel, brand/discount/price filters, sorts (price/newest/**rating**), brands endpoint, search suggestions + recents/trending
+- **Reviews**: post/list (one per user, 409 on duplicate), masked names, verified-purchase badges, aggregates on list/detail; admin moderation (approve/hide/delete)
+- **Wishlist**: heart on cards + PDP (server-backed, optimistic), `#/wishlist` page, header link
+- **Offers**: PDP "Available offers" from active coupons (`WELCOME10`, `FLAT50`, `FREESHIP` seeded)
+- **Pincode**: live lookup (city/state from postal API), ETA 2-day same state / 4-day else (state codes normalized), ₹29 fee < ₹499 / free above, offline fallback, 404 for undeliverable pins
+- **Cart/checkout/orders**: guest cart + merge, order state machine + timeline, address book, delivery assignment
+- **Theme**: Flipkart palette (`#2874F0` / `#FB641B` / Inter / square buttons) on the demo store
+- **Admin**: dashboard stats, orders queue, category/product/inventory CRUD, storefront designer, config/audit/coupons/banners
 
-- Auth end-to-end: register → OTP (printed in backend console) → verify → login → refresh → logout.
-- Catalog: 10 categories, 200 products (names cleaned), variants, per-store stock with audit trail.
-- Multi-tenancy enforced: Store B can never read/write Store A (carts, orders, payments, stock, deliveries all scoped + tested).
-- Cart → checkout → order → payment-record → manual delivery assignment → delivered, mirrored on both sides. Demo order `EZG-20260923-M68B` already ran this full path.
-- Storefront designer edits appear instantly on the customer web + app home.
-- Backend: 120+ tests pass (SQLite), `manage.py check` clean, both webs `npm run build` clean, Flutter analyzer clean + APK builds.
-- GitHub: `phase-3-store-product-inventory` branch pushed (16 commits); `main` still holds only the Phase 1–2 baseline.
+## 5. Tests
 
-## 4. What does NOT show / looks wrong but isn't
+Bare `manage.py test` from `backend/` discovers **0 tests**. From **repo root**:
 
-| Symptom | Reality |
-|---|---|
-| `GET /` → 404 page | Normal — API-only backend, no homepage. Use `/api/v1/health/` or `/api/docs/`. |
-| Dashboard "0 pending orders" | Normal — the single demo order was delivered during live delivery testing. Place a new order to see the queue fill. |
-| Browse shows 20, then Load more | Normal — products are paginated (20/page, 200 total). |
-| Product pages take ~2–3s | Known slowness — Supabase region latency; cursor pagination planned. |
-| OTP never arrives by email | Normal locally — dev prints the code to the backend console. |
-| RLS warnings in Supabase dashboard | Safe to ignore — auth is enforced by Django (JWT), not Supabase RLS. |
-| `manage.py test` hangs or asks about `test_postgres` | You ran it against Supabase. Always set `$env:DATABASE_URL='sqlite:///db.sqlite3'` and run **from `backend/`**. |
-| `test/widget_test.dart` missing | Deleted on purpose (stale scaffold referencing a deleted widget). |
+```powershell
+$env:DATABASE_URL='sqlite:///db.sqlite3'
+.\.venv\Scripts\python.exe backend\manage.py test admin_panel analytics cart `
+  categories common delivery inventory notifications orders payments products `
+  pwa realtime search storefront stores tenants users webhooks
+```
 
-## 5. Not yet completed — needs to be built
+Expected: `Ran 195 tests ... OK (skipped=1)`.
 
-**Must decide now:**
-- [ ] Merge `phase-3-store-product-inventory` into `main` (branch is pushed; `main` is 15 commits behind).
+Web builds (both must pass):
 
-**Product gaps (biggest first):**
-- [ ] Flutter device click-test (APK exists, never run against live Supabase on a real device).
-- [ ] Delivery auto-assignment + live tracking (v1 is manual assign only).
-- [ ] Real payment gateway (COD records only; no Razorpay/Stripe webhook flow).
-- [ ] Notifications (models only — needs Redis/Celery; blocked without Docker).
-- [ ] Email/SMS OTP for real users (console backend only).
-- [ ] Production deploy (no hosting, CI exists but never green-lit, no backups, no CDN).
-
-**Polish / hardening:**
-- [ ] Products cursor pagination (kill the ~2.7s page loads).
-- [ ] Full backend suite in one run (currently verified in per-app batches; whole suite is slow locally).
-- [ ] Flutter release build + signing + store listing assets.
-- [ ] Security/prod audit (rate limits tuned, webhook signatures, secret rotation).
+```powershell
+cd customer-web; npm run build   # tsc --noEmit && vite build
+cd admin-web;    npm run build
+```
 
 ## 6. Troubleshooting
 
-| Error | Fix |
+| Symptom | Fix |
 |---|---|
-| `.venv\Scripts\activate` → "cannot find path" | You're inside `backend/`. `cd ..` first — `.venv` is at the root. |
-| `can't open file manage.py` | You're at the root. Either `cd backend` first, or run `.\.venv\Scripts\python.exe backend\manage.py …` from root. |
-| `DJANGO_SECRET_KEY must be set` | `.env` missing — copy `.env.example` → `.env`, keep `DJANGO_DEBUG=true`. Never commit `.env`. |
-| Frontend shows network error | Backend (`:8000`) isn't running — start Terminal 1 first. Both webs call `http://127.0.0.1:8000/api/v1`. |
-| Login "email not verified" | Register → copy the 6-digit OTP from the backend console → verify-otp (or Auth page) → login. |
-| Port `5173/5174` busy | Another `npm run dev` still running — kill it or use `npm run dev -- --port 5180`. |
-| `npm run build` TS errors | Run `npm install` first in that folder. |
-| `flutter run` can't reach API | Wrong host for your target — see the `API_BASE` table in §2. Emulator ≠ `127.0.0.1`. |
+| Backend won't see `.env` changes | Restart it — env is read once at startup |
+| Tests find 0 | Wrong cwd or missing `$env:DATABASE_URL` — see §5 |
+| `:8000` in use by a zombie | `Get-NetTCPConnection -LocalPort 8000 -State Listen` → kill the PID |
+| Frontend can't reach `127.0.0.1:3000` | Use `http://localhost:3000/` (vite listens on IPv6 localhost) |
+| DB-touching command hangs (Docker on machine) | Override `$env:DATABASE_URL="sqlite:///db.sqlite3"` |
+| Product missing in shop | Needs an **active** `StockItem` in an active store |
+| Pincode check says "couldn't check" | The postal API is unreachable — endpoint still answers via offline fallback on the next attempt; server logs show the exception |
+| Wishlist heart doesn't persist | You're signed out — heart falls back to device-local until login |
+
+## 7. Housekeeping rules
+
+- After every change: update **`currentUpdate.md` + `GitCheck.md` together**, then commit (see GitCheck.md §7–8).
+- Don't commit: `.env`, `node_modules`, `.venv`, `dist`, scratch scripts, token/log dumps.
