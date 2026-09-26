@@ -39,3 +39,4 @@ build/
 *.iml
 Thumbs.db
 .DS_Store
+.superpowers/
