@@ -1,13 +1,38 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-26
-**Phase in progress:** Security hardening DONE (14 findings reviewed → 13 fixed, `ab14c95`) + signup overflow + guest route gate/logout purge; Phase B1 marketplace depth DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Phase in progress:** **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`; backend 242/242, both builds green, 8/8 live smoke) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — EASYGET platform storefront + split orders (2026-09-26)
+
+**Goal hit:** the single "Rahul's store" concept is gone from the customer journey — **EASYGET is one platform storefront showing everything**, with per-seller order splitting at checkout. Spec `docs/superpowers/specs/2026-09-26-easyget-platform-storefront-design.md`; plan `docs/superpowers/plans/2026-09-26-easyget-platform-storefront-plan.md` (8 tasks, executed TDD inline). **Backend 242/242 green (1 skipped, +21 new tests); both builds green; 8/8 live smoke green.**
+
+**Decisions (user-confirmed, D1–D6):**
+- **D1 = B architectural** — EASYGET becomes the single platform storefront; rahuls-store stays as legacy/Flutter surface.
+- **D2 = A split orders** — checkout creates one order per seller (resolve all stores first → all-or-nothing).
+- **D3 = B seller visibility** — seller name ONLY in cart grouping / checkout review / orders (hidden on cards, PDP, browse).
+- **D4 = A rename** — demo store → **EasyGet Demo Store** (slug `rahuls-store` kept for Flutter); live DB held `Rahuls-Store` not `Rahul's Store` → guarded migration covers both spellings + one-off shell rename on live.
+- **D5 = A web only** — Flutter untouched; back-compat via legacy slug route + legacy `{store}` order mode.
+- **D6 = Approach 1** — `Store.is_platform` flag + single platform row (slug `easyget`, tenant NULL) + partial unique constraint.
+
+**What changed (commits `cc69ec6`…`0ca975e`):**
+1. **Backend platform row** (`8025962`) — `Store.is_platform` + `unique_platform_store`; data migration creates EASYGET row + renames demo (both spellings); store list/detail + `common._store_state` hide platform row from non-staff; orders reject `store=platform` (400).
+2. **Platform route** (`f046741`) — `GET /api/v1/storefront/platform/` (AllowAny, lookup by flag not slug, before slug route); section-item guard: platform links any **active** product, merchants stay tenant-strict.
+3. **Marketplace cart** (`d0d524b`) — cross-tenant add/merge guards removed (split belongs at checkout); cart lines expose `tenant_id` + `seller_name` (first active non-platform store name → tenant name → "EasyGet", prefetched via `to_attr`).
+4. **Split orders** (`03abb1e`) — `POST /orders/` **without** `store` → group cart by product tenant → resolve every seller's store FIRST (missing/dead → 400 `Some items can't be ordered right now.`, nothing created) → one Order+items per seller in one transaction → `{orders:[…]}`; **with** `store` → legacy single mode untouched; `OrderListSerializer.store_name` added.
+5. **customer-web platform fetch + brand** (`e4eb016`) — context always fetches `/storefront/platform/` (slug/localStorage/hash machinery removed; `getStorefront` deleted — only context used it); title/loading/fallback/footer/PDP "Sold by" = EASYGET; logout purge already sweeps `eg-*` incl `eg-cust-store`.
+6. **Cart/checkout/orders UX** (`eee9843`) — cart grouped `Sold by {seller}` + per-seller subtotal; checkout groups + `This will be placed as N orders — one per seller.` + split placement (toast `N orders placed! 🎉` → orders list, legacy fallback defensive); orders list `Seller: …` + detail Seller line; `createOrder` returns `{orders?} & Partial<OrderDetail>`.
+7. **admin-web designer** (`0ca975e`) — NAV entry + `#/storefront` route only for `role === "ADMIN"` (merchant deep-link → dashboard); designer default resolution platform > saved `eg-store` > first store (resolved once); `getStoreSlug()` fallback `easyget`; `listStores` typed with `is_platform`.
+
+**Verification:** full suite **242/242 OK (1 skipped)** (was 221; +21: platform row/route/guards, mixed-seller cart + seller fields, split orders). Builds: `customer-web` + `admin-web` tsc+vite pass. **Live smoke 8/8:** platform route 200 `EASYGET`; `rahuls-store` 200 → `EasyGet Demo Store`; customer `/stores/` hides easyget; cart line `tenant_id=2 seller_name="EasyGet Demo Store"`; split POST → 201 `{orders:[1]}` cart cleared; legacy POST `{store}` → 201 single-object echo (Flutter proof); merchant PATCH platform theme → 403; dist `<title>EASYGET</title>`.
+
+**Known open edges:** multi-tenant split E2E proven on sqlite only (live DB has 1 tenant; Supabase transaction behavior untested for multi-order create); `EZG-YYYYMMDD-XXXX` order number has no collision-retry loop; stock is not yet partitioned per store (spec §7 accepted); Flutter still renders its own storefront until ported (D5).
 
 ## 0. LATEST — Security hardening + UX guards (2026-09-26)
 
