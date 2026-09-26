@@ -43,6 +43,7 @@ class OrderStatusHistorySerializer(serializers.ModelSerializer):
 
 class OrderListSerializer(serializers.ModelSerializer):
     item_count = serializers.IntegerField(source="items.count", read_only=True)
+    store_name = serializers.CharField(source="store.name", read_only=True)
 
     class Meta:
         model = Order
@@ -50,6 +51,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             "id",
             "order_number",
             "store",
+            "store_name",
             "status",
             "subtotal",
             "delivery_fee",
@@ -109,6 +111,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "delivery_address",
             "delivery_instructions",
         ]
+        # store is optional: omitted -> the view splits the cart into one
+        # order per seller tenant. Present -> legacy single-store mode.
+        extra_kwargs = {"store": {"required": False}}
 
     def validate_cart_id(self, value):
         from cart.models import Cart

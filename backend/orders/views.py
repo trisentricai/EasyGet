@@ -9,6 +9,7 @@ from users.permissions import IsAdminOnly, IsAdminOrStoreManager
 
 from cart.models import Cart
 from products.models import ProductVariant
+from stores.models import Store
 from tenants.services import user_tenant_ids
 from .models import Order, OrderItem, OrderStatusHistory
 from .serializers import (
@@ -64,6 +65,80 @@ class OrderViewSet(viewsets.ModelViewSet):
         if self.action == "cancel":
             return OrderCancelSerializer
         return OrderListSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Legacy single-store mode when `store` is present; otherwise the
+        cart is split into one order per seller tenant (spec 4.3)."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if "store" in serializer.validated_data:
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data, status=status.HTTP_201_CREATED, headers=headers
+            )
+        return self._create_split(serializer)
+
+    def _create_split(self, serializer):
+        cart = serializer.validated_data.pop("cart_id")
+        delivery_address = serializer.validated_data.get("delivery_address")
+        delivery_instructions = serializer.validated_data.get(
+            "delivery_instructions", ""
+        )
+        groups = {}
+        for item in cart.items.select_related("variant__product"):
+            product = item.variant.product
+            groups.setdefault(product.tenant_id if product else None, []).append(item)
+        if None in groups:
+            raise serializers.ValidationError(
+                {"cart_id": "Some items can't be ordered right now."}
+            )
+        # Resolve every seller's store BEFORE creating anything so a dead
+        # seller leaves no half-placed orders and an intact cart.
+        resolved = []
+        for tenant_id, items in groups.items():
+            store = (
+                Store.objects.filter(
+                    tenant_id=tenant_id, is_active=True, is_platform=False
+                )
+                .order_by("name")
+                .first()
+            )
+            if store is None:
+                raise serializers.ValidationError(
+                    {"cart_id": "Some items can't be ordered right now."}
+                )
+            resolved.append((store, items))
+        orders = []
+        with transaction.atomic():
+            for store, items in resolved:
+                subtotal = sum(item.line_total for item in items)
+                order = Order.objects.create(
+                    user=self.request.user,
+                    store=store,
+                    tenant=store.tenant,
+                    delivery_address=delivery_address,
+                    delivery_instructions=delivery_instructions or "",
+                    subtotal=subtotal,
+                    total=subtotal,  # delivery_fee/discount added later
+                )
+                for item in items:
+                    OrderItem.objects.create(
+                        order=order,
+                        variant=item.variant,
+                        product_name=item.variant.product.name,
+                        variant_name=item.variant.name,
+                        sku=item.variant.sku,
+                        unit_price=item.variant.price,
+                        quantity=item.quantity,
+                        line_total=item.line_total,
+                    )
+                orders.append(order)
+            cart.items.all().delete()
+        return Response(
+            {"orders": [OrderListSerializer(o).data for o in orders]},
+            status=status.HTTP_201_CREATED,
+        )
 
     def perform_create(self, serializer):
         cart = serializer.validated_data.pop("cart_id")
