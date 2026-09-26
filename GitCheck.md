@@ -75,6 +75,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-26 | fix/flutter-web-and-ordering | `4433554` | Docs: currentUpdate §0 platform storefront + split orders (D1–D6, verification 242/242 + builds + 8/8 smoke, open edges) + GitCheck changelog rows for every plan commit |
 | 2026-09-26 | fix/flutter-web-and-ordering | `0ca975e` | Admin-web: storefront designer staff-only (NAV filter + `#/storefront` route guard, merchant deep-link falls to dashboard); designer default = platform > saved `eg-store` > first store (resolved once via ref); `getStoreSlug()` fallback `easyget`; `listStores` typed with `is_platform` |
 | 2026-09-26 | fix/flutter-web-and-ordering | `eee9843` | customer-web: cart grouped by `Sold by {seller}` + per-seller subtotal; checkout review groups + "This will be placed as N orders — one per seller." + split placement (toast N orders → orders list, legacy fallback); orders list/detail Seller lines; `createOrder` → `{orders?} & Partial<OrderDetail>`; `OrderCreateInput.store?` |
 | 2026-09-26 | fix/flutter-web-and-ordering | `e4eb016` | customer-web: StorefrontContext always fetches `/storefront/platform/` (slug/localStorage/hash machinery + `getStorefront` removed); EASYGET branding (index.html title, loading/fallback, footer, PDP "Sold by"); `eg-cust-store` already covered by `eg-*` purge sweep |
