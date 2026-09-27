@@ -203,24 +203,52 @@ button { font-family: inherit; }
 }
 .bubble.pop { animation: pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
 
-/* second header row: category strip */
+/* second header row: category strip — always horizontally scrollable.
+   overflow-x:auto keeps overflowing items reachable (touch / trackpad /
+   shift+wheel / drag / arrow buttons) instead of clipped. */
 .catstrip {
   position: sticky;
   top: var(--nav-h);
   z-index: 55;
+  display: flex;
+  align-items: stretch;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 .catstrip-inner {
   max-width: 1280px;
   margin: 0 auto;
+  flex: 1;
+  min-width: 0;
   display: flex;
   gap: 4px;
   padding: 7px 18px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  cursor: grab;
+  user-select: none;
+  scroll-snap-type: x proximity;
 }
+.catstrip-inner:active { cursor: grabbing; }
 .catstrip-inner::-webkit-scrollbar { display: none; }
+.catstrip-arrow {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 26px;
+  height: 26px;
+  margin: 0 4px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.catstrip-arrow:hover { border-color: var(--primary); color: var(--primary); }
 .catstrip-item {
   display: flex;
   align-items: center;
@@ -423,14 +451,14 @@ button { font-family: inherit; }
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .product-card:hover {
   box-shadow: var(--shadow-hi);
-  border-color: var(--border);
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
 }
 .product-thumb {
   position: relative;
@@ -786,16 +814,27 @@ button { font-family: inherit; }
   padding: 16px 26px 26px;
   flex-wrap: wrap;
 }
-.footer-pay { display: flex; gap: 7px; flex-wrap: wrap; }
+.footer-pay { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .pay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 3px 9px;
-  font-size: 11px;
-  font-weight: 800;
+  border-radius: 6px;
+  padding: 5px 10px;
+  background: var(--surface);
   color: var(--ink);
-  background: var(--bg);
-  letter-spacing: 0.4px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pay-badge:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.pay-badge-mark { display: inline-grid; place-items: center; }
+.pay-badge-mark svg { width: 20px; height: 20px; fill: currentColor; display: block; }
+.pay-badge-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 .footer-note { font-size: 12.5px; }
 .footer-note b { color: var(--ink); }

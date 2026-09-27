@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteReview,
   errText,
@@ -22,29 +23,37 @@ function Stars({ n }: { n: number }) {
 
 export function ReviewsPage() {
   const { push } = useToast();
-  const [reviews, setReviews] = useState<AdminReview[] | null>(null);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<AdminReview | null>(null);
 
-  const load = useCallback(async () => {
-    const res = await listReviews(
-      filter === "pending" ? false : filter === "approved" ? true : undefined,
-    );
-    setReviews(Array.isArray(res) ? res : []);
-  }, [filter]);
+  const reviewsQuery = useQuery({
+    queryKey: ["admin", "reviews", filter],
+    queryFn: async () => {
+      const res = await listReviews(
+        filter === "pending" ? false : filter === "approved" ? true : undefined,
+      );
+      return Array.isArray(res) ? res : [];
+    },
+  });
+
+  const reviews = reviewsQuery.data ?? null;
 
   useEffect(() => {
-    setReviews(null);
-    load().catch((e) => push(errText(e, "Failed to load reviews"), "err"));
-  }, [load, push]);
+    if (reviewsQuery.error)
+      push(errText(reviewsQuery.error, "Failed to load reviews"), "err");
+  }, [reviewsQuery.error, push]);
+
+  const reloadReviews = () =>
+    queryClient.invalidateQueries({ queryKey: ["admin", "reviews"] });
 
   async function toggleApproved(r: AdminReview) {
     setBusy(true);
     try {
       await updateReview(r.id, { is_approved: !r.is_approved });
       push(r.is_approved ? "Review hidden from the storefront" : "Review approved");
-      await load();
+      await reloadReviews();
     } catch (e) {
       push(errText(e, "Update failed"), "err");
     } finally {
@@ -59,7 +68,7 @@ export function ReviewsPage() {
       await deleteReview(deleting.id);
       push("Review deleted");
       setDeleting(null);
-      await load();
+      await reloadReviews();
     } catch (e) {
       push(errText(e, "Delete failed"), "err");
       setDeleting(null);

@@ -82,7 +82,7 @@ function HeroSlide({ section }: { section: StoreSection }) {
   const link = ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink);
   return (
     <div className="hero hero-slide">
-      {image ? <img className="hero-img" src={image} alt="" /> : null}
+      {image ? <img className="hero-img" src={image} alt="" decoding="async" /> : null}
       <div className="hero-content">
         {section.subtitle ? <p>{section.subtitle}</p> : null}
         <h1>{section.title}</h1>

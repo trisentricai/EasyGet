@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import {
   asArray,
@@ -7,9 +8,8 @@ import {
   listCategories,
   listProductsPaged,
   type Category,
-  type Product,
 } from "../services/api";
-import { CardSkeletonGrid, EmptyState, ProductCard, SignInGate } from "../components/ui";
+import { CardSkeletonGrid, EmptyState, ProductCard } from "../components/ui";
 import { Icon } from "../components/icons";
 export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   const { user } = useAuth();
@@ -22,11 +22,6 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [featuredOnly, setFeaturedOnly] = useState(false);
-  const [products, setProducts] = useState<Product[] | null>(null);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [sideOpen, setSideOpen] = useState(false);
 
   const baseParams = (): Record<string, string> => {
@@ -72,40 +67,24 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
     setFeaturedOnly(false);
   };
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    setError(null);
-    setProducts(null);
-    setPage(1);
-    listProductsPaged(baseParams())
-      .then((d) => {
-        if (cancelled) return;
-        setProducts(d.results);
-        setTotal(d.count);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(errText(e));
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, category, brand, discount, sort, minPrice, maxPrice, featuredOnly]);
+  const params = baseParams();
+  const [total, setTotal] = useState(0);
 
-  async function loadMore() {
-    if (loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const d = await listProductsPaged({ ...baseParams(), page: String(page + 1) });
-      setProducts((prev) => [...(prev ?? []), ...d.results]);
-      setTotal(d.count);
-      setPage((p) => p + 1);
-    } catch (e) {
-      setError(errText(e));
-    } finally {
-      setLoadingMore(false);
-    }
+  const { data, error, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
+    queryKey: ["products", "browse", params, user?.id ?? null],
+    queryFn: ({ pageParam }) => listProductsPaged({ ...params, page: String(pageParam) }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => (lastPage.next ? allPages.length + 1 : undefined),
+  });
+
+  const products = data ? data.pages.flatMap((p) => p.results) : null;
+  const dataTotal = data ? data.pages[data.pages.length - 1].count : null;
+  if (dataTotal !== null && dataTotal !== total) setTotal(dataTotal);
+  const errorMsg = error ? errText(error) : null;
+
+  function loadMore() {
+    if (isFetchingNextPage) return;
+    void fetchNextPage();
   }
 
   useEffect(() => {
@@ -113,16 +92,13 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   }, [initialCategory]);
 
   useEffect(() => {
-    if (!user) return;
     listCategories()
       .then((d) => setCategories(asArray(d)))
       .catch(() => setCategories([]));
     listBrands()
       .then((d) => setBrands(asArray(d).map((b) => b.name)))
       .catch(() => setBrands([]));
-  }, [user]);
-
-  if (!user) return <SignInGate title="Browse the catalog" text="Sign in to see products and prices." />;
+  }, []);
 
   const categoryName = categories.find((c) => c.slug === category)?.name;
 
@@ -255,8 +231,8 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
             </div>
           )}
 
-          {error ? (
-            <EmptyState icon="warning" title="Couldn't load products" text={error} />
+          {errorMsg ? (
+            <EmptyState icon="warning" title="Couldn't load products" text={errorMsg} />
           ) : products === null ? (
             <CardSkeletonGrid />
           ) : products.length === 0 ? (
@@ -270,8 +246,8 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
               </div>
               {products.length < total && (
                 <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
-                  <button className="btn" onClick={loadMore} disabled={loadingMore}>
-                    {loadingMore ? "Loading…" : `Load more (${total - products.length} left)`}
+                  <button className="btn" onClick={loadMore} disabled={isFetchingNextPage}>
+                    {isFetchingNextPage ? "Loading…" : `Load more (${total - products.length} left)`}
                   </button>
                 </div>
               )}

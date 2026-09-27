@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
@@ -14,10 +15,8 @@ import {
   checkPincode as fetchPincode,
   offerLine,
   type Product,
-  type ProductDetail,
-  type Review,
 } from "../services/api";
-import { EmptyState, Monogram, RatingPill, SignInGate, Spinner, WishButton } from "../components/ui";
+import { EmptyState, Monogram, RatingPill, Spinner, WishButton } from "../components/ui";
 import { Icon } from "../components/icons";
 import { recordView } from "../utils/history";
 
@@ -25,8 +24,10 @@ export function ProductPage({ slug }: { slug: string }) {
   const { user } = useAuth();
   const { add } = useCart();
   const toast = useToast();
-  const [product, setProduct] = useState<ProductDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data: product, error } = useQuery({
+    queryKey: ["product", slug],
+    queryFn: () => getProduct(slug),
+  });
   const [variantId, setVariantId] = useState<number | null>(null);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,34 +35,24 @@ export function ProductPage({ slug }: { slug: string }) {
   const [pincode, setPincode] = useState("");
   const [pinResult, setPinResult] = useState<string | null>(null);
   const [pinBusy, setPinBusy] = useState(false);
+  const errorMsg = error ? errText(error, "Product not found") : null;
 
   useEffect(() => {
-    let cancelled = false;
-    setProduct(null);
-    setError(null);
     setQty(1);
-    getProduct(slug)
-      .then((p) => {
-        if (cancelled) return;
-        setProduct(p);
-        recordView(p);
-        const firstActive = p.variants.find((v) => v.is_active) ?? p.variants[0];
-        setVariantId(firstActive?.id ?? null);
-        setActiveImage(img(p.primary_image));
-      })
-      .catch((e) => {
-        if (!cancelled) setError(errText(e, "Product not found"));
-      });
-    return () => {
-      cancelled = true;
-    };
   }, [slug]);
 
-  if (!user) return <SignInGate title="View product" text="Sign in to see details and add to cart." />;
-  if (error) {
+  useEffect(() => {
+    if (!product) return;
+    const firstActive = product.variants.find((v) => v.is_active) ?? product.variants[0];
+    setVariantId(firstActive?.id ?? null);
+    setActiveImage(img(product.primary_image));
+    recordView(product);
+  }, [product]);
+
+  if (errorMsg) {
     return (
       <div className="page">
-        <EmptyState icon="search" title="Product not found" text={error} />
+        <EmptyState icon="search" title="Product not found" text={errorMsg} />
       </div>
     );
   }
@@ -77,6 +68,12 @@ export function ProductPage({ slug }: { slug: string }) {
 
   const addToCart = async (thenCheckout = false) => {
     if (!variantId) return;
+    // Guests go to login first — the cart is a signed-in feature.
+    if (!user) {
+      toast.push("Sign in to add items to your cart");
+      navigate("login");
+      return;
+    }
     setBusy(true);
     try {
       await add(variantId, qty);
@@ -141,7 +138,7 @@ export function ProductPage({ slug }: { slug: string }) {
         {/* gallery */}
         <div className="pdp-gallery">
           <div className="product-thumb detail-thumb">
-            {activeImage ? <img src={activeImage} alt={product.name} /> : <Monogram text={product.name} />}
+            {activeImage ? <img src={activeImage} alt={product.name} decoding="async" /> : <Monogram text={product.name} />}
           </div>
           {images.length > 1 ? (
             <div className="thumb-row">
@@ -152,7 +149,7 @@ export function ProductPage({ slug }: { slug: string }) {
                   aria-label={`Show image: ${im.caption || "product"}`}
                   className={`thumb-btn ${img(im.image) === activeImage ? "active" : ""}`}
                 >
-                  <img src={img(im.image)!} alt={im.caption} />
+                  <img src={img(im.image)!} alt={im.caption} loading="lazy" decoding="async" />
                 </button>
               ))}
             </div>
@@ -314,21 +311,12 @@ export function ProductPage({ slug }: { slug: string }) {
 }
 
 function SimilarRail({ slug, categorySlug }: { slug: string; categorySlug: string | null }) {
-  const [items, setItems] = useState<Product[] | null>(null);
-  useEffect(() => {
-    if (!categorySlug) return;
-    let cancelled = false;
-    listProductsPaged({ category: categorySlug, page_size: "12" })
-      .then((d) => {
-        if (!cancelled) setItems(d.results.filter((p) => p.slug !== slug).slice(0, 10));
-      })
-      .catch(() => {
-        if (!cancelled) setItems([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [categorySlug, slug]);
+  const { data } = useQuery({
+    queryKey: ["products", "related", slug, categorySlug],
+    queryFn: () => listProductsPaged({ category: categorySlug!, page_size: "12" }),
+    enabled: !!categorySlug,
+  });
+  const items = data ? data.results.filter((p) => p.slug !== slug).slice(0, 10) : null;
 
   if (!categorySlug || !items || items.length === 0) return null;
   return (
@@ -353,7 +341,7 @@ function SimilarCard({ product }: { product: Product }) {
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
       <div className="product-thumb">
-        {image ? <img src={image} alt={product.name} loading="lazy" /> : <Monogram text={product.name} />}
+        {image ? <img src={image} alt={product.name} loading="lazy" decoding="async" /> : <Monogram text={product.name} />}
       </div>
       <div className="product-body">
         <div className="product-brand">{product.brand || ""}</div>
@@ -377,25 +365,17 @@ function SimilarCard({ product }: { product: Product }) {
 
 function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean }) {
   const toast = useToast();
-  const [reviews, setReviews] = useState<Review[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { data, error } = useQuery({
+    queryKey: ["reviews", slug],
+    queryFn: () => listReviews(slug, 1),
+  });
+  const reviews = data ? data.results : null;
+  const errorMsg = error ? errText(error, "Could not load reviews") : null;
   const [rating, setRating] = useState(5);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [posting, setPosting] = useState(false);
-
-  const load = () => {
-    listReviews(slug, 1)
-      .then((d) => setReviews(d.results))
-      .catch((e) => setError(errText(e, "Could not load reviews")));
-  };
-
-  useEffect(() => {
-    setReviews(null);
-    setError(null);
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
 
   const submit = async () => {
     setPosting(true);
@@ -405,7 +385,7 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
       setTitle("");
       setBody("");
       setRating(5);
-      load();
+      queryClient.invalidateQueries({ queryKey: ["reviews", slug] });
     } catch (e) {
       const status = (e as { status?: number }).status;
       toast.push(
@@ -439,8 +419,8 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
         <h2>Ratings &amp; Reviews</h2>
       </div>
 
-      {error ? (
-        <p className="muted">{error}</p>
+      {errorMsg ? (
+        <p className="muted">{errorMsg}</p>
       ) : !reviews ? (
         <Spinner />
       ) : (

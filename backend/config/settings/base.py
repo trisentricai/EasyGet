@@ -153,6 +153,8 @@ REST_FRAMEWORK = {
         "password_reset": "2/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "common.pagination.Max20PagePagination",
+    "PAGE_SIZE": 20,
     "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
 }
 

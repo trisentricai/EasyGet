@@ -13,7 +13,7 @@ from django.db.models import (
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
@@ -51,19 +51,20 @@ class ProductPagination(PageNumberPagination):
 
     page_size = 20
     page_size_query_param = "page_size"
-    max_page_size = 100
+    max_page_size = 20
 
 
 class ReviewPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
-    max_page_size = 50
+    max_page_size = 20
 
 
 class ProductBrandListView(generics.ListAPIView):
-    """GET /api/v1/products/brands/ — distinct non-empty brands (for filters)."""
+    """GET /api/v1/products/brands/ — distinct non-empty brands (for filters).
+    Public: guests browsing the catalog need the brand facet too."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def list(self, request, *args, **kwargs):
         brands = (
@@ -95,8 +96,11 @@ class ProductViewSet(ModelViewSet):
     pagination_class = ProductPagination
 
     def get_permissions(self):
+        # GET is public (marketplace-style guest browsing); the queryset
+        # below still hides unstocked/inactive merchant catalogs from
+        # non-staff. All writes stay authenticated.
         if self.request.method in {"GET", "HEAD", "OPTIONS"}:
-            return [IsAuthenticated()]
+            return [AllowAny()]
         if self.request.method == "POST":
             return [IsAuthenticated(), IsTenantWriter()]
         return [IsAuthenticated(), IsTenantObjectMember()]
@@ -216,10 +220,15 @@ class ProductViewSet(ModelViewSet):
 class ProductReviewListCreateView(generics.ListCreateAPIView):
     """GET/POST /api/v1/products/<slug>/reviews/ — Flipkart rules:
     approved reviews only, one per shopper per product, verified-purchase
-    badge derived from delivered orders server-side."""
+    badge derived from delivered orders server-side. Reading reviews is
+    public; posting one requires an account."""
 
-    permission_classes = [IsAuthenticated]
     pagination_class = ReviewPagination
+
+    def get_permissions(self):
+        if self.request.method in {"GET", "HEAD", "OPTIONS"}:
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.request.method == "POST":

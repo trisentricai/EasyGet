@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createProduct,
   deleteProduct,
@@ -6,7 +7,6 @@ import {
   listAllProducts,
   listCategories,
   updateProduct,
-  type Category,
   type Product,
 } from "../services/api";
 import { useToast } from "../context/ToastContext";
@@ -40,8 +40,7 @@ function toArray<T>(res: { results: T[] } | T[]): T[] {
 
 export function ProductsPage() {
   const { push } = useToast();
-  const [products, setProducts] = useState<Product[] | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [editing, setEditing] = useState<Product | null>(null);
@@ -50,15 +49,22 @@ export function ProductsPage() {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<Product | null>(null);
 
-  const load = useCallback(async () => {
-    const [p, c] = await Promise.all([listAllProducts(), listCategories()]);
-    setProducts(p);
-    setCategories(toArray(c));
-  }, []);
+  const productsQuery = useQuery({
+    queryKey: ["admin", "products"],
+    queryFn: () => listAllProducts(),
+  });
+  const categoriesQuery = useQuery({
+    queryKey: ["admin", "categories"],
+    queryFn: async () => toArray(await listCategories()),
+  });
+
+  const products = productsQuery.data ?? null;
+  const categories = categoriesQuery.data ?? [];
 
   useEffect(() => {
-    load().catch((e) => push(e?.message ?? "Failed to load products", "err"));
-  }, [load, push]);
+    const e = productsQuery.error ?? categoriesQuery.error;
+    if (e) push(e?.message ?? "Failed to load products", "err");
+  }, [productsQuery.error, categoriesQuery.error, push]);
 
   const categoryById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
@@ -114,7 +120,7 @@ export function ProductsPage() {
       }
       setCreating(false);
       setEditing(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
     } catch (e) {
       push(errText(e, "Save failed"), "err");
     } finally {
@@ -129,7 +135,7 @@ export function ProductsPage() {
       await deleteProduct(deleting.slug);
       push(`“${deleting.name}” deleted`);
       setDeleting(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
     } catch (e) {
       push(errText(e, "Delete failed"), "err");
       setDeleting(null);

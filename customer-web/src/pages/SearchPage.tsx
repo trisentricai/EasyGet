@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   errText,
   getSearchSuggestions,
   searchWithFallback,
-  type Product,
 } from "../services/api";
 import { CardSkeletonGrid, EmptyState, ProductCard, Section } from "../components/ui";
-import { Icon } from "../components/icons";
 import {
   TRENDING_SEARCHES,
   getRecentSearches,
@@ -15,52 +13,29 @@ import {
 } from "../utils/history";
 
 export function SearchPage({ initialQuery }: { initialQuery?: string }) {
-  const { user } = useAuth();
   const [q, setQ] = useState(initialQuery ?? "");
-  const [category, setCategory] = useState("");
   const [sort, setSort] = useState("relevance");
-  const [products, setProducts] = useState<Product[] | null>(null);
-  const [total, setTotal] = useState(0);
-  const [tookMs, setTookMs] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggest, setShowSuggest] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const debounceRef = useRef<number | null>(null);
+
+  const { data, error, isFetching, refetch } = useQuery({
+    queryKey: ["search", q, sort],
+    queryFn: () => searchWithFallback({ q, sort }),
+    placeholderData: keepPreviousData,
+  });
+  const products = data ? data.results : null;
+  const total = data ? data.total : 0;
+  const busy = isFetching;
+  const errorMsg = error ? errText(error, "Search failed") : null;
 
   useEffect(() => {
     if (initialQuery !== undefined && initialQuery !== q) setQ(initialQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
-  const runSearch = async (record = false) => {
-    if (!user) return;
-    setBusy(true);
-    setError(null);
-    try {
-      if (record) recordSearch(q);
-      const body: Record<string, unknown> = { q, sort, page: 1, page_size: 40 };
-      if (category) body.category = category;
-      const res = await searchWithFallback({ q, sort });
-      setProducts(res.results);
-      setTotal(res.total);
-      setTookMs(res.took_ms);
-    } catch (e) {
-      setError(errText(e, "Search failed"));
-      setProducts([]);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   useEffect(() => {
-    if (!user) return;
-    void runSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, q, category, sort]);
-
-  useEffect(() => {
-    if (!user || q.trim().length < 2) {
+    if (q.trim().length < 2) {
       setSuggestions([]);
       return;
     }
@@ -73,31 +48,14 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
-  }, [q, user]);
-
-  if (!user) {
-    return (
-      <div className="auth-wrap">
-        <div className="auth-card" style={{ textAlign: "center" }}>
-          <div style={{ display: "grid", placeItems: "center", margin: "10px 0 12px", color: "var(--primary)" }}>
-            <Icon name="lock" size={30} />
-          </div>
-          <h1>Search products</h1>
-          <p className="sub">Sign in to search the catalog.</p>
-          <button className="btn btn-block" onClick={() => (window.location.hash = "#/login")}>
-            Sign in / Create account
-          </button>
-        </div>
-      </div>
-    );
-  }
+  }, [q]);
 
   return (
     <div className="page">
       <div className="pagehead">
         <h1>Search</h1>
         <p className="muted">
-          {busy ? "Searching…" : products ? `${total} result${total === 1 ? "" : "s"}${tookMs ? ` · ${tookMs} ms` : ""}` : "Type to search the catalog"}
+          {busy ? "Searching…" : products ? `${total} result${total === 1 ? "" : "s"}` : "Type to search the catalog"}
         </p>
       </div>
 
@@ -116,7 +74,8 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               setShowSuggest(false);
-              void runSearch(true);
+              recordSearch(q);
+              void refetch();
             }
           }}
         />
@@ -162,8 +121,8 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
         ) : null}
       </div>
 
-      {error ? (
-        <EmptyState icon="warning" title="Search failed" text={error} />
+      {errorMsg ? (
+        <EmptyState icon="warning" title="Search failed" text={errorMsg} />
       ) : !products && !busy ? (
         <SearchStart
           onPick={(term) => {

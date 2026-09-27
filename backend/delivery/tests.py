@@ -126,7 +126,7 @@ class DeliveryTenancyTests(TestCase):
         self._assign(self.merchant_a)
         self.client.force_authenticate(user=self.agent)
         res = self.client.get("/api/v1/delivery/")
-        ids = [str(r["id"]) for r in res.data]
+        ids = [str(r["id"]) for r in res.data["results"]]
         a = DeliveryAssignment.objects.get(order=self.order_a)
         self.assertIn(str(a.id), ids)
 

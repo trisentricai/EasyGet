@@ -195,16 +195,16 @@ export function listProducts(params: Record<string, string> = {}) {
   );
 }
 
-/** Fetch every page (page_size=100, capped) — for internal tools like the
+/** Fetch every page (20/page — the server's max) — for internal tools like the
  *  products table and the storefront item picker that need the full catalog. */
 export async function listAllProducts(
   params: Record<string, string> = {},
-  maxPages = 10,
+  maxPages = 50,
 ): Promise<Product[]> {
   const out: Product[] = [];
   let page = 1;
   for (;;) {
-    const res = await listProducts({ ...params, page: String(page), page_size: "100" });
+    const res = await listProducts({ ...params, page: String(page), page_size: "20" });
     const items = Array.isArray(res) ? res : res.results;
     out.push(...items);
     const hasNext = !Array.isArray(res) && res.next;

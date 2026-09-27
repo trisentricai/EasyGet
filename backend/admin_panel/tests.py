@@ -150,10 +150,11 @@ class ReviewModerationTests(TestCase):
     def test_admin_sees_unapproved_filtered_list(self):
         res = self._list(approved="false")
         self.assertEqual(res.status_code, 200, res.data)
-        # No default DRF pagination: the list endpoint returns a bare array.
-        ids = [r["id"] for r in res.data]
+        # List endpoints are server-side paginated (max 20/page).
+        rows = res.data["results"]
+        ids = [r["id"] for r in rows]
         self.assertIn(self.review.id, ids)
-        row = next(r for r in res.data if r["id"] == self.review.id)
+        row = next(r for r in rows if r["id"] == self.review.id)
         self.assertEqual(row["product_slug"], self.product.slug)
         self.assertEqual(row["user_email"], "shopper@test.com")
         self.assertFalse(row["is_approved"])

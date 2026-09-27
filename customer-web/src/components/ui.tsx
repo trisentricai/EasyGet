@@ -119,7 +119,7 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
       <div className="product-thumb">
-        {image ? <img src={image} alt={product.name} loading="lazy" /> : <Monogram text={product.name} />}
+        {image ? <img src={image} alt={product.name} loading="lazy" decoding="async" /> : <Monogram text={product.name} />}
         {(product.discount_percent ?? 0) >= 50 ? (
           <span className="chip chip-deal">{product.discount_percent}% off</span>
         ) : product.is_featured ? (

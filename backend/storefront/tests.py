@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -37,6 +38,10 @@ def item_url(pk):
 
 class StorefrontTestBase(TestCase):
     def setUp(self):
+        # The render endpoints are cache-aside (1h) and signals invalidate via
+        # transaction.on_commit, which never fires under TestCase's rollback —
+        # clear so no test ever reads another test's cached payload.
+        cache.clear()
         self.client = APIClient()
         self.owner = User.objects.create_user(
             "owner@example.com", "strongpass123", is_email_verified=True
