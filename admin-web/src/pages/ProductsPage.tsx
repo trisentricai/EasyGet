@@ -379,7 +379,7 @@ export function ProductsPage() {
                 ))}
               </select>
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14 }}>
               <label>
                 MRP (₹)
                 <input

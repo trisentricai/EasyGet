@@ -1352,3 +1352,52 @@ img.img-fx-gray {
 img.img-fx-gray:hover {
   filter: grayscale(0);
 }
+
+/* ============ Responsive: tablets + phones (added for mobile rollout) ============ */
+@media (max-width: 900px) {
+  .topnav { gap: 12px; padding: 0 14px; }
+  .nav-actions { gap: 14px; }
+  .searchform { max-width: none; }
+  .hero-content { max-width: 100%; }
+  .carousel-arrow { width: 32px; height: 32px; }
+}
+
+@media (max-width: 640px) {
+  /* header: fit brand + actions in one row without overflow */
+  .topnav { gap: 8px; padding: 0 10px; }
+  .brand { gap: 7px; min-width: 0; }
+  .brand-mark { width: 32px; height: 32px; font-size: 13px; }
+  .brand-name { font-size: 14.5px; max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-actions { gap: 7px; }
+  .nav-theme { width: 30px; height: 30px; }
+  .nav-login { padding: 0 2px; min-width: 0; }
+  .nav-login b { font-size: 13.5px; display: block; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-login small { display: none; }
+  .nav-wish { padding: 0 4px; }
+  .nav-wish span { display: none; }
+  .nav-cart { padding: 0 2px; }
+  .nav-cart > span:last-child { display: none; }
+
+  /* hero / carousel: compact shopfront, no clipped content */
+  .hero { min-height: 190px; padding: 30px 20px 26px; border-radius: 12px; }
+  .hero-content h1 { font-size: clamp(23px, 7vw, 32px); }
+  .carousel { border-radius: 12px; }
+  .carousel-track { min-height: 205px; }
+  .carousel-arrow { width: 30px; height: 30px; }
+
+  /* sections */
+  .banner { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px 16px; }
+  .section-head { flex-wrap: wrap; }
+  .grid-categories { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+  .detail-title { font-size: 22px; }
+  .panel { padding: 16px; }
+  .footer-cols { grid-template-columns: 1fr 1fr; }
+  .footer-bar { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+
+@media (max-width: 380px) {
+  .brand-name { max-width: 74px; }
+  .nav-login b { max-width: 70px; }
+  .grid-categories { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+  .bottomnav a span { font-size: 10.5px; }
+}

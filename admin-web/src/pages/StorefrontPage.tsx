@@ -634,7 +634,7 @@ function SectionDesignModal({
             placeholder="Shown until real content is added"
           />
         </label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14 }}>
           <label>
             Columns
             <select className="input" value={columns} onChange={(e) => setColumns(Number(e.target.value))}>
