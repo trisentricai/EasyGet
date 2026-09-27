@@ -3,11 +3,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createProduct,
   deleteProduct,
+  deleteProductImage,
   errText,
+  getProduct,
   listAllProducts,
   listCategories,
+  mediaSrc,
+  setPrimaryProductImage,
   updateProduct,
+  uploadProductImage,
   type Product,
+  type ProductImage,
 } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import { Card, ConfirmDialog, EmptyState, Modal, Spinner } from "../components/ui";
@@ -48,6 +54,8 @@ export function ProductsPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<Product | null>(null);
+  const [images, setImages] = useState<ProductImage[]>([]);
+  const [imgBusy, setImgBusy] = useState(false);
 
   const productsQuery = useQuery({
     queryKey: ["admin", "products"],
@@ -73,11 +81,13 @@ export function ProductsPage() {
 
   function openCreate() {
     setDraft({ ...emptyDraft, category: categories[0]?.id ?? "" });
+    setImages([]);
     setCreating(true);
   }
 
   function openEdit(p: Product) {
     setEditing(p);
+    setImages([]);
     setDraft({
       name: p.name,
       category: p.category?.id ?? "",
@@ -88,6 +98,9 @@ export function ProductsPage() {
       is_active: p.is_active,
       is_featured: p.is_featured,
     });
+    getProduct(p.slug)
+      .then((detail) => setImages(detail.images ?? []))
+      .catch((e) => push(errText(e, "Couldn't load images"), "err"));
   }
 
   function buildBody() {
@@ -141,6 +154,59 @@ export function ProductsPage() {
       setDeleting(null);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function uploadImage(file: File) {
+    if (!editing) return;
+    setImgBusy(true);
+    try {
+      const img = await uploadProductImage(editing.slug, file);
+      setImages((list) => [...list, img]);
+      push("Image added");
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+    } catch (e) {
+      push(errText(e, "Upload failed"), "err");
+    } finally {
+      setImgBusy(false);
+    }
+  }
+
+  async function makePrimary(img: ProductImage) {
+    if (img.is_primary || imgBusy) return;
+    setImgBusy(true);
+    try {
+      await setPrimaryProductImage(img.id);
+      setImages((list) => list.map((i) => ({ ...i, is_primary: i.id === img.id })));
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+    } catch (e) {
+      push(errText(e, "Couldn't change primary"), "err");
+    } finally {
+      setImgBusy(false);
+    }
+  }
+
+  async function removeImage(img: ProductImage) {
+    if (imgBusy) return;
+    setImgBusy(true);
+    try {
+      await deleteProductImage(img.id);
+      setImages((list) => {
+        const next = list.filter((i) => i.id !== img.id);
+        if (img.is_primary && next.length) {
+          const first = [...next].sort(
+            (a, b) => a.sort_order - b.sort_order || a.id - b.id,
+          )[0];
+          return next.map((i) => ({ ...i, is_primary: i.id === first.id }));
+        }
+        return next;
+      });
+      push("Image removed");
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+    } catch (e) {
+      push(errText(e, "Remove failed"), "err");
+    } finally {
+      setImgBusy(false);
     }
   }
 
@@ -333,6 +399,76 @@ export function ProductsPage() {
                 Featured
               </label>
             </div>
+          </div>
+          <div style={{ marginTop: 18 }}>
+            <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+              Images
+            </div>
+            {!editing ? (
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                Save the product first, then edit it to add images.
+              </p>
+            ) : (
+              <>
+                <div className="prod-gallery">
+                  {images.map((img) => {
+                    const src = mediaSrc(img.image);
+                    return (
+                      <div
+                        key={img.id}
+                        className={`prod-img-tile ${img.is_primary ? "primary" : ""}`}
+                      >
+                        {src ? (
+                          <img src={src} alt="" decoding="async" />
+                        ) : (
+                          <div className="prod-img-empty">?</div>
+                        )}
+                        <div className="prod-img-overlay">
+                          <button
+                            type="button"
+                            title={img.is_primary ? "Primary image" : "Make primary"}
+                            onClick={() => makePrimary(img)}
+                            disabled={img.is_primary || imgBusy}
+                          >
+                            {img.is_primary ? "★" : "☆"}
+                          </button>
+                          <button
+                            type="button"
+                            title="Remove image"
+                            onClick={() => removeImage(img)}
+                            disabled={imgBusy}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {img.is_primary && <span className="prod-img-badge">Primary</span>}
+                      </div>
+                    );
+                  })}
+                  <label
+                    className={`prod-img-tile prod-img-add ${imgBusy ? "busy" : ""}`}
+                    title="Upload image"
+                  >
+                    {imgBusy ? "…" : "+"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      disabled={imgBusy}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        e.target.value = "";
+                        if (file) void uploadImage(file);
+                      }}
+                    />
+                  </label>
+                </div>
+                <p className="muted" style={{ margin: "8px 0 0", fontSize: 12.5 }}>
+                  Uploads are compressed to WebP (max 800px). The starred image is
+                  the one shown on product cards.
+                </p>
+              </>
+            )}
           </div>
           <div className="modal-actions">
             <button

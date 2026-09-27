@@ -10,6 +10,7 @@ import {
   listAllProducts,
   listCategories,
   listStores,
+  mediaSrc,
   reorderItems,
   reorderSections,
   setStoreSlug,
@@ -43,12 +44,6 @@ function itemLabel(item: SectionItem): string {
     item.category_name ||
     `#${item.id}`
   );
-}
-
-function mediaSrc(value: string | null | undefined): string | null {
-  if (!value) return null;
-  if (value.startsWith("http") || value.startsWith("data:")) return value;
-  return `http://127.0.0.1:8000${value.startsWith("/") ? "" : "/media/"}${value}`;
 }
 
 export function StorefrontPage() {

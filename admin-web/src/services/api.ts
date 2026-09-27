@@ -188,6 +188,16 @@ export type Product = {
   is_active: boolean;
 };
 
+export type ProductImage = {
+  id: number;
+  image: string | null;
+  caption: string;
+  is_primary: boolean;
+  sort_order: number;
+};
+
+export type ProductDetail = Product & { images: ProductImage[] };
+
 export function listProducts(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
   return api<{ count: number; next: string | null; results: Product[] } | Product[]>(
@@ -224,6 +234,34 @@ export async function updateProduct(slug: string, body: Record<string, unknown>)
 
 export async function deleteProduct(slug: string) {
   return api<void>(`/products/${slug}/`, { method: "DELETE" });
+}
+
+export async function getProduct(slug: string) {
+  return api<ProductDetail>(`/products/${slug}/`);
+}
+
+export async function uploadProductImage(slug: string, file: File) {
+  const fd = new FormData();
+  fd.append("image", file);
+  return api<ProductImage>(`/products/${slug}/images/`, { method: "POST", form: fd });
+}
+
+export async function setPrimaryProductImage(id: number) {
+  return api<ProductImage>(`/products/images/${id}/`, {
+    method: "PATCH",
+    body: { is_primary: true },
+  });
+}
+
+export async function deleteProductImage(id: number) {
+  return api<void>(`/products/images/${id}/`, { method: "DELETE" });
+}
+
+/** Resolve a stored media value (URL, /media/... or bare relative path). */
+export function mediaSrc(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (value.startsWith("http") || value.startsWith("data:")) return value;
+  return `http://127.0.0.1:8000${value.startsWith("/") ? "" : "/media/"}${value}`;
 }
 
 /* ---------------- Storefront ---------------- */

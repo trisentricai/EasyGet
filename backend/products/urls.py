@@ -24,5 +24,17 @@ urlpatterns = [
         views.ProductReviewListCreateView.as_view(),
         name="product-reviews",
     ),
+    # Gallery endpoints also sit ahead of the router; "images/<id>/" is
+    # multi-segment so it can never collide with a product slug lookup.
+    path(
+        "<slug:slug>/images/",
+        views.ProductImageListCreateView.as_view(),
+        name="product-images",
+    ),
+    path(
+        "images/<int:pk>/",
+        views.ProductImageDetailView.as_view(),
+        name="product-image-detail",
+    ),
     path("", include(router.urls)),
 ]

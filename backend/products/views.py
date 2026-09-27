@@ -5,12 +5,14 @@ from django.db.models import (
     ExpressionWrapper,
     F,
     FloatField,
+    Max,
     Min,
     OuterRef,
     Q,
     Subquery,
 )
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -20,9 +22,11 @@ from rest_framework.viewsets import ModelViewSet
 from tenants.permissions import IsTenantObjectMember, IsTenantWriter
 from tenants.services import resolve_tenant_for_create, user_tenant_ids
 
-from .models import Product, ProductReview, WishlistItem
+from .models import Product, ProductImage, ProductReview, WishlistItem
 from .serializers import (
     ProductDetailSerializer,
+    ProductImageListSerializer,
+    ProductImageWriteSerializer,
     ProductListSerializer,
     ProductWriteSerializer,
     ReviewCreateSerializer,
@@ -215,6 +219,121 @@ class ProductViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class ProductImageListCreateView(generics.ListCreateAPIView):
+    """GET (public) / POST /api/v1/products/<slug>/images/ — gallery uploads.
+
+    Multipart file in `image` (compressed to WebP 800px on save). New images
+    append to the end; the first upload becomes primary, and posting
+    `is_primary=true` demotes the rest. Writes require tenant membership on
+    the product (staff may manage platform products)."""
+
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    pagination_class = None
+
+    def get_permissions(self):
+        if self.request.method in {"GET", "HEAD", "OPTIONS"}:
+            return [AllowAny()]
+        # IsTenantObjectMember is enforced per-product in _get_product().
+        return [IsAuthenticated(), IsTenantWriter(), IsTenantObjectMember()]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return ProductImageWriteSerializer
+        return ProductImageListSerializer
+
+    def _get_product(self):
+        product = generics.get_object_or_404(
+            Product.objects.select_related("tenant"), slug=self.kwargs["slug"]
+        )
+        self.check_object_permissions(self.request, product)
+        return product
+
+    def get_queryset(self):
+        return ProductImage.objects.filter(
+            product__slug=self.kwargs["slug"]
+        ).order_by("sort_order", "id")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if "image" not in serializer.validated_data:
+            raise ValidationError({"image": "Attach an image file."})
+        product = self._get_product()
+        with transaction.atomic():
+            mine = ProductImage.objects.filter(product=product)
+            is_first = not mine.exists()
+            next_sort = (mine.aggregate(m=Max("sort_order"))["m"] or 0) + 1
+            wants_primary = serializer.validated_data.get("is_primary", False)
+            image = serializer.save(
+                product=product,
+                sort_order=next_sort,
+                is_primary=is_first or wants_primary,
+            )
+            if image.is_primary:
+                mine.exclude(pk=image.pk).update(is_primary=False)
+        return Response(
+            ProductImageListSerializer(image).data, status=status.HTTP_201_CREATED
+        )
+
+
+class ProductImageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET / PATCH / DELETE /api/v1/products/images/<id>/ — gallery management.
+
+    PATCH can replace the file (multipart) and/or update caption, is_primary
+    (demotes the rest) and sort_order. Deleting the primary promotes the
+    next image by sort order."""
+
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    queryset = ProductImage.objects.all()
+
+    def get_permissions(self):
+        if self.request.method in {"GET", "HEAD", "OPTIONS"}:
+            return [AllowAny()]
+        # IsTenantObjectMember is enforced against the owning product in
+        # get_object() (ProductImage itself carries no tenant).
+        return [IsAuthenticated(), IsTenantObjectMember()]
+
+    def get_serializer_class(self):
+        if self.request.method in {"PATCH", "PUT"}:
+            return ProductImageWriteSerializer
+        return ProductImageListSerializer
+
+    def get_object(self):
+        image = generics.get_object_or_404(
+            ProductImage.objects.select_related("product"), pk=self.kwargs["pk"]
+        )
+        # Tenant checks belong to the owning product (ProductImage has no
+        # tenant attribute of its own).
+        self.check_object_permissions(self.request, image.product)
+        return image
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        image = serializer.save()
+        if image.is_primary:
+            ProductImage.objects.filter(product=image.product).exclude(
+                pk=image.pk
+            ).update(is_primary=False)
+        return Response(ProductImageListSerializer(image).data)
+
+    def perform_destroy(self, instance):
+        product = instance.product
+        was_primary = instance.is_primary
+        instance.delete()
+        if was_primary:
+            nxt = (
+                ProductImage.objects.filter(product=product)
+                .order_by("sort_order", "id")
+                .first()
+            )
+            if nxt:
+                nxt.is_primary = True
+                nxt.save(update_fields=["is_primary"])
 
 
 class ProductReviewListCreateView(generics.ListCreateAPIView):

@@ -1,17 +1,27 @@
+import tempfile
 from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from categories.models import Category
 from inventory.models import StockItem
 from stores.models import Store
+from tenants.services import provision_tenant
 
-from .models import Product, ProductVariant
+from .models import Product, ProductImage, ProductVariant
 
 User = get_user_model()
+
+TINY_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDAT\x08\xd7c\xf8\xcf"
+    b"\xc0\x00\x00\x03\x01\x01\x00\x18\xdd\x8d\xb0\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+_TEST_MEDIA = tempfile.mkdtemp(prefix="eg-product-media-")
 
 
 class ProductModelTests(TestCase):
@@ -417,3 +427,149 @@ class ProductRatingSortAndOffersTests(TestCase):
         codes = [o["code"] for o in res.data["offers"]]
         self.assertIn("SAVE50", codes)
         self.assertIn("OTHERCAT", codes)
+
+
+@override_settings(MEDIA_ROOT=_TEST_MEDIA)
+class ProductImageEndpointTests(TestCase):
+    """Gallery upload endpoints: tenant perms, primary rotation, WebP."""
+
+    def setUp(self):
+        self.category = Category.objects.create(
+            name="Grocery", is_active=True, sort_order=0
+        )
+        self.merchant = User.objects.create_user(
+            "img-merchant@example.com", "strongpass123", is_email_verified=True
+        )
+        self.tenant = provision_tenant(self.merchant, "Acme Trading")
+        self.product = Product.objects.create(
+            name="Olive Oil 1L", category=self.category, is_active=True,
+            tenant=self.tenant,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.merchant)
+
+    def _file(self):
+        return SimpleUploadedFile("pic.png", TINY_PNG, content_type="image/png")
+
+    def _upload(self, slug=None):
+        return self.client.post(
+            f"/api/v1/products/{slug or self.product.slug}/images/",
+            {"image": self._file()},
+            format="multipart",
+        )
+
+    def test_guest_upload_rejected(self):
+        anon = APIClient()
+        res = anon.post(
+            f"/api/v1/products/{self.product.slug}/images/",
+            {"image": self._file()},
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, 401)
+
+    def test_upload_without_file_rejected(self):
+        res = self.client.post(
+            f"/api/v1/products/{self.product.slug}/images/", {}, format="multipart"
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_first_upload_becomes_primary_and_compressed(self):
+        res = self._upload()
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertTrue(res.data["is_primary"])
+        self.assertEqual(res.data["sort_order"], 1)
+        self.assertTrue(res.data["image"].startswith("/media/products/"))
+        self.assertTrue(res.data["image"].endswith(".webp"))
+
+    def test_product_detail_serializes_primary_image_as_url(self):
+        # Regression: ProductDetailSerializer auto-mapped primary_image to the
+        # model property (a ProductImage instance) → 500 in DRF's JSON encoder
+        # as soon as a product had images. Must be a URL string.
+        self._upload()
+        res = self.client.get(f"/api/v1/products/{self.product.slug}/")
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertIsInstance(res.data["primary_image"], str)
+        self.assertIn("/media/products/", res.data["primary_image"])
+        self.assertTrue(res.data["primary_image"].endswith(".webp"))
+        self.assertEqual(len(res.data["images"]), 1)
+        self.assertIn("/media/products/", res.data["images"][0]["image"])
+
+    def test_second_upload_keeps_first_primary(self):
+        first = self._upload().data
+        second = self._upload().data
+        self.assertTrue(first["is_primary"])
+        self.assertFalse(second["is_primary"])
+        self.assertEqual(second["sort_order"], 2)
+        listing = self.client.get(f"/api/v1/products/{self.product.slug}/images/")
+        self.assertEqual([i["id"] for i in listing.data], [first["id"], second["id"]])
+
+    def test_set_primary_demotes_others(self):
+        first = self._upload().data
+        second = self._upload().data
+        res = self.client.patch(
+            f"/api/v1/products/images/{second['id']}/",
+            {"is_primary": True},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertTrue(res.data["is_primary"])
+        first_row = ProductImage.objects.get(pk=first["id"])
+        self.assertFalse(first_row.is_primary)
+
+    def test_delete_primary_promotes_next(self):
+        first = self._upload().data
+        second = self._upload().data
+        res = self.client.delete(f"/api/v1/products/images/{first['id']}/")
+        self.assertEqual(res.status_code, 204)
+        second_row = ProductImage.objects.get(pk=second["id"])
+        self.assertTrue(second_row.is_primary)
+
+    def test_other_tenant_member_cannot_upload(self):
+        outsider = User.objects.create_user(
+            "outsider@example.com", "strongpass123", is_email_verified=True
+        )
+        provision_tenant(outsider, "Rival Goods")
+        client = APIClient()
+        client.force_authenticate(user=outsider)
+        res = client.post(
+            f"/api/v1/products/{self.product.slug}/images/",
+            {"image": self._file()},
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, 403)
+
+    def test_other_tenant_member_cannot_edit_or_delete(self):
+        mine = self._upload().data
+        outsider = User.objects.create_user(
+            "outsider2@example.com", "strongpass123", is_email_verified=True
+        )
+        provision_tenant(outsider, "Rival Goods 2")
+        client = APIClient()
+        client.force_authenticate(user=outsider)
+        patch = client.patch(
+            f"/api/v1/products/images/{mine['id']}/",
+            {"is_primary": True},
+            format="json",
+        )
+        self.assertEqual(patch.status_code, 403)
+        delete = client.delete(f"/api/v1/products/images/{mine['id']}/")
+        self.assertEqual(delete.status_code, 403)
+        self.assertTrue(ProductImage.objects.filter(pk=mine["id"]).exists())
+
+    def test_platform_product_requires_staff(self):
+        platform_product = Product.objects.create(
+            name="Platform Good", category=self.category, is_active=True, tenant=None
+        )
+        self.assertEqual(self._upload(platform_product.slug).status_code, 403)
+        staff = User.objects.create_user(
+            "catalog-admin@example.com", "strongpass123", is_staff=True,
+            is_email_verified=True,
+        )
+        admin_client = APIClient()
+        admin_client.force_authenticate(user=staff)
+        res = admin_client.post(
+            f"/api/v1/products/{platform_product.slug}/images/",
+            {"image": self._file()},
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, 201, res.data)

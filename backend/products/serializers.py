@@ -52,6 +52,23 @@ class VariantBriefSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+def _primary_image_url(obj):
+    # Use prefetched images cache (obj.images.all() hits prefetch, while
+    # .filter().first() would issue a new query per product on Supabase).
+    try:
+        imgs = list(obj.images.all())
+    except Exception:
+        return None
+    if not imgs:
+        return None
+    primary = next((i for i in imgs if getattr(i, "is_primary", False)), imgs[0])
+    img = getattr(primary, "image", None)
+    try:
+        return img.url if img else None
+    except Exception:
+        return str(img) if img else None
+
+
 class ProductListSerializer(serializers.ModelSerializer):
     category = CategoryBriefSerializer(read_only=True)
     discount_percent = serializers.SerializerMethodField()
@@ -101,21 +118,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         return 0
 
     def get_primary_image(self, obj):
-        # Use prefetched images cache (obj.images.all() hits prefetch, while
-        # .filter().first() would issue a new query per product on Supabase).
-        try:
-            imgs = list(obj.images.all())
-        except Exception:
-            return None
-        if not imgs:
-            return None
-        primary = next((i for i in imgs if getattr(i, "is_primary", False)), imgs[0])
-        img = getattr(primary, "image", None)
-        try:
-            return img.url if img else None
-        except Exception:
-            return str(img) if img else None
-
+        return _primary_image_url(obj)
 
     def get_rating_avg(self, obj):
         avg, _ = _review_stats(obj)
@@ -144,6 +147,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     images = ProductImageListSerializer(many=True, read_only=True)
     discount_percent = serializers.SerializerMethodField()
     base_price = serializers.SerializerMethodField()
+    primary_image = serializers.SerializerMethodField()
     rating_avg = serializers.SerializerMethodField()
     rating_count = serializers.SerializerMethodField()
     offers = serializers.SerializerMethodField()
@@ -179,6 +183,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     def get_discount_percent(self, obj):
         return obj.discount_percent
+
+    def get_primary_image(self, obj):
+        return _primary_image_url(obj)
 
     def get_rating_avg(self, obj):
         avg, _ = _review_stats(obj)

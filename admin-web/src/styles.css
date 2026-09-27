@@ -754,6 +754,102 @@ tbody tr:hover {
   font-size: 12px;
 }
 
+/* Product gallery (product editor modal) */
+.prod-gallery {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.prod-img-tile {
+  position: relative;
+  width: 108px;
+  height: 78px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.prod-img-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.prod-img-tile.primary {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 1px var(--c-primary);
+}
+
+.prod-img-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-faint);
+}
+
+.prod-img-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 4px;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.6));
+}
+
+.prod-img-overlay button {
+  border: none;
+  background: rgb(255 255 255 / 0.92);
+  color: #171923;
+  border-radius: 5px;
+  min-width: 24px;
+  height: 22px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.prod-img-overlay button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.prod-img-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--c-primary);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+.prod-img-add {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  color: var(--text-faint);
+  font-size: 26px;
+  font-weight: 300;
+  cursor: pointer;
+  transition: background-color var(--t-fast), color var(--t-fast);
+}
+
+.prod-img-add:hover {
+  background: var(--bg-hover);
+  color: var(--c-primary);
+}
+
+.prod-img-add.busy {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .section-board {
   display: grid;
   gap: 14px;
