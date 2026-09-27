@@ -126,6 +126,9 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 - Prefix terminal commands with `rtk` for token savings (see `~/.claude/CLAUDE.md`).
 - Anon `GET /api/v1/categories/` is Redis-cached 1h (`common/cache`, `categories` view) — goes stale after DB reseeds (returns old ids, e.g. `Grocery id:1` while Supabase has 6–15); invalidates only on Category `post_save`. Product create with a stale id 400s — verify ids against the DB (`manage.py shell`), not the cached list.
 - Live backend DB comes from repo-root `.env` (`DATABASE_URL` → Supabase); tests must override `$env:DATABASE_URL='sqlite:///db.sqlite3'`. Backend restart after any edit: `Start-Process .venv\Scripts\python.exe -ArgumentList 'backend\manage.py','runserver','0.0.0.0:8000','--noreload' -WorkingDirectory <repo>` (logs to `backend-dev.err.log`).
+- **Deploy = Render API + Netlify API via tokens in `$env:TEMP\opencode\` (never commit).** Render: creation-time `envVars` are dropped (PUT `/v1/services/{id}/env-vars` as `[{key,value}]`), branch field is `branch` (not `repoBranch`), no logs API (ask owner to paste dashboard logs), collectstatic needs the settings/requirements prep COMMITTED or start exits 1 (`ImproperlyConfigured: STATIC_ROOT`).
+- **Netlify gotchas:** `Compress-Archive` writes `assets\file.js` (backslash) entries → assets 404; rebuild zips with .NET `ZipFile.CreateEntryFromFile` + `rel.Replace('\','/')`. Zip deploys land unpublished (`state=ready`, site 404s) → publish with `POST /api/v1/deploys/{id}/restore` once state is `ready` (422 if not). Env vars are account-level: `POST /api/v1/accounts/{id}/env?site_id=...` (`/sites/{id}/env` → 404; `scopes` → 403 on free plan).
+- **gunicorn only runs on Render (Linux)** - on Windows dev it dies with `ModuleNotFoundError: fcntl`; use `runserver` locally.
 
 ## 10. Quick Reference Commands
 

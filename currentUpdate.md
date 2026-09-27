@@ -460,3 +460,23 @@ docker compose up -d postgres redis
 - DRF now defaults to **JWT + IsAuthenticated**: every view either uses it or explicitly opts out (`authenticate_classes=[]`/`AllowAny` on register/verify/login/logout/health).
 - Only `users.*` domain models exist post-Phase 2 — **do not** assume models for stores/products/orders until those phases land.
 - Never commit `.env` or secrets; `.env.*` except `.env.example` is gitignored.
+
+## 8. Production Deployment (2026-09-27)
+
+Stack (all free tier): **Render** (Django API) + **Netlify x2** (customer/admin SPAs) + **Supabase** Postgres (existing DB, reused) + **Upstash Redis** (broker/cache/result-backend via `rediss://`). Media: Supabase Storage **pending** (needs 5 S3 values from owner: bucket, endpoint, region, access key, secret key) - until then uploads live on Render's ephemeral disk.
+
+| Piece | URL / ID |
+|---|---|
+| API | `https://easyget-api.onrender.com` (health: `/api/v1/health/`) |
+| Customer web | `https://easyget-customer.netlify.app` (`easyget` subdomain was taken) |
+| Admin web | `https://easyget-admin.netlify.app` |
+| Render service | `srv-dasj3l60tbcc73fl0520` (`easyget-api`, region singapore, plan free, branch `fix/flutter-web-and-ordering`, autoDeploy on) |
+| Netlify customer site | `63400d3a-c504-46d9-a510-5a734145c96d` |
+| Netlify admin site | `f5eb0c7a-eaa2-4ca7-a461-e7205986c217` |
+
+- **Start command:** `python backend/manage.py migrate --noinput && python backend/manage.py collectstatic --noinput && cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120`; build: `pip install -r requirements.txt`.
+- **9 Render env vars** (values live in Render dashboard, never in git): `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CORS_ALLOWED_ORIGINS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`.
+- **SPAs bake the API URL at build time:** build with `VITE_API_URL=https://easyget-api.onrender.com`; also set as a site env var for future connected builds.
+- **Verified live:** health 200, products/categories/PDP 200 on live Supabase, `Access-Control-Allow-Origin` echoes both Netlify origins, admin `POST /api/v1/auth/login/` 200 with tokens, both sites serve assets with the baked URL, local/remote payload parity.
+- Deploy-prep commit `767cc9f` (settings STATIC_ROOT/STORAGES/whitenoise/proxy/CSRF + gunicorn/whitenoise/storages requirements + `ORIGIN` in both `api.ts`) is what makes Render boot - it was initially uncommitted and the deploy died on `ImproperlyConfigured: STATIC_ROOT`.
+- No celery worker on Render free (scheduled tasks idle); Render cold starts ~50s; rotate demo creds + enable push protection before real traffic.
