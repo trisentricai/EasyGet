@@ -1,13 +1,28 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-27
-**Phase in progress:** **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Phase in progress:** **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — Designer hero image + theme tabs, customer dark mode, infinite scroll (2026-09-27)
+
+**Goal hit:** user work packet — **Bug 1** Hero Banner image upload in the Storefront Designer + new sections visibly appended & scrolled into view; **Bug 2** Store Theme moved out of the overlaying side panel into its own tab; **Task A** customer-web dark mode (header ☀️/🌙 toggle, CSS variables, localStorage + `prefers-color-scheme`, ~200ms color transition); **Task B** BrowsePage infinite scroll with conditional Load More. Plus an unplanned **media-serving fix** (uploads had no `MEDIA_*` settings, saved cwd-relative, and always 404'd). Commit **`a079dcd`**. **Backend 252/252 green (1 skipped); both builds green; live multipart upload → GET 200 `image/webp`.**
+
+**What changed:**
+1. **Designer tabs** (admin `StorefrontPage.tsx` + `styles.css`) — `Sections | Store theme` tab bar replaces the `.sf-layout` two-column grid; board and theme card each own a full-width view (overlay gone); the add-section dropdown already POSTed + appended — it now also flips to the Sections tab and smooth-scrolls the new row into view (appended at the bottom of long lists was the "nothing happened" illusion); `.sf-layout` CSS removed, `.sf-tabs` added.
+2. **Hero banner image** — `SectionDesignModal` gains a Banner image block for `HERO` sections (thumbnail preview via `mediaSrc`, Upload/Replace/Remove). Upload is **immediate**: multipart PATCH through `updateSection(id, FormData)` (api.ts now routes `FormData` bodies to the existing `form:` path); Remove = JSON `{image:null}`; `onImageChange` keeps both the `sections` list and `editSection` in sync; `StoreSection.image: string | null` typed. URL-input rejected: DRF `ImageField` only accepts files.
+3. **Dark mode (customer-web)** — no-flash inline script in `index.html` (localStorage `eg-theme` → else `prefers-color-scheme`), header `.nav-theme` Sun/Moon toggle (inline SVG) with a system-preference listener that stays live until the first explicit choice; `html[data-theme="dark"]` palette uses `!important` so the merchant's inline `--bg` (store theme) can't win, plus `color-scheme: dark`; theme-switch-only `data-theme-transition` attribute gives a 200ms background/border/color/fill transition (skipped under `prefers-reduced-motion`); light-only hardcoded colors (`#3c3c3c`, `#fff` mixes, `#f2f2f2`, `#eaeaea`, `#d9d9d9`, toast/btn-dark text…) converted to vars (`--warn-ink` added for the pending chip), so both themes are token-driven.
+4. **Infinite scroll (BrowsePage)** — 1px sentinel + `IntersectionObserver` (`rootMargin` 200px) marks the bottom zone; an effect auto-fetches while in view, gated on `data && hasNextPage && !isFetchingNextPage` (React Query dedupes in-flight pages); the Load More button renders only when `hasNextPage && !nearBottom` (visible mid/upper page, hidden at the bottom where auto-load kicks in, gone when exhausted); label keeps the `(N left)` count + `Loading…` state.
+5. **Media serving (backend)** — `MEDIA_URL="/media/"` + `MEDIA_ROOT=BASE_DIR/"media"`, DEBUG-only `static(MEDIA_URL, …)` route in `config/urls.py`, and `mimetypes.add_type("image/webp", …)` (Windows registry lacks `.webp` → served `application/octet-stream` before). With no MEDIA settings, uploads had been landing cwd-relative under `backend/storefront/…` and every image URL 404'd (0 product/section images existed, so it was invisible until now).
+
+**Verification:** suite **252/252 OK (1 skipped)** after the settings/urls change; `tsc --noEmit && vite build` green for both SPAs; live smoke: section create 201 (auto position), multipart image PATCH 200 → `/media/storefront/sections/*.webp` → **GET 200 `image/webp`**, `{image:null}` clear 200, delete 204, both SPAs 200 (customer serves the `eg-theme` boot script). Smoke media files cleaned up.
+
+**Known open edges:** no frontend test runner (UI gated on builds + API smoke — a visual pass on the dark palette is still worthwhile); admin-web already has its own `ThemeContext` (login page) — a header toggle there is a possible follow-up; section delete leaves the media file on disk (Django default, no orphan sweeper yet); images still use local disk — Supabase/object storage remains a future move.
 
 ## 0. LATEST — Perf batch: indexes/cache/search, pagination ≤20, Supabase RLS, React Query (2026-09-27)
 
