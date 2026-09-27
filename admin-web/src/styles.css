@@ -721,24 +721,37 @@ tbody tr:hover {
 
 /* ============================ Storefront editor ============================ */
 
-/* Board + theme panel. minmax(0, 1fr) lets the board shrink instead of
-   forcing the page wider than the viewport (which used to squash the
-   sidebar and cause page-level horizontal scroll). */
-.sf-layout {
+/* Sections | Store theme tabs — the theme editor gets its own full-width
+   view instead of sitting beside (and overlaying) the section board. */
+.sf-tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* Hero banner image row (design modal) */
+.sf-img-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sf-img-preview {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.sf-img-empty {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 18px;
-  align-items: start;
-}
-
-.sf-layout > * {
-  min-width: 0;
-}
-
-@media (max-width: 1100px) {
-  .sf-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  place-items: center;
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+  font-size: 12px;
 }
 
 .section-board {

@@ -45,6 +45,12 @@ function itemLabel(item: SectionItem): string {
   );
 }
 
+function mediaSrc(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (value.startsWith("http") || value.startsWith("data:")) return value;
+  return `http://127.0.0.1:8000${value.startsWith("/") ? "" : "/media/"}${value}`;
+}
+
 export function StorefrontPage() {
   const { push } = useToast();
   const [stores, setStores] = useState<
@@ -58,6 +64,8 @@ export function StorefrontPage() {
   const [editSection, setEditSection] = useState<StoreSection | null>(null);
   const [deleting, setDeleting] = useState<StoreSection | null>(null);
   const [addItemFor, setAddItemFor] = useState<StoreSection | null>(null);
+  const [tab, setTab] = useState<"sections" | "theme">("sections");
+  const justAddedRef = useRef<number | null>(null);
 
   const resolvedInitial = useRef(false);
 
@@ -177,6 +185,24 @@ export function StorefrontPage() {
     }
   }
 
+  async function applySectionImage(id: number, file: File | null) {
+    try {
+      let updated: StoreSection;
+      if (file) {
+        const fd = new FormData();
+        fd.append("image", file);
+        updated = await updateSection(id, fd);
+      } else {
+        updated = await updateSection(id, { image: null });
+      }
+      setSections((list) => (list ?? []).map((s) => (s.id === id ? updated : s)));
+      setEditSection(updated);
+      push(file ? "Banner image saved" : "Banner image removed");
+    } catch (e) {
+      push(errText(e, "Image save failed"), "err");
+    }
+  }
+
   async function addSection(type: string) {
     try {
       const created = await createSection(slug, {
@@ -185,11 +211,23 @@ export function StorefrontPage() {
         config: { columns: 4, size: "md", placeholder: "Edit me from the dashboard" },
       });
       setSections((list) => [...(list ?? []), created]);
+      // Immediately show the board so the new block is visible, then scroll
+      // it into view — appended sections land at the bottom of long lists.
+      setTab("sections");
+      justAddedRef.current = created.id;
       push(`${TYPE_META[type]?.label ?? type} added to the bottom — drag to place it`);
     } catch (e) {
       push(errText(e, "Create failed"), "err");
     }
   }
+
+  // Scroll a just-added section into view after the board re-renders.
+  useEffect(() => {
+    if (justAddedRef.current === null) return;
+    const el = document.querySelector(".section-board .card:last-child");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    justAddedRef.current = null;
+  }, [sections]);
 
   async function confirmDeleteSection() {
     if (!deleting) return;
@@ -297,8 +335,28 @@ export function StorefrontPage() {
         </select>
       </div>
 
-      <div className="sf-layout">
-        {/* -------- board -------- */}
+      <div className="sf-tabs" role="tablist" aria-label="Designer views">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "sections"}
+          className={`effect-pill ${tab === "sections" ? "on" : ""}`}
+          onClick={() => setTab("sections")}
+        >
+          🧻 Sections
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "theme"}
+          className={`effect-pill ${tab === "theme" ? "on" : ""}`}
+          onClick={() => setTab("theme")}
+        >
+          🎨 Store theme
+        </button>
+      </div>
+
+      {tab === "sections" ? (
         <div className="section-board">
           {sections.length === 0 && (
             <Card>
@@ -415,8 +473,7 @@ export function StorefrontPage() {
             </Card>
           ))}
         </div>
-
-        {/* -------- theme panel -------- */}
+      ) : (
         <Card>
           <h3 style={{ marginTop: 0 }}>🎨 Store theme</h3>
           <p className="muted" style={{ marginBottom: 14 }}>
@@ -470,7 +527,7 @@ export function StorefrontPage() {
             </label>
           </div>
         </Card>
-      </div>
+      )}
 
       {/* -------- section design modal -------- */}
       {editSection && (
@@ -478,6 +535,7 @@ export function StorefrontPage() {
           section={editSection}
           onClose={() => setEditSection(null)}
           onSave={(body) => saveSection(editSection.id, body)}
+          onImageChange={(file) => applySectionImage(editSection.id, file)}
         />
       )}
 
@@ -517,10 +575,12 @@ function SectionDesignModal({
   section,
   onClose,
   onSave,
+  onImageChange,
 }: {
   section: StoreSection;
   onClose: () => void;
   onSave: (body: Record<string, unknown>) => void;
+  onImageChange: (file: File | null) => Promise<void>;
 }) {
   const cfg = section.config ?? {};
   const [title, setTitle] = useState(section.title);
@@ -528,6 +588,8 @@ function SectionDesignModal({
   const [placeholder, setPlaceholder] = useState(String(cfg.placeholder ?? ""));
   const [columns, setColumns] = useState(Number(cfg.columns ?? 4));
   const [size, setSize] = useState<"sm" | "md" | "lg">((cfg.size as "sm" | "md" | "lg") ?? "md");
+  const [imgBusy, setImgBusy] = useState(false);
+  const preview = mediaSrc(section.image);
   const [effects, setEffects] = useState<string[]>(
     Array.isArray(cfg.effects) ? [] : Object.keys(cfg.effects ?? {}).filter((k) => (cfg.effects as Record<string, unknown>)[k]),
   );
@@ -588,6 +650,51 @@ function SectionDesignModal({
             </select>
           </label>
         </div>
+        {section.section_type === "HERO" && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+              Banner image
+            </div>
+            <div className="sf-img-row">
+              {preview ? (
+                <img className="sf-img-preview" src={preview} alt="Banner preview" />
+              ) : (
+                <div className="sf-img-preview sf-img-empty">No image</div>
+              )}
+              <label className="btn btn-sm btn-ghost" style={{ cursor: "pointer" }}>
+                {imgBusy ? "Uploading…" : preview ? "Replace image" : "Upload image"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  disabled={imgBusy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    e.target.value = "";
+                    if (!file) return;
+                    setImgBusy(true);
+                    void onImageChange(file).finally(() => setImgBusy(false));
+                  }}
+                />
+              </label>
+              {preview && !imgBusy && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger"
+                  onClick={() => {
+                    setImgBusy(true);
+                    void onImageChange(null).finally(() => setImgBusy(false));
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <p className="muted" style={{ margin: "8px 0 0", fontSize: 12.5 }}>
+              Saves immediately — shown behind the hero text on the storefront.
+            </p>
+          </div>
+        )}
         <div>
           <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
             Effects

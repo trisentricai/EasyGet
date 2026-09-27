@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -70,7 +70,7 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   const params = baseParams();
   const [total, setTotal] = useState(0);
 
-  const { data, error, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
+  const { data, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
     queryKey: ["products", "browse", params, user?.id ?? null],
     queryFn: ({ pageParam }) => listProductsPaged({ ...params, page: String(pageParam) }),
     initialPageParam: 1,
@@ -81,6 +81,28 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   const dataTotal = data ? data.pages[data.pages.length - 1].count : null;
   if (dataTotal !== null && dataTotal !== total) setTotal(dataTotal);
   const errorMsg = error ? errText(error) : null;
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [nearBottom, setNearBottom] = useState(false);
+
+  // Observe a 1px sentinel just below the grid; rootMargin pre-fetches
+  // when the user is within ~200px of the bottom.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => setNearBottom(entry.isIntersecting), {
+      rootMargin: "0px 0px 200px 0px",
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage]);
+
+  // Auto-fetch while the sentinel stays in view; isFetchingNextPage is the
+  // loading guard (React Query also dedupes in-flight page fetches).
+  useEffect(() => {
+    if (!data || !nearBottom || !hasNextPage || isFetchingNextPage) return;
+    void fetchNextPage();
+  }, [data, nearBottom, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   function loadMore() {
     if (isFetchingNextPage) return;
@@ -244,7 +266,8 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
                   <ProductCard key={p.id} product={p} />
                 ))}
               </div>
-              {products.length < total && (
+              {hasNextPage && <div ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />}
+              {hasNextPage && !nearBottom && (
                 <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
                   <button className="btn" onClick={loadMore} disabled={isFetchingNextPage}>
                     {isFetchingNextPage ? "Loading…" : `Load more (${total - products.length} left)`}

@@ -13,6 +13,7 @@
   --surface: #ffffff;
   --ink: #212121;
   --muted: #6b7280;
+  --warn-ink: #7a5800;
   --border: #e0e0e0;
   --danger: #d32f2f;
   --ok: #388e3c; /* savings green — shell-owned */
@@ -24,6 +25,29 @@
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.07);
   --shadow-hi: 0 2px 6px rgb(0 0 0 / 0.1), 0 10px 26px rgb(0 0 0 / 0.12);
   --nav-h: 58px;
+}
+
+/* ---------- Dark mode (data-theme set by the header toggle / OS pref) ---------- */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  /* !important so the merchant's inline --bg (store theme) can't win */
+  --bg: #14161a !important;
+  --surface: #1d2026 !important;
+  --ink: #edf0f5 !important;
+  --muted: #9aa4b2 !important;
+  --warn-ink: #ffcf66 !important;
+  --border: #30343d !important;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px rgb(0 0 0 / 0.4) !important;
+  --shadow-hi: 0 2px 6px rgb(0 0 0 / 0.55), 0 10px 26px rgb(0 0 0 / 0.5) !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme-transition] *,
+  html[data-theme-transition] *::before,
+  html[data-theme-transition] *::after {
+    transition: background-color 200ms ease, border-color 200ms ease,
+      color 200ms ease, fill 200ms ease !important;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -142,6 +166,21 @@ button { font-family: inherit; }
   margin-left: auto;
   flex-shrink: 0;
 }
+.nav-theme {
+  align-self: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgb(255 255 255 / 0.12);
+  border: 1px solid rgb(255 255 255 / 0.35);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.nav-theme:hover { background: rgb(255 255 255 / 0.24); }
 .nav-login {
   display: flex;
   flex-direction: column;
@@ -329,7 +368,7 @@ button { font-family: inherit; }
 .btn-danger { background: var(--danger); }
 .btn-block { width: 100%; }
 .btn-sm { padding: 7px 12px; font-size: 13px; border-radius: 8px; }
-.btn-dark { background: var(--ink); color: #fff; }
+.btn-dark { background: var(--ink); color: var(--surface); }
 
 /* ---------- Layout ---------- */
 .page { max-width: 1280px; margin: 0 auto; padding: 22px 20px 60px; }
@@ -356,7 +395,7 @@ button { font-family: inherit; }
   align-items: center;
   padding: 40px 36px 36px;
   background: var(--ink);
-  color: #fdfdfb;
+  color: var(--surface);
   box-shadow: var(--shadow);
 }
 /* awning stripe along the top edge — scalloped, from the store's two colours */
@@ -466,7 +505,7 @@ button { font-family: inherit; }
   background: var(--surface);
   display: grid;
   place-items: center;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--border);
 }
 .product-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .product-thumb .ph {
@@ -535,7 +574,7 @@ button { font-family: inherit; }
   height: 30px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: rgb(255 255 255 / 0.92);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   color: var(--muted);
   display: grid;
   place-items: center;
@@ -596,10 +635,10 @@ button { font-family: inherit; }
 }
 .chip-featured { position: absolute; top: 8px; left: 8px; background: var(--primary); color: #fff; }
 .chip-deal { position: absolute; top: 8px; left: 8px; background: var(--danger); color: #fff; }
-.chip-pending { background: color-mix(in srgb, var(--secondary) 25%, #fff); color: #7a5800; }
-.chip-ok { background: color-mix(in srgb, var(--ok) 15%, #fff); color: var(--ok); }
-.chip-err { background: color-mix(in srgb, var(--danger) 12%, #fff); color: var(--danger); }
-.chip-info { background: color-mix(in srgb, var(--primary) 12%, #fff); color: var(--primary); }
+.chip-pending { background: color-mix(in srgb, var(--secondary) 25%, var(--surface)); color: var(--warn-ink); }
+.chip-ok { background: color-mix(in srgb, var(--ok) 15%, var(--surface)); color: var(--ok); }
+.chip-err { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); color: var(--danger); }
+.chip-info { background: color-mix(in srgb, var(--primary) 12%, var(--surface)); color: var(--primary); }
 
 /* ---------- Rich text / gallery ---------- */
 .richtext { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; font-size: 14.5px; line-height: 1.7; }
@@ -652,8 +691,8 @@ button { font-family: inherit; }
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); background: var(--surface); }
 .form-actions { display: flex; gap: 10px; margin-top: 16px; align-items: center; }
-.error-box { background: color-mix(in srgb, var(--danger) 8%, #fff); border: 1px solid color-mix(in srgb, var(--danger) 30%, #fff); color: var(--danger); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 12px 0; }
-.ok-box { background: color-mix(in srgb, var(--ok) 8%, #fff); border: 1px solid color-mix(in srgb, var(--ok) 30%, #fff); color: var(--ok); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 12px 0; }
+.error-box { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--surface)); color: var(--danger); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 12px 0; }
+.ok-box { background: color-mix(in srgb, var(--ok) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--ok) 30%, var(--surface)); color: var(--ok); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin: 12px 0; }
 
 /* ---------- Auth screen ---------- */
 .auth-wrap { min-height: calc(100vh - var(--nav-h)); display: grid; place-items: center; padding: 30px 16px; }
@@ -982,14 +1021,14 @@ button { font-family: inherit; }
   height: 36px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: rgb(255 255 255 / 0.94);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
   color: var(--ink);
   display: grid;
   place-items: center;
   cursor: pointer;
   box-shadow: var(--shadow);
 }
-.carousel-arrow:hover { background: #fff; color: var(--primary); }
+.carousel-arrow:hover { background: var(--surface); color: var(--primary); }
 .carousel-arrow.prev { left: 10px; }
 .carousel-arrow.next { right: 10px; }
 
@@ -999,7 +1038,7 @@ button { font-family: inherit; }
 .detail-thumb { aspect-ratio: 1 / 1; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; }
 .detail-thumb .monogram { font-size: 64px; }
 .detail-title { margin: 8px 0 6px; font-size: 20px; font-weight: 500; line-height: 1.4; letter-spacing: -0.01em; }
-.detail-desc { margin: 18px 0 0; line-height: 1.7; font-size: 14px; max-width: 64ch; color: #3c3c3c; }
+.detail-desc { margin: 18px 0 0; line-height: 1.7; font-size: 14px; max-width: 64ch; color: var(--ink); }
 .detail-option-label { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
 .thumb-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .thumb-btn { width: 56px; height: 56px; padding: 0; border-radius: 6px; overflow: hidden; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; }
@@ -1030,7 +1069,7 @@ button { font-family: inherit; }
   font-size: 13px;
   padding: 7px 0;
   border-bottom: 1px dashed var(--border);
-  color: #3c3c3c;
+  color: var(--ink);
 }
 .offer-chip:last-child { border-bottom: none; }
 .offer-chip b { color: var(--ink); }
@@ -1099,7 +1138,7 @@ button { font-family: inherit; }
 .btn-buy:disabled, .btn-cart:disabled { opacity: 0.55; cursor: not-allowed; }
 .seller-box { border-top: 1px solid var(--border); padding-top: 12px; font-size: 13px; }
 .seller-box b { font-size: 13.5px; }
-.pdp-highlights { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13.5px; color: #3c3c3c; }
+.pdp-highlights { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13.5px; color: var(--ink); }
 .pdp-highlights li { padding: 3px 0 3px 20px; position: relative; }
 .pdp-highlights li::before { content: ""; position: absolute; left: 4px; top: 9px; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
 
@@ -1111,20 +1150,20 @@ button { font-family: inherit; }
 .ratings-big .outof { font-size: 13px; color: var(--muted); margin-top: 4px; }
 .ratings-bars { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 5px; }
 .ratings-bar { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--muted); }
-.ratings-bar .track { flex: 1; height: 7px; border-radius: 999px; background: #eaeaea; overflow: hidden; }
+.ratings-bar .track { flex: 1; height: 7px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .ratings-bar .fill { height: 100%; background: var(--savings); border-radius: 999px; transition: width 0.4s ease; }
 .review-card { padding: 16px 0; border-bottom: 1px dashed var(--border); }
 .review-card:last-child { border-bottom: none; }
 .review-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .review-who { font-weight: 700; font-size: 13.5px; }
 .review-when { color: var(--muted); font-size: 12px; }
-.verified-badge { font-size: 11px; font-weight: 700; color: var(--savings); border: 1px solid color-mix(in srgb, var(--savings) 40%, #fff); background: color-mix(in srgb, var(--savings) 8%, #fff); border-radius: 3px; padding: 1.5px 7px; }
+.verified-badge { font-size: 11px; font-weight: 700; color: var(--savings); border: 1px solid color-mix(in srgb, var(--savings) 40%, var(--surface)); background: color-mix(in srgb, var(--savings) 8%, var(--surface)); border-radius: 3px; padding: 1.5px 7px; }
 .review-title { margin: 8px 0 4px; font-weight: 700; font-size: 14px; }
-.review-body { margin: 0; font-size: 13.5px; line-height: 1.6; color: #3c3c3c; }
+.review-body { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink); }
 .review-form { background: color-mix(in srgb, var(--primary) 4%, var(--surface)); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-top: 18px; }
 .review-form h3 { margin: 0 0 12px; font-size: 15px; }
 .star-picker { display: flex; gap: 5px; margin-bottom: 12px; }
-.star-picker button { border: none; background: none; cursor: pointer; padding: 2px; color: #d9d9d9; line-height: 0; }
+.star-picker button { border: none; background: none; cursor: pointer; padding: 2px; color: var(--border); line-height: 0; }
 .star-picker button.on { color: #ffb300; }
 .star-picker button.on svg { fill: currentColor; }
 
@@ -1153,7 +1192,7 @@ button { font-family: inherit; }
   font-size: 13.5px;
   cursor: pointer;
   padding: 2.5px 0;
-  color: #3c3c3c;
+  color: var(--ink);
 }
 .filter-opt:hover { color: var(--primary); }
 .filter-opt input { accent-color: var(--primary); width: 15px; height: 15px; margin: 0; }

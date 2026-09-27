@@ -25,6 +25,16 @@ const queryClient = new QueryClient({
   },
 });
 
+const THEME_KEY = "eg-theme";
+type ThemeMode = "light" | "dark";
+
+function applyTheme(next: ThemeMode) {
+  const root = document.documentElement;
+  root.setAttribute("data-theme-transition", "");
+  root.dataset.theme = next;
+  window.setTimeout(() => root.removeAttribute("data-theme-transition"), 260);
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -51,6 +61,34 @@ function Shell() {
   // Routes that show personal data — guests are sent to login before
   // anything renders (no cached-viewing window).
   const personal = ["cart", "checkout", "orders", "order", "account", "wishlist"].includes(route.name);
+
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() =>
+    document.documentElement.dataset.theme === "dark" ? "dark" : "light",
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    if (!mq) return;
+    const onSys = (e: MediaQueryListEvent) => {
+      if (localStorage.getItem(THEME_KEY)) return;
+      const next: ThemeMode = e.matches ? "dark" : "light";
+      applyTheme(next);
+      setThemeMode(next);
+    };
+    mq.addEventListener("change", onSys);
+    return () => mq.removeEventListener("change", onSys);
+  }, []);
+
+  const toggleTheme = () => {
+    const next: ThemeMode = themeMode === "dark" ? "light" : "dark";
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch {
+      /* storage unavailable — theme just won't persist */
+    }
+    applyTheme(next);
+    setThemeMode(next);
+  };
 
   useEffect(() => {
     if (ready && !user && personal) navigate("login", { replace: true });
@@ -148,6 +186,16 @@ function Shell() {
         </form>
 
         <div className="nav-actions">
+          <button
+            className="nav-theme"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={themeMode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-pressed={themeMode === "dark"}
+            title={themeMode === "dark" ? "Light mode" : "Dark mode"}
+          >
+            {themeMode === "dark" ? <MoonIcon /> : <SunIcon />}
+          </button>
           {!ready ? null : user ? (
             <a className="nav-login" href={href("account")}>
               <b>{(user.first_name || user.email.split("@")[0])}</b>
@@ -274,6 +322,23 @@ function Shell() {
 function CartBubble({ count }: { count: number }) {
   const ref = usePopOnChange(count);
   return <span className="bubble" ref={ref}>{count > 99 ? "99+" : count}</span>;
+}
+
+function SunIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+    </svg>
+  );
 }
 
 /**

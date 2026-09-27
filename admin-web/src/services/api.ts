@@ -255,6 +255,7 @@ export type StoreSection = {
   config: { columns?: number; size?: "sm" | "md" | "lg"; effects?: Record<string, unknown>; placeholder?: string } & Record<string, unknown>;
   position: number;
   is_active: boolean;
+  image: string | null;
   items: SectionItem[];
 };
 
@@ -285,8 +286,10 @@ export const getSections = (slug: string) => api<StoreSection[]>(`/storefront/${
 export const createSection = (slug: string, body: Record<string, unknown>) =>
   api<StoreSection>(`/storefront/${slug}/sections/`, { method: "POST", body });
 
-export const updateSection = (id: number, body: Record<string, unknown>) =>
-  api<StoreSection>(`/storefront/sections/${id}/`, { method: "PATCH", body });
+export const updateSection = (id: number, body: Record<string, unknown> | FormData) =>
+  body instanceof FormData
+    ? api<StoreSection>(`/storefront/sections/${id}/`, { method: "PATCH", form: body })
+    : api<StoreSection>(`/storefront/sections/${id}/`, { method: "PATCH", body });
 
 export const deleteSection = (id: number) =>
   api<void>(`/storefront/sections/${id}/`, { method: "DELETE" });
