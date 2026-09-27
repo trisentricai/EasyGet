@@ -1,13 +1,27 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-09-27
-**Phase in progress:** **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Phase in progress:** **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — Admin product image gallery (2026-09-27)
+
+**Goal hit:** user asked "can i able to add original image of products via admin web?" → no such path existed (the catalog had **zero** product images anywhere) → built it end-to-end: API + admin gallery UI. Commit **`a7780b8`**. **Backend 262/262 green (1 skipped, +10 tests); admin build green; live gallery smoke 27/27.**
+
+**What changed:**
+1. **Image API (backend `products`)** — `GET/POST /api/v1/products/<slug>/images/` + `GET/PATCH/DELETE /api/v1/products/images/<pk>/` (`ProductImageListCreateView` + `ProductImageDetailView` in `products/views.py`, routes registered **before** the router in `products/urls.py` so the multi-segment paths aren't swallowed). Create requires a file (400 `{image: …}` without), auto `sort_order = max+1`, first upload forced primary, `is_primary=true` demotes siblings atomically; PATCH is partial (file replace and/or caption/is_primary/sort_order); DELETE of the primary promotes the next by `sort_order, id`; GETs `AllowAny`, writes = `IsAuthenticated` + `IsTenantWriter` + `IsTenantObjectMember` — the object check runs against the **product** (`ProductImage` has no tenant; tenant-less platform products are staff-only). Existing `image_signals` COMPRESS_RULES already WebP-compresses `products.ProductImage` at 800px on save.
+2. **Latent 500 fixed (the real find)** — `ProductDetailSerializer` never overrode `primary_image`, so DRF auto-mapped it to the `Product.primary_image` **model property** (returns a `ProductImage` instance) → the moment a product had an image, `GET /products/<slug>/` **500'd in DRF's JSON encoder**. Invisible until now because the live catalog had zero images. Extracted shared `_primary_image_url()` helper; list + detail serializers both declare the `SerializerMethodField`; regression test pins URL-string output (this is what the customer PDP also renders).
+3. **Admin gallery UI (`ProductsPage`)** — editor gains an Images block: tile grid (hover overlay: ★ set primary, ✕ remove), dashed `+` upload tile (immediate multipart upload), Primary badge, per-tile busy state; `openEdit` also fetches the product detail for `images`, `openCreate` clears; delete-promotes-next mirrored client-side; create mode shows "Save the product first…". `api.ts` adds `getProduct`, `uploadProductImage`, `setPrimaryProductImage`, `deleteProductImage`, `ProductImage`/`ProductDetail` types and exports the shared `mediaSrc` (StorefrontPage now imports it instead of its own copy).
+4. **CSS** — `.prod-gallery`, `.prod-img-tile(.primary)`, `.prod-img-overlay`, `.prod-img-badge`, `.prod-img-add(.busy)`, `.prod-img-empty` in admin `styles.css`.
+
+**Verification:** suite **262/262 OK (1 skipped)** (`products` = 37: `ProductImageEndpointTests` ×9 + detail-serialization regression, 10 new); admin `tsc --noEmit && vite build` green; **live gallery smoke 27/27**: login → upload ×2 (primary rotation, stored `.webp`) → detail GET 200 with string `primary_image` under `/media/products/` → GET image 200 `image/webp` → PATCH set-primary demotes → DELETE primary promotes next → DELETE last empties gallery → anon upload 401.
+
+**Known open edges:** anon `GET /api/v1/categories/` serves a **stale 1h Redis cache** (returns `Grocery id:1`; real Supabase ids are 6–15 — pre-existing seed-vs-cache mismatch, unrelated to this work; creating a product with a cached id 400s until TTL/invalidation); image row delete leaves the file on disk (Django default, no orphan sweeper); images still local-disk (Supabase/object storage is a future move); no frontend test runner (UI gated on build + the 27-step API smoke).
 
 ## 0. LATEST — Designer hero image + theme tabs, customer dark mode, infinite scroll (2026-09-27)
 
