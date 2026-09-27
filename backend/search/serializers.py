@@ -55,4 +55,5 @@ class SearchRequestSerializer(serializers.Serializer):
         default="relevance",
     )
     page = serializers.IntegerField(min_value=1, default=1)
-    page_size = serializers.IntegerField(min_value=1, max_value=100, default=20)
+    # Server-side pagination ceiling: 20/page max, everywhere.
+    page_size = serializers.IntegerField(min_value=1, max_value=20, default=20)

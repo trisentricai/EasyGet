@@ -35,6 +35,15 @@ class Product(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
+        indexes = [
+            # Hot paths: every public list filters is_active + category and
+            # orders by created_at/updated_at; is_featured powers "Featured".
+            models.Index(fields=["is_active", "category"]),
+            models.Index(fields=["is_active", "is_featured"]),
+            models.Index(fields=["-updated_at", "-id"]),
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["brand"]),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -84,6 +93,13 @@ class ProductVariant(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            # Price aggregation on every product-list query filters
+            # is_active and sorts by price.
+            models.Index(fields=["is_active", "price"]),
+        ]
 
     class Meta:
         ordering = ["sku"]

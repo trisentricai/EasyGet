@@ -67,8 +67,17 @@ function errorMessage(payload: unknown): string {
   if (payload && typeof payload === "object") {
     const err = (payload as { error?: { message?: string } }).error;
     if (err?.message) return err.message;
-    const detail = (payload as { detail?: string }).detail;
-    if (detail) return detail;
+    const detail = (payload as { detail?: unknown }).detail;
+    if (typeof detail === "string" && detail) return detail;
+    if (detail && typeof detail === "object") {
+      // DRF JWT token errors nest the reason under `messages` — never leak
+      // the raw ErrorDetail repr to the UI.
+      const msgs = (detail as { messages?: { message?: string }[] }).messages;
+      const reason = msgs?.[0]?.message;
+      return reason
+        ? `Your session has expired (${reason.toLowerCase()}). Please sign in again.`
+        : "Your session has expired. Please sign in again.";
+    }
   }
   return "Request failed";
 }
@@ -110,9 +119,14 @@ export async function api<T = unknown>(
 
   let res = await doFetch();
   if (res.status === 401 && (await refreshTokens())) res = await doFetch();
-  if (res.status === 401 && on401) {
+  if (res.status === 401 && getTokens()) {
+    // Credentials are dead or unusable: purge the session, then retry the
+    // request anonymously. Public (browsing) endpoints must keep working
+    // with a stale token in localStorage; genuinely protected endpoints
+    // will 401 again below and surface their error as usual.
     setTokens(null);
-    on401();
+    on401?.();
+    res = await doFetch();
   }
   if (res.status === 204) return undefined as T;
 
@@ -413,9 +427,9 @@ const searchProducts = (body: Record<string, unknown>) =>
   api<SearchResponse>("/search/", { method: "POST", body });
 
 /**
- * Search with graceful degradation: the backend /search/ endpoint relies on
- * PostgreSQL full-text search (it 500s on the local SQLite dev DB), so on
- * failure fall back to the /products/ list filtered client-side.
+ * Search with graceful degradation: if the backend /search/ endpoint is
+ * unavailable, fall back to the /products/ list filtered client-side with the
+ * same tokenized matching contract ("black board" matches "Blackboard").
  */
 export async function searchWithFallback(body: {
   q?: string;
@@ -427,14 +441,22 @@ export async function searchWithFallback(body: {
     const params: Record<string, string> = {};
     if (body.sort && body.sort !== "relevance") params.sort = body.sort;
     const all = await listAllProducts(params);
-    const q = (body.q ?? "").trim().toLowerCase();
-    const matched = q
-      ? all.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.brand.toLowerCase().includes(q) ||
-            (p.category?.name.toLowerCase().includes(q) ?? false),
-        )
+    const tokens = (body.q ?? "")
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+    const matched = tokens.length
+      ? all.filter((p) => {
+          const haystack = [
+            p.name,
+            p.brand,
+            p.category?.name ?? "",
+          ]
+            .join(" ")
+            .toLowerCase();
+          return tokens.some((t) => haystack.includes(t));
+        })
       : all;
     return {
       results: matched.slice(0, 40),

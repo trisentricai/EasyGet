@@ -101,6 +101,40 @@ class ProductDiscoveryTests(TestCase):
     def test_brand_filter_case_insensitive(self):
         slugs = self._slugs({"brand": "farmlite"})
         self.assertIn(self.cheap.slug, slugs)
+
+    def test_guest_can_browse_catalog_publicly(self):
+        """Marketplace rule: browsing needs no account — only cart/checkout do."""
+        anon = APIClient()
+        res = anon.get("/api/v1/products/")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(self.cheap.slug, [r["slug"] for r in res.data["results"]])
+
+        res = anon.get(f"/api/v1/products/{self.cheap.slug}/")
+        self.assertEqual(res.status_code, 200)
+
+    def test_guest_can_list_categories_brands_and_reviews(self):
+        anon = APIClient()
+        self.assertEqual(anon.get("/api/v1/categories/").status_code, 200)
+        self.assertEqual(anon.get("/api/v1/products/brands/").status_code, 200)
+        self.assertEqual(
+            anon.get(f"/api/v1/products/{self.cheap.slug}/reviews/").status_code, 200
+        )
+
+    def test_guest_writes_still_rejected(self):
+        """Reads are public; every write stays authenticated."""
+        anon = APIClient()
+        res = anon.post("/api/v1/products/", {
+            "name": "Ghost Item", "category": self.category.id,
+        }, format="json")
+        self.assertIn(res.status_code, (401, 403))
+        res = anon.post(
+            f"/api/v1/products/{self.cheap.slug}/reviews/", {"rating": 5},
+            format="json",
+        )
+        self.assertIn(res.status_code, (401, 403))
+
+    def test_brand_filter_matches_whole_words(self):
+        slugs = self._slugs({"brand": "farmlite"})
         self.assertIn(self.deal.slug, slugs)
         self.assertNotIn(self.premium.slug, slugs)
 

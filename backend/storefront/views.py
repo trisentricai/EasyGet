@@ -36,24 +36,38 @@ def _product_allowed_for_store(product, store, user):
 class PlatformStorefrontView(APIView):
     """GET /api/v1/storefront/platform/ — public render of the single
     platform-level (EASYGET) storefront row. Lookup by flag, not slug, so a
-    rename of the platform row can never break the customer app."""
+    rename of the platform row can never break the customer app.
+
+    Cached (Redis, 1h, cache-aside): this is the app's first request on every
+    load; edits invalidate automatically via post_save signals."""
 
     permission_classes = [AllowAny]
 
     def get(self, request):
-        store = get_object_or_404(Store, is_platform=True, is_active=True)
-        return Response(StorefrontRenderSerializer(store).data)
+        from common.cache import get_or_set
+
+        def produce():
+            store = get_object_or_404(Store, is_platform=True, is_active=True)
+            return StorefrontRenderSerializer(store).data
+
+        return Response(get_or_set("storefront", ["platform"], produce))
 
 
 class StorefrontRenderView(APIView):
     """GET /api/v1/storefront/{store_slug}/ — public. One request returns the
-    theme + ordered sections (+ items) that customer-web/Flutter render."""
+    theme + ordered sections (+ items) that customer-web/Flutter render.
+    Cached like the platform render (1h, signal-invalidated)."""
 
     permission_classes = [AllowAny]
 
     def get(self, request, store_slug):
-        store = get_object_or_404(Store, slug=store_slug, is_active=True)
-        return Response(StorefrontRenderSerializer(store).data)
+        from common.cache import get_or_set
+
+        def produce():
+            store = get_object_or_404(Store, slug=store_slug, is_active=True)
+            return StorefrontRenderSerializer(store).data
+
+        return Response(get_or_set("storefront", ["store", store_slug], produce))
 
 
 class StorefrontThemeView(APIView):

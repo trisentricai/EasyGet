@@ -22,6 +22,12 @@ class Category(models.Model):
     class Meta:
         ordering = ["sort_order", "name"]
         verbose_name_plural = "categories"
+        indexes = [
+            # is_active filters every public category list; (sort_order, name)
+            # backs the default ordering.
+            models.Index(fields=["is_active"]),
+            models.Index(fields=["sort_order", "name"]),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.slug:

@@ -139,6 +139,11 @@ class Banner(models.Model):
 
     class Meta:
         ordering = ["position", "-created_at"]
+        indexes = [
+            # Public banner queries filter is_active + date window.
+            models.Index(fields=["is_active", "position"]),
+            models.Index(fields=["-created_at"]),
+        ]
 
     def __str__(self):
         return self.title
