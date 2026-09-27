@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createCategory,
   deleteCategory,
@@ -16,7 +17,7 @@ const emptyDraft: Draft = { name: "", description: "", is_active: true };
 
 export function CategoriesPage() {
   const { push } = useToast();
-  const [categories, setCategories] = useState<Category[] | null>(null);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Category | null>(null);
   const [creating, setCreating] = useState(false);
@@ -24,14 +25,20 @@ export function CategoriesPage() {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<Category | null>(null);
 
-  const load = useCallback(async () => {
-    const res = await listCategories();
-    setCategories(Array.isArray(res) ? res : res.results);
-  }, []);
+  const categoriesQuery = useQuery({
+    queryKey: ["admin", "categories"],
+    queryFn: async () => {
+      const res = await listCategories();
+      return Array.isArray(res) ? res : res.results;
+    },
+  });
+
+  const categories = categoriesQuery.data ?? null;
 
   useEffect(() => {
-    load().catch((e) => push(errText(e, "Failed to load categories"), "err"));
-  }, [load, push]);
+    if (categoriesQuery.error)
+      push(errText(categoriesQuery.error, "Failed to load categories"), "err");
+  }, [categoriesQuery.error, push]);
 
   function openCreate() {
     setDraft(emptyDraft);
@@ -56,7 +63,7 @@ export function CategoriesPage() {
       }
       setCreating(false);
       setEditing(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "categories"] });
     } catch (e) {
       push(errText(e, "Save failed"), "err");
     } finally {
@@ -71,7 +78,7 @@ export function CategoriesPage() {
       await deleteCategory(deleting.slug);
       push(`“${deleting.name}” deleted`);
       setDeleting(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "categories"] });
     } catch (e) {
       push(errText(e, "Delete failed (category may have products)"), "err");
       setDeleting(null);

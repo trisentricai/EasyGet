@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errText, type Product } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import { Card, EmptyState, Modal, Spinner } from "../components/ui";
@@ -20,18 +21,25 @@ function toArray<T>(res: { results: T[] } | T[]): T[] {
 
 export function InventoryPage() {
   const { push } = useToast();
-  const [items, setItems] = useState<StockItem[] | null>(null);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [adjusting, setAdjusting] = useState<StockItem | null>(null);
 
-  const load = useCallback(async () => {
-    const res = await api<{ results: StockItem[] } | StockItem[]>("/inventory/");
-    setItems(toArray(res));
-  }, []);
+  const itemsQuery = useQuery({
+    queryKey: ["admin", "inventory"],
+    queryFn: async () =>
+      toArray(await api<{ results: StockItem[] } | StockItem[]>("/inventory/")),
+  });
+
+  const items = itemsQuery.data ?? null;
 
   useEffect(() => {
-    load().catch((e) => push(e?.message ?? "Failed to load inventory", "err"));
-  }, [load, push]);
+    if (itemsQuery.error)
+      push(itemsQuery.error?.message ?? "Failed to load inventory", "err");
+  }, [itemsQuery.error, push]);
+
+  const reload = () =>
+    queryClient.invalidateQueries({ queryKey: ["admin", "inventory"] });
 
   const filtered = (items ?? []).filter((i) =>
     (i.variant?.sku ?? "").toLowerCase().includes(query.toLowerCase()) ||
@@ -103,7 +111,7 @@ export function InventoryPage() {
           onClose={() => setAdjusting(null)}
           onDone={async () => {
             setAdjusting(null);
-            await load();
+            await reload();
           }}
         />
       )}

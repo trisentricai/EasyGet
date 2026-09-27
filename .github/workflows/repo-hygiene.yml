@@ -1,0 +1,47 @@
+name: Repo hygiene
+
+# Guards the public repo against secret leakage:
+# - .env (and lookalikes) must stay gitignored and untracked
+# - key/keystore/credential files must never be tracked
+# - obvious secret material (private keys, AWS/ GitHub tokens) must not appear
+on:
+  push:
+  pull_request:
+
+jobs:
+  no-tracked-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: .env must stay ignored
+        run: |
+          if ! git check-ignore -q .env; then
+            echo "::error::.env is not gitignored — secret leakage risk"
+            exit 1
+          fi
+
+      - name: No secret-like files tracked
+        run: |
+          tracked=$(git ls-files '.env' '.env.*' '*.pem' '*.p12' '*.pfx' \
+            '*.jks' '*.keystore' 'key.properties' '**/key.properties' \
+            'google-services.json' '**/google-services.json' \
+            'service-account*.json' '**/service-account*.json' \
+            'credentials.json' '**/credentials.json')
+          bad=$(printf '%s\n' "$tracked" | grep -v '^$' | grep -v '^\.env\.example$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Secret-like files are tracked:"
+            echo "$bad"
+            exit 1
+          fi
+
+      - name: No secret material in tracked content
+        run: |
+          if git grep -I -n -E \
+            'BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}' \
+            --; then
+            echo "::error::Possible secret material found in tracked files (see above)"
+            exit 1
+          fi

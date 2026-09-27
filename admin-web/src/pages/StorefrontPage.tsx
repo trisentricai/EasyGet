@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createItem,
   createSection,
@@ -10,18 +10,22 @@ import {
   listAllProducts,
   listCategories,
   listStores,
+  mediaSrc,
   reorderItems,
   reorderSections,
   setStoreSlug,
+  toImageDisplay,
   updateItem,
   updateSection,
   updateTheme,
   type Category,
+  type ImageDisplay,
   type Product,
   type SectionItem,
   type StoreSection,
   type Theme,
 } from "../services/api";
+import ImageDisplayEditor from "../components/ImageDisplayEditor";
 import { useToast } from "../context/ToastContext";
 import { Card, ConfirmDialog, Modal, Spinner } from "../components/ui";
 
@@ -47,7 +51,9 @@ function itemLabel(item: SectionItem): string {
 
 export function StorefrontPage() {
   const { push } = useToast();
-  const [stores, setStores] = useState<{ id: number; name: string; slug: string }[]>([]);
+  const [stores, setStores] = useState<
+    { id: number; name: string; slug: string; is_platform?: boolean }[]
+  >([]);
   const [slug, setSlug] = useState(getStoreSlug());
   const [sections, setSections] = useState<StoreSection[] | null>(null);
   const [theme, setTheme] = useState<Theme | null>(null);
@@ -56,12 +62,28 @@ export function StorefrontPage() {
   const [editSection, setEditSection] = useState<StoreSection | null>(null);
   const [deleting, setDeleting] = useState<StoreSection | null>(null);
   const [addItemFor, setAddItemFor] = useState<StoreSection | null>(null);
+  const [tab, setTab] = useState<"sections" | "theme">("sections");
+  const justAddedRef = useRef<number | null>(null);
+
+  const resolvedInitial = useRef(false);
 
   const load = useCallback(async () => {
     const [s, sec] = await Promise.all([listStores(), getSections(slug)]);
     const storeList = Array.isArray(s) ? s : s.results;
     setStores(storeList);
-    if (!storeList.some((st) => st.slug === slug) && storeList[0]) {
+    if (!resolvedInitial.current && storeList.length > 0) {
+      resolvedInitial.current = true;
+      // Designer default: platform storefront > saved pick > first store.
+      const platform = storeList.find((st) => st.is_platform);
+      const stored = localStorage.getItem("eg-store");
+      const preferred = [platform?.slug, stored, storeList[0]?.slug].find((c) =>
+        c ? storeList.some((st) => st.slug === c) : false,
+      );
+      if (preferred && preferred !== slug) {
+        setSlug(preferred);
+        setStoreSlug(preferred);
+      }
+    } else if (!storeList.some((st) => st.slug === slug) && storeList[0]) {
       setSlug(storeList[0].slug);
       setStoreSlug(storeList[0].slug);
     }
@@ -161,6 +183,24 @@ export function StorefrontPage() {
     }
   }
 
+  async function applySectionImage(id: number, file: File | null) {
+    try {
+      let updated: StoreSection;
+      if (file) {
+        const fd = new FormData();
+        fd.append("image", file);
+        updated = await updateSection(id, fd);
+      } else {
+        updated = await updateSection(id, { image: null });
+      }
+      setSections((list) => (list ?? []).map((s) => (s.id === id ? updated : s)));
+      setEditSection(updated);
+      push(file ? "Banner image saved" : "Banner image removed");
+    } catch (e) {
+      push(errText(e, "Image save failed"), "err");
+    }
+  }
+
   async function addSection(type: string) {
     try {
       const created = await createSection(slug, {
@@ -169,11 +209,23 @@ export function StorefrontPage() {
         config: { columns: 4, size: "md", placeholder: "Edit me from the dashboard" },
       });
       setSections((list) => [...(list ?? []), created]);
+      // Immediately show the board so the new block is visible, then scroll
+      // it into view — appended sections land at the bottom of long lists.
+      setTab("sections");
+      justAddedRef.current = created.id;
       push(`${TYPE_META[type]?.label ?? type} added to the bottom — drag to place it`);
     } catch (e) {
       push(errText(e, "Create failed"), "err");
     }
   }
+
+  // Scroll a just-added section into view after the board re-renders.
+  useEffect(() => {
+    if (justAddedRef.current === null) return;
+    const el = document.querySelector(".section-board .card:last-child");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    justAddedRef.current = null;
+  }, [sections]);
 
   async function confirmDeleteSection() {
     if (!deleting) return;
@@ -281,8 +333,28 @@ export function StorefrontPage() {
         </select>
       </div>
 
-      <div className="sf-layout">
-        {/* -------- board -------- */}
+      <div className="sf-tabs" role="tablist" aria-label="Designer views">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "sections"}
+          className={`effect-pill ${tab === "sections" ? "on" : ""}`}
+          onClick={() => setTab("sections")}
+        >
+          🧻 Sections
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "theme"}
+          className={`effect-pill ${tab === "theme" ? "on" : ""}`}
+          onClick={() => setTab("theme")}
+        >
+          🎨 Store theme
+        </button>
+      </div>
+
+      {tab === "sections" ? (
         <div className="section-board">
           {sections.length === 0 && (
             <Card>
@@ -399,8 +471,7 @@ export function StorefrontPage() {
             </Card>
           ))}
         </div>
-
-        {/* -------- theme panel -------- */}
+      ) : (
         <Card>
           <h3 style={{ marginTop: 0 }}>🎨 Store theme</h3>
           <p className="muted" style={{ marginBottom: 14 }}>
@@ -454,7 +525,7 @@ export function StorefrontPage() {
             </label>
           </div>
         </Card>
-      </div>
+      )}
 
       {/* -------- section design modal -------- */}
       {editSection && (
@@ -462,6 +533,7 @@ export function StorefrontPage() {
           section={editSection}
           onClose={() => setEditSection(null)}
           onSave={(body) => saveSection(editSection.id, body)}
+          onImageChange={(file) => applySectionImage(editSection.id, file)}
         />
       )}
 
@@ -501,10 +573,12 @@ function SectionDesignModal({
   section,
   onClose,
   onSave,
+  onImageChange,
 }: {
   section: StoreSection;
   onClose: () => void;
   onSave: (body: Record<string, unknown>) => void;
+  onImageChange: (file: File | null) => Promise<void>;
 }) {
   const cfg = section.config ?? {};
   const [title, setTitle] = useState(section.title);
@@ -512,6 +586,9 @@ function SectionDesignModal({
   const [placeholder, setPlaceholder] = useState(String(cfg.placeholder ?? ""));
   const [columns, setColumns] = useState(Number(cfg.columns ?? 4));
   const [size, setSize] = useState<"sm" | "md" | "lg">((cfg.size as "sm" | "md" | "lg") ?? "md");
+  const [imgBusy, setImgBusy] = useState(false);
+  const [disp, setDisp] = useState<ImageDisplay>(toImageDisplay(section));
+  const preview = mediaSrc(section.image);
   const [effects, setEffects] = useState<string[]>(
     Array.isArray(cfg.effects) ? [] : Object.keys(cfg.effects ?? {}).filter((k) => (cfg.effects as Record<string, unknown>)[k]),
   );
@@ -522,6 +599,11 @@ function SectionDesignModal({
     onSave({
       title,
       subtitle,
+      align_x: disp.align_x,
+      align_y: disp.align_y,
+      zoom: disp.zoom,
+      effect: disp.effect,
+      transition_ms: disp.transition_ms,
       config: {
         ...cfg,
         columns,
@@ -552,7 +634,7 @@ function SectionDesignModal({
             placeholder="Shown until real content is added"
           />
         </label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14 }}>
           <label>
             Columns
             <select className="input" value={columns} onChange={(e) => setColumns(Number(e.target.value))}>
@@ -572,6 +654,60 @@ function SectionDesignModal({
             </select>
           </label>
         </div>
+        {["HERO", "BANNER", "IMAGE_GALLERY"].includes(section.section_type) && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+              {section.section_type === "HERO" ? "Banner image" : "Section image"}
+            </div>
+            {preview ? (
+              <ImageDisplayEditor
+                src={preview}
+                value={disp}
+                onChange={(patch) => setDisp((d) => ({ ...d, ...patch }))}
+                aspect="21 / 9"
+              />
+            ) : (
+              <div className="sf-img-row">
+                <div className="sf-img-preview sf-img-empty">No image</div>
+              </div>
+            )}
+            <div className="sf-img-row" style={{ marginTop: preview ? 10 : 0 }}>
+              <label className="btn btn-sm btn-ghost" style={{ cursor: "pointer" }}>
+                {imgBusy ? "Uploading…" : preview ? "Replace image" : "Upload image"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  disabled={imgBusy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    e.target.value = "";
+                    if (!file) return;
+                    setImgBusy(true);
+                    void onImageChange(file).finally(() => setImgBusy(false));
+                  }}
+                />
+              </label>
+              {preview && !imgBusy && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger"
+                  onClick={() => {
+                    setImgBusy(true);
+                    void onImageChange(null).finally(() => setImgBusy(false));
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <p className="muted" style={{ margin: "8px 0 0", fontSize: 12.5 }}>
+              Align, zoom and the hover effect are saved with{" "}
+              <strong>Save design</strong> — they apply to every card and banner
+              that shows this image.
+            </p>
+          </div>
+        )}
         <div>
           <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
             Effects

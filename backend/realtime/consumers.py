@@ -86,16 +86,45 @@ class OrderTrackingConsumer(BaseConsumer):
             await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
     async def handle_subscribe_order(self, data):
-        """Subscribe to specific order updates."""
+        """Subscribe to specific order updates (owner, assigned agent, tenant
+        member, or staff only — otherwise any ID would leak status/note data)."""
         order_id = data.get("order_id")
-        if order_id:
-            room_name = f"order_{order_id}"
-            self.order_rooms.add(room_name)
-            await self.channel_layer.group_add(room_name, self.channel_name)
-            await self.send(text_data=json.dumps({
-                "type": "subscribed",
-                "order_id": order_id,
-            }))
+        if not order_id:
+            return
+        if not await self.can_access_order(order_id):
+            await self.send_error("Not authorized for this order")
+            return
+        room_name = f"order_{order_id}"
+        self.order_rooms.add(room_name)
+        await self.channel_layer.group_add(room_name, self.channel_name)
+        await self.send(text_data=json.dumps({
+            "type": "subscribed",
+            "order_id": order_id,
+        }))
+
+    @database_sync_to_async
+    def can_access_order(self, order_id):
+        from django.core.exceptions import ValidationError
+
+        from orders.models import Order
+        from tenants.services import user_tenant_ids
+
+        try:
+            order = Order.objects.select_related("store").get(pk=order_id)
+        except (Order.DoesNotExist, ValueError, ValidationError):
+            return False
+        if self.user.is_staff or order.user_id == self.user.id:
+            return True
+        tenant_id = order.tenant_id or (
+            order.store.tenant_id if order.store_id else None
+        )
+        if tenant_id and tenant_id in user_tenant_ids(self.user):
+            return True
+        from delivery.models import DeliveryAssignment
+
+        return DeliveryAssignment.objects.filter(
+            order=order, agent=self.user
+        ).exists()
 
     async def handle_unsubscribe_order(self, data):
         order_id = data.get("order_id")
@@ -136,13 +165,17 @@ class ChatConsumer(BaseConsumer):
 
     async def handle_join_room(self, data):
         room_id = data.get("room_id")
-        if room_id:
-            self.current_room = room_id
-            await self.channel_layer.group_add(f"chat_room_{room_id}", self.channel_name)
-            await self.send(text_data=json.dumps({
-                "type": "joined_room",
-                "room_id": room_id,
-            }))
+        if not room_id:
+            return
+        if not await self.check_room_access(room_id):
+            await self.send_error("Not authorized for this room")
+            return
+        self.current_room = room_id
+        await self.channel_layer.group_add(f"chat_room_{room_id}", self.channel_name)
+        await self.send(text_data=json.dumps({
+            "type": "joined_room",
+            "room_id": room_id,
+        }))
 
     async def handle_send_message(self, data):
         room_id = data.get("room_id")
@@ -184,19 +217,23 @@ class ChatConsumer(BaseConsumer):
     async def handle_typing(self, data):
         room_id = data.get("room_id")
         is_typing = data.get("is_typing", False)
-        if room_id:
-            await self.channel_layer.group_send(
-                f"chat_room_{room_id}",
-                {
-                    "type": "user_typing",
-                    "message": {
-                        "type": "typing",
-                        "user": self.user.email,
-                        "room_id": room_id,
-                        "is_typing": is_typing,
-                    },
+        if not room_id:
+            return
+        if not await self.check_room_access(room_id):
+            await self.send_error("Not authorized for this room")
+            return
+        await self.channel_layer.group_send(
+            f"chat_room_{room_id}",
+            {
+                "type": "user_typing",
+                "message": {
+                    "type": "typing",
+                    "user": self.user.email,
+                    "room_id": room_id,
+                    "is_typing": is_typing,
                 },
-            )
+            },
+        )
 
     @database_sync_to_async
     def check_room_access(self, room_id):

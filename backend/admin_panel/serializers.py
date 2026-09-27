@@ -89,3 +89,21 @@ class CouponValidateSerializer(serializers.Serializer):
         except Coupon.DoesNotExist:
             raise serializers.ValidationError("Invalid coupon code")
         return value
+
+class ReviewAdminSerializer(serializers.ModelSerializer):
+    """Moderation payload for the admin Reviews page."""
+
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    product_slug = serializers.CharField(source="product.slug", read_only=True)
+    user_email = serializers.CharField(source="user.email", read_only=True)
+
+    class Meta:
+        from products.models import ProductReview
+
+        model = ProductReview
+        fields = [
+            "id", "product_name", "product_slug", "rating", "title", "body",
+            "reviewer_name", "user_email", "is_verified_purchase", "is_approved",
+            "created_at",
+        ]
+        read_only_fields = [f for f in fields if f != "is_approved"]

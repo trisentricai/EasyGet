@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from .models import AppUpdate, OfflineData, PWAConfigModel, PushSubscription
 
@@ -78,3 +79,56 @@ class AppUpdateTests(TestCase):
         )
         self.assertEqual(update.platform, "ANDROID")
         self.assertFalse(update.is_mandatory)
+
+
+class AppUpdateApiSecurityTests(TestCase):
+    """Writes must be staff-only: download_url is served to every device by
+    the public check action, so anonymous tampering is supply-chain risk."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.update = AppUpdate.objects.create(
+            version="1.2.0",
+            platform=AppUpdate.Platform.ANDROID,
+            release_notes="Bug fixes",
+            download_url="https://example.com/app.apk",
+            status=AppUpdate.Status.DEPLOYED,
+        )
+
+    def test_anonymous_cannot_create_update(self):
+        res = self.client.post(
+            "/api/v1/pwa/updates/",
+            {
+                "version": "9.9.9",
+                "platform": "ANDROID",
+                "download_url": "https://evil.example.com/malware.apk",
+                "is_mandatory": True,
+                "status": "DEPLOYED",
+            },
+            format="json",
+        )
+        self.assertIn(res.status_code, (401, 403))
+        self.assertFalse(AppUpdate.objects.filter(version="9.9.9").exists())
+
+    def test_anonymous_cannot_edit_or_delete_deployed_update(self):
+        res = self.client.patch(
+            f"/api/v1/pwa/updates/{self.update.id}/",
+            {"download_url": "https://evil.example.com/malware.apk"},
+            format="json",
+        )
+        self.assertIn(res.status_code, (401, 403))
+        res = self.client.delete(f"/api/v1/pwa/updates/{self.update.id}/")
+        self.assertIn(res.status_code, (401, 403))
+        self.update.refresh_from_db()
+        self.assertEqual(self.update.download_url, "https://example.com/app.apk")
+
+    def test_reads_remain_public(self):
+        res = self.client.get("/api/v1/pwa/updates/")
+        self.assertEqual(res.status_code, 200)
+        res = self.client.post(
+            "/api/v1/pwa/updates/check/",
+            {"platform": "ANDROID", "current_version": "1.0.0"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.data["update_available"])

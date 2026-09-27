@@ -105,6 +105,11 @@ class StoreSectionSerializer(serializers.ModelSerializer):
             "title",
             "subtitle",
             "image",
+            "align_x",
+            "align_y",
+            "zoom",
+            "effect",
+            "transition_ms",
             "config",
             "position",
             "is_active",
@@ -135,6 +140,14 @@ class StoreSectionWriteSerializer(serializers.ModelSerializer):
     """Write-side section serializer: no nested items (they have their own
     endpoints); position is assigned by the view on create."""
 
+    align_x = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    align_y = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    zoom = serializers.FloatField(min_value=1.0, max_value=3.0, required=False)
+    effect = serializers.ChoiceField(
+        choices=StoreSection.ImageEffect.choices, required=False
+    )
+    transition_ms = serializers.IntegerField(min_value=0, max_value=2000, required=False)
+
     class Meta:
         model = StoreSection
         fields = [
@@ -142,6 +155,11 @@ class StoreSectionWriteSerializer(serializers.ModelSerializer):
             "title",
             "subtitle",
             "image",
+            "align_x",
+            "align_y",
+            "zoom",
+            "effect",
+            "transition_ms",
             "config",
             "is_active",
         ]

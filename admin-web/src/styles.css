@@ -721,24 +721,133 @@ tbody tr:hover {
 
 /* ============================ Storefront editor ============================ */
 
-/* Board + theme panel. minmax(0, 1fr) lets the board shrink instead of
-   forcing the page wider than the viewport (which used to squash the
-   sidebar and cause page-level horizontal scroll). */
-.sf-layout {
+/* Sections | Store theme tabs — the theme editor gets its own full-width
+   view instead of sitting beside (and overlaying) the section board. */
+.sf-tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* Hero banner image row (design modal) */
+.sf-img-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sf-img-preview {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.sf-img-empty {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 18px;
-  align-items: start;
+  place-items: center;
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+  font-size: 12px;
 }
 
-.sf-layout > * {
-  min-width: 0;
+/* Product gallery (product editor modal) */
+.prod-gallery {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 1100px) {
-  .sf-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.prod-img-tile {
+  position: relative;
+  width: 108px;
+  height: 78px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.prod-img-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.prod-img-tile.primary {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 1px var(--c-primary);
+}
+
+.prod-img-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-faint);
+}
+
+.prod-img-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 4px;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.6));
+}
+
+.prod-img-overlay button {
+  border: none;
+  background: rgb(255 255 255 / 0.92);
+  color: #171923;
+  border-radius: 5px;
+  min-width: 24px;
+  height: 22px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.prod-img-overlay button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.prod-img-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--c-primary);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+.prod-img-add {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  color: var(--text-faint);
+  font-size: 26px;
+  font-weight: 300;
+  cursor: pointer;
+  transition: background-color var(--t-fast), color var(--t-fast);
+}
+
+.prod-img-add:hover {
+  background: var(--bg-hover);
+  color: var(--c-primary);
+}
+
+.prod-img-add.busy {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .section-board {
@@ -750,6 +859,7 @@ tbody tr:hover {
   display: flex;
   gap: 14px;
   align-items: flex-start;
+  min-width: 0;
   cursor: grab;
   border-radius: var(--radius-lg);
   transition: box-shadow var(--t-fast), transform var(--t-fast),
@@ -797,35 +907,71 @@ tbody tr:hover {
 
 .section-head {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
+  width: 100%;
+  min-width: 0;
   gap: 10px;
   margin-bottom: 10px;
+}
+
+.section-head > span:first-child {
+  flex: none;
 }
 
 .section-head .title {
   font-weight: 800;
   font-size: 15.5px;
-  flex: 1;
-  /* Was min-width: 140px — forced the row wider than narrow columns,
-     pushing the whole board (and page) into horizontal overflow. */
+  flex: 1 1 auto;
   min-width: 0;
-  width: 100%;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.section-head .badge {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .section-actions {
   display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  margin-left: auto;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .item-strip {
   display: flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 6px;
+  overscroll-behavior-x: contain;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg-sunken);
+}
+
+.item-strip::-webkit-scrollbar {
+  height: 8px;
+}
+
+.item-strip::-webkit-scrollbar-track {
+  background: var(--bg-sunken);
+  border-radius: 99px;
+}
+
+.item-strip::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+
+.item-strip::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
 }
 
 .item-chip {
@@ -914,8 +1060,169 @@ tbody tr:hover {
   color: var(--c-primary);
 }
 
+/* ==================== Image display (align/zoom/effect) ==================== */
+
+/* Shared image frame: focal alignment + scale + hover interactions.
+   `--fx-zoom` / `--fx-ms` are set inline per image; effects multiply the base
+   zoom so a configured scale is preserved on hover. */
+.img-fx {
+  position: relative;
+  overflow: hidden;
+}
+
+.img-fx > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(var(--fx-zoom, 1));
+  transition: transform var(--fx-ms, 400ms) ease, filter var(--fx-ms, 400ms) ease;
+}
+
+.img-fx-zoom:hover > img {
+  transform: scale(calc(var(--fx-zoom, 1) * 1.08));
+}
+
+.img-fx-pan:hover > img {
+  transform: scale(calc(var(--fx-zoom, 1) * 1.14)) translateX(-4%);
+}
+
+.img-fx-gray > img {
+  filter: grayscale(1);
+}
+
+.img-fx-gray:hover > img {
+  filter: grayscale(0);
+}
+
+/* Image display editor */
+.ide {
+  display: grid;
+  gap: 12px;
+}
+
+.ide-frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.ide-frame > img {
+  width: 100%;
+  height: 100%;
+}
+
+.ide-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.ide-group {
+  display: grid;
+  gap: 6px;
+}
+
+.ide-group.dim {
+  opacity: 0.55;
+}
+
+.ide-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.ide-val {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ide-align {
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  gap: 4px;
+}
+
+.ide-align-cell {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast),
+    background-color var(--t-fast);
+}
+
+.ide-align-cell:hover {
+  border-color: var(--c-primary);
+  color: var(--text);
+}
+
+.ide-align-cell.on {
+  border-color: var(--c-primary);
+  background: var(--drop-active);
+  color: var(--c-primary);
+  font-weight: 800;
+}
+
+.ide-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ide-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-faint);
+}
+
+.ide-slider input[type="range"],
+.ide input[type="range"] {
+  flex: 1;
+  width: 100%;
+  accent-color: var(--c-primary);
+}
+
+.ide-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.ide-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-sunken);
+  display: grid;
+  gap: 12px;
+}
+
+.ide-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 /* ============================ Responsive ============================ */
 
+/* Tablet: icon rail sidebar, roomier content */
 @media (max-width: 860px) {
   .shell,
   .shell.sidebar-collapsed {
@@ -930,4 +1237,112 @@ tbody tr:hover {
   .content {
     padding: 16px;
   }
+
+  .topbar {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+
+  .topbar .badge:not(.ok) {
+    display: none;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+}
+
+/* Phone: sidebar becomes a horizontal scrollable chip bar under the topbar */
+@media (max-width: 640px) {
+  .shell,
+  .shell.sidebar-collapsed {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    flex-direction: row;
+    align-items: center;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 10px;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .sidebar::-webkit-scrollbar { display: none; }
+  .sidebar .brand { display: none; }
+
+  .nav-item {
+    width: auto;
+    flex: none;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+  .nav-item span { display: inline; }
+  .nav-item .ico { display: inline; }
+  .nav-item:hover { transform: none; }
+
+  .sidebar-footer {
+    margin-top: 0;
+    margin-left: auto;
+    flex-direction: row;
+    flex: none;
+    position: sticky;
+    right: 0;
+    background: var(--bg-elevated);
+  }
+  .sidebar-footer .nav-item:first-child { display: none; }
+
+  .main { overflow-x: hidden; }
+  .topbar { position: static; padding: 10px 12px; gap: 8px; }
+  .topbar .badge.ok {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .content { padding: 12px; }
+
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat .value { font-size: 24px; }
+  .stat .ico-big { font-size: 22px; right: 10px; top: 10px; }
+
+  /* tables scroll horizontally instead of crushing columns */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  table { min-width: 620px; }
+
+  .toolbar .input { max-width: none; width: 100%; }
+  .toolbar .spacer { display: none; }
+
+  .overlay { padding: 10px; }
+  .modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 40px);
+    overflow: auto;
+    padding: 16px;
+  }
+  .modal-actions { flex-wrap: wrap; }
+  .modal-actions .btn { flex: 1; }
+
+  .toasts { right: 10px; left: 10px; bottom: 10px; justify-items: stretch; }
+
+  /* storefront designer / product editor tighten-up */
+  .section-row { flex-wrap: wrap; }
+  .item-strip { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sf-tabs { overflow-x: auto; }
+  .prod-gallery { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+  .ide-row { flex-wrap: wrap; }
+}
+
+@media (max-width: 420px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .topbar h1 { font-size: 15px; }
 }

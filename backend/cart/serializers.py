@@ -14,11 +14,36 @@ class CartItemSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     line_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    tenant_id = serializers.SerializerMethodField()
+    seller_name = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
-        fields = ["id", "variant", "variant_id", "quantity", "line_total", "created_at"]
-        read_only_fields = ["id", "line_total", "created_at"]
+        fields = [
+            "id", "variant", "variant_id", "quantity", "line_total",
+            "tenant_id", "seller_name", "created_at",
+        ]
+        read_only_fields = ["id", "line_total", "tenant_id", "seller_name", "created_at"]
+
+    def get_tenant_id(self, obj):
+        product = obj.variant.product if obj.variant else None
+        return product.tenant_id if product else None
+
+    def get_seller_name(self, obj):
+        product = obj.variant.product if obj.variant else None
+        tenant = product.tenant if product else None
+        if tenant is None:
+            return "EasyGet"
+        stores = getattr(tenant, "active_stores", None)
+        if stores is None:
+            from stores.models import Store
+
+            stores = list(
+                tenant.stores.filter(is_active=True, is_platform=False).order_by("name")
+            )
+        if stores:
+            return stores[0].name
+        return tenant.name or "EasyGet"
 
     def validate_quantity(self, value):
         if value > 999:

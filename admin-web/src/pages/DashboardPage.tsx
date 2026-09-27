@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
-import { errText, getSummary, type AdminSummary } from "../services/api";
+import { useQuery } from "@tanstack/react-query";
+import { errText, getSummary } from "../services/api";
 import { Card, EmptyState, Spinner, StatCard } from "../components/ui";
 
 export function DashboardPage() {
-  const [summary, setSummary] = useState<AdminSummary | null>(null);
-  const [error, setError] = useState("");
+  const summaryQuery = useQuery({
+    queryKey: ["admin", "dashboard"],
+    queryFn: () => getSummary(),
+  });
 
-  useEffect(() => {
-    getSummary()
-      .then(setSummary)
-      .catch((e) => setError(errText(e, "Could not load summary")));
-  }, []);
+  const error = summaryQuery.error
+    ? errText(summaryQuery.error, "Could not load summary")
+    : "";
+  const summary = summaryQuery.data ?? null;
 
   if (error) return <Card><EmptyState text={`⚠️ ${error}`} /></Card>;
   if (!summary) return <Spinner />;

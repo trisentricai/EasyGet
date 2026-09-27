@@ -3,11 +3,19 @@ import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Monogram, Price, ProductCard, Section, Spinner } from "../components/ui";
+import { fxClass, fxStyle } from "../utils/imageFx";
+import {
+  BannerCarousel,
+  CategoryRail,
+  DealsRail,
+  RecentlyViewedRail,
+  RecommendedRail,
+} from "../components/marketplace";
 
 /**
- * Home page = the store's designed storefront. The backend returns an ordered
- * list of sections; each section type maps to a renderer here, so a rebrand
- * or layout change made in the admin dashboard shows up with no code change.
+ * Home page = the store's designed storefront, marketplace layout:
+ * rotating banner carousel (HERO/BANNER sections), then the admin's
+ * designed sections, then the discovery rails.
  */
 export function HomePage() {
   const { data, loading, error } = useStorefront();
@@ -25,43 +33,55 @@ export function HomePage() {
     );
   }
 
-  const sections = [...data.sections].sort((a, b) => a.position - b.position);
+  const sections = [...data.sections]
+    .filter((s) => s.is_active)
+    .sort((a, b) => a.position - b.position);
+  const banners = sections.filter(
+    (s) => s.section_type === "HERO" || s.section_type === "BANNER",
+  );
+  const rest = sections.filter(
+    (s) => s.section_type !== "HERO" && s.section_type !== "BANNER",
+  );
   const hasContent = sections.length > 0;
 
+  // No designed sections yet? Shoppers still get a real storefront: the
+  // welcome hero plus the live discovery rails (deals / categories /
+  // recommendations). Setup guidance belongs in the admin dashboard —
+  // never in front of customers.
   return (
     <div className="page">
-      {hasContent ? (
-        sections.map((s) => <SectionRenderer key={s.id} section={s} />)
-      ) : (
-        <WelcomeFallback storeName={data.store.name} city={data.store.city} description={data.store.description} />
+      <BannerCarousel sections={banners} />
+      {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
+      {!hasContent && (
+        <WelcomeHero
+          storeName={data.store.name}
+          city={data.store.city}
+          description={data.store.description}
+        />
       )}
+      <DealsRail />
+      <CategoryRail />
+      <RecommendedRail />
+      <RecentlyViewedRail />
     </div>
   );
 }
 
-function WelcomeFallback({ storeName, city, description }: { storeName: string; city: string; description: string }) {
+function WelcomeHero({ storeName, description }: { storeName: string; city: string; description: string }) {
   return (
-    <>
-      <div className="hero">
-        <div className="hero-content">
-          <p className="eyebrow">Welcome to</p>
-          <h1>{storeName}</h1>
-          <p>{description || "Essentials, delivered quickly."}</p>
-          <div className="hero-actions">
-            <a className="btn btn-secondary" href={href("browse")}>Browse catalog</a>
-            <a className="btn btn-ghost" style={{ color: "#fff", borderColor: "rgb(255 255 255 / 0.5)" }} href={href("account")}>
-              Sign in
-            </a>
-          </div>
+    <div className="hero">
+      <div className="hero-content">
+        <p className="eyebrow">Welcome to</p>
+        <h1>{storeName}</h1>
+        <p>{description || "Essentials, delivered quickly."}</p>
+        <div className="hero-actions">
+          <a className="btn btn-secondary" href={href("browse")}>Browse catalog</a>
+          <a className="btn btn-ghost" style={{ color: "#fff", borderColor: "rgb(255 255 255 / 0.5)" }} href={href("account")}>
+            Sign in
+          </a>
         </div>
       </div>
-      <Section title="Nothing designed yet">
-        <p className="muted">
-          This store has no active storefront sections{city ? ` (${city})` : ""}. Open the admin
-          dashboard → Storefront designer to compose the page — it renders here instantly.
-        </p>
-      </Section>
-    </>
+    </div>
   );
 }
 
@@ -93,7 +113,15 @@ function HeroSection({ section }: { section: StoreSection }) {
   const align = (cfg.align as string) === "right" ? "right" : "left";
   return (
     <section className="hero" style={effects.hero_animation === "fade" ? { animation: "rise 0.6s ease" } : undefined}>
-      {heroImg ? <img className="hero-img" src={heroImg} alt="" /> : null}
+      {heroImg ? (
+        <img
+          className={`hero-img ${fxClass(section)}`}
+          style={fxStyle(section)}
+          src={heroImg}
+          alt=""
+          decoding="async"
+        />
+      ) : null}
       <div className="hero-content" style={align === "right" ? { marginLeft: "auto", textAlign: "right" } : undefined}>
         {section.subtitle ? <p>{section.subtitle}</p> : null}
         <h1>{section.title || "Fresh groceries, fast"}</h1>
@@ -136,7 +164,7 @@ function CategoryGridSection({ section }: { section: StoreSection }) {
           {cats.map((item) => (
             <a key={item.id} className="cat-card" href={href(`browse?category=${item.category_slug}`)}>
               <span className="cat-ico">
-                {item.image ? <img src={img(item.image)!} alt="" /> : <Monogram text={item.category_name || item.caption || "·"} />}
+                {item.image ? <img src={img(item.image)!} alt="" loading="lazy" decoding="async" /> : <Monogram text={item.category_name || item.caption || "·"} />}
               </span>
               {item.category_name || item.caption}
             </a>
@@ -195,6 +223,8 @@ function ProductRowSection({ section }: { section: StoreSection }) {
                 discount_percent: 0,
                 is_featured: false,
                 primary_image: p.image,
+                rating_avg: null,
+                rating_count: 0,
               }}
             />
           ))}
@@ -214,7 +244,7 @@ function GallerySection({ section }: { section: StoreSection }) {
       <div className="grid grid-gallery">
         {images.map((i) => (
           <figure key={i.id} style={{ margin: 0 }}>
-            <img className="gallery-img" src={img(i.image)!} alt={i.caption} loading="lazy" />
+            <img className="gallery-img" src={img(i.image)!} alt={i.caption} loading="lazy" decoding="async" />
             {i.caption ? <figcaption className="muted" style={{ fontSize: 12, marginTop: 6 }}>{i.caption}</figcaption> : null}
           </figure>
         ))}

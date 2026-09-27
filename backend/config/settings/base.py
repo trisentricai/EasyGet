@@ -1,3 +1,4 @@
+import mimetypes
 import os
 from pathlib import Path
 
@@ -54,6 +55,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Serves collectstatic output in production (Render has no separate
+    # web server); must come right after SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -79,13 +83,55 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
 
-AUTH_PASSWORD_VALIDATORS = []
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+# Windows' mimetypes registry often lacks .webp → static serve would fall
+# back to application/octet-stream.
+mimetypes.add_type("image/webp", ".webp", True)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+
+# Supabase Storage (S3 interop) for media — used when the S3 env vars are
+# present (Render); local dev falls back to the filesystem above.
+if env("SUPABASE_S3_ENDPOINT", default=""):
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "endpoint_url": env("SUPABASE_S3_ENDPOINT"),
+            "region_name": env("SUPABASE_S3_REGION", default="us-east-1"),
+            "access_key": env("SUPABASE_S3_ACCESS_KEY_ID"),
+            "secret_key": env("SUPABASE_S3_SECRET_ACCESS_KEY"),
+            "bucket_name": env("SUPABASE_S3_BUCKET", default="easyget-media"),
+            # Public URLs go through /storage/v1/object/public/<bucket>/...
+            # (the S3 endpoint itself is for API calls only).
+            "custom_domain": env("SUPABASE_S3_PUBLIC_HOST", default=""),
+            "file_overwrite": False,
+            "querystring_auth": False,
+        },
+    }
+    # Media are absolute Supabase URLs from here on.
+    MEDIA_URL = env("SUPABASE_S3_PUBLIC_URL_PREFIX", default="/media/")
 
 CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
@@ -94,6 +140,8 @@ CORS_ALLOWED_ORIGINS = env.list(
         "http://localhost:5174",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:8181",
+        "http://127.0.0.1:8181",
     ],
 )
 
@@ -108,6 +156,10 @@ CACHES = {
             # cache reads/writes degrade to cache-miss instead of raising.
             # Throttling/ratelimiting then allow traffic rather than 500-ing.
             "IGNORE_EXCEPTIONS": True,
+            # RESP2: redis-py 8 handshakes with HELLO (RESP3), which older
+            # Redis servers reject — without this every cache write silently
+            # fails and ALL rate limiting silently disables itself.
+            "CONNECTION_POOL_KWARGS": {"protocol": 2},
         },
     },
 }
@@ -124,15 +176,21 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
+        # Applies only to views that declare a `throttle_scope`; views without
+        # one are untouched. login/register/otp scopes are set on auth views.
+        "rest_framework.throttling.ScopedRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/minute",
         "user": "1000/minute",
         "login": "5/minute",
         "register": "3/minute",
+        "otp": "10/minute",
         "password_reset": "2/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "common.pagination.Max20PagePagination",
+    "PAGE_SIZE": 20,
     "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
 }
 
@@ -217,6 +275,13 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    # Render terminates TLS at its proxy — without this Django sees plain
+    # HTTP on every request and SECURE_SSL_REDIRECT loops forever.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Origins allowed to POST session/CSRF-protected forms (Django admin, DRF
+# browsable bits). JWT API calls only need CORS_ALLOWED_ORIGINS above.
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
 # Logging
 LOGGING = {

@@ -1,6 +1,6 @@
-# GIT CHECK — EASYGET (Git & GitHub Reference)
+﻿# GIT CHECK â€” EASYGET (Git & GitHub Reference)
 
-**Last updated:** 2026-09-23
+**Last updated:** 2026-09-27
 **Read BEFORE working:** together with `README.md` (roadmap) and `currentUpdate.md` (live code status). Update this file after every commit/change.
 
 ---
@@ -17,7 +17,7 @@
 | Item | Value |
 |---|---|
 | Remote name | `origin` |
-| Repository | `trisentricai/EasyGet` (blank at repo creation — receives all EASYGET code) |
+| Repository | `trisentricai/EasyGet` (blank at repo creation â€” receives all EASYGET code) |
 | SSH URL | `git@github.com:trisentricai/EasyGet.git` |
 | HTTPS URL (fallback) | `https://github.com/trisentricai/EasyGet.git` |
 | Access | Collaborator access granted to personal account `rahulbharathi1921` |
@@ -26,10 +26,10 @@
 
 - Method: **SSH** (chosen; recommended over HTTPS/PAT)
 - Key: `~/.ssh/id_ed25519.pub` (private key `id_ed25519`)
-- Verified: `ssh -T git@github.com` → `Hi rahulbharathi1921! You've successfully authenticated` (2026-09-19)
-- If auth ever fails: confirm key is still listed under GitHub → Settings → SSH and GPG keys.
+- Verified: `ssh -T git@github.com` â†’ `Hi rahulbharathi1921! You've successfully authenticated` (2026-09-19)
+- If auth ever fails: confirm key is still listed under GitHub â†’ Settings â†’ SSH and GPG keys.
 
-## 4. Commit Identity (repo-local — does NOT touch global config)
+## 4. Commit Identity (repo-local â€” does NOT touch global config)
 
 | Setting | Value |
 |---|---|
@@ -44,11 +44,11 @@ git config user.name; git config user.email
 
 ## 5. Branch Strategy (per current plan)
 
-- `main` — stable, shippable baseline. Every phase merges here only after its checklist passes.
-- Feature/phase branches: `phase-1-foundation`, `phase-2-auth`, `phase-3-products`, … (named per README phase)
-- Workflow: create branch → build phase → verify against `README.md` manual checklist → merge into `main` → push.
+- `main` â€” stable, shippable baseline. Every phase merges here only after its checklist passes.
+- Feature/phase branches: `phase-1-foundation`, `phase-2-auth`, `phase-3-products`, â€¦ (named per README phase)
+- Workflow: create branch â†’ build phase â†’ verify against `README.md` manual checklist â†’ merge into `main` â†’ push.
 
-**In progress:** `phase-3-store-product-inventory` — all Phase 3+ work committed in logical chunks (see changelog); branch is pushed to `origin`, awaiting merge into `main` after the manual checklist pass. `phase-2-auth` was merged into `main` (2026-09-19).
+**In progress:** `phase-3-store-product-inventory` â€” all Phase 3+ work committed in logical chunks (see changelog); branch is pushed to `origin`, awaiting merge into `main` after the manual checklist pass. `phase-2-auth` was merged into `main` (2026-09-19).
 
 ## 6. Commit-Message Conventions
 
@@ -64,9 +64,9 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 ## 7. PUSH / COMMIT CHECKLIST (run every time code changes)
 
-1. Update **`currentUpdate.md`** (latest work, file-system state) AND **`GitCheck.md`** (this file — session changelog below).
-2. `git status` + `git diff` — stage only intended files, never `.env`/secrets.
-3. `git log --oneline -5` — confirm working from correct branch.
+1. Update **`currentUpdate.md`** (latest work, file-system state) AND **`GitCheck.md`** (this file â€” session changelog below).
+2. `git status` + `git diff` â€” stage only intended files, never `.env`/secrets.
+3. `git log --oneline -5` â€” confirm working from correct branch.
 4. Commit with a convention-abiding message.
 5. `git push` (or `git push -u origin main` on first push of a branch).
 6. Add a row to the **Session Changelog** table below.
@@ -75,30 +75,60 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
-| 2026-09-23 | phase-3-store-product-inventory | PR #2 | Closed PR #1 (stale CI history), opened fresh PR #2 — same branch, full description; CI restarting clean |
-| 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | Fix backend CI: pin missing deps (channels, channels-redis, drf-spectacular, django-ratelimit) + SQLite env for CI tests |
-| 2026-09-23 | phase-3-store-product-inventory | — (uncommitted) | `GETTING_STARTED.md`: full run guide (4 terminals, logins, per-screen map) + works/quirks/pending lists; README pointer |
+| 2026-09-27 | fix/flutter-web-and-ordering | `10f1c7b` + repo event | **Repo deleted & recreated by owner (same name `trisentricai/EasyGet`)**: old PRs #1–#3 and old `main` died with it; branch push restored full history (verified `a7780b8`…`10f1c7b` reachable on the new repo); `main` re-pushed at old baseline `cabbf51` (verified ancestor of the branch); **new PR #1** opened (37 commits, 8/8 checks green incl. `no-tracked-secrets`); default branch is still `fix/flutter-web-and-ordering` — owner must switch it to `main` in Settings → General (PATCH API returns 404 for the push-scoped `gh` token; needs admin) |
+| 2026-09-27 | fix/flutter-web-and-ordering | `05cab46` | chore: business-level `.gitignore` rewrite — secrets + local artifacts only; added signing/credential patterns (`*.pem`/`*.p12`/`*.pfx`/`*.jks`/`*.keystore`, `key.properties`, `google-services.json`, `service-account*.json`, `credentials.json`) matching the CI guard, generalized `db.sqlite3` → `*.sqlite3`, dropped unused pytest/coverage entries; verified the 76 live ignore entries unchanged (no new untracked noise), `.env.example` still whitelisted, 0 ignored-but-tracked files |
+| 2026-09-27 | fix/flutter-web-and-ordering | `7de905b` | ci: repo hygiene guard — `repo-hygiene.yml` fails if `.env` isn't gitignored, if env/key/keystore/credential files are tracked (`.env.example` exempt), or if private-key/AKIA/ghp_/xox patterns appear in tracked content; all three checks verified green locally |
+| 2026-09-27 | fix/flutter-web-and-ordering | `6e30fce` | Image display controls end-to-end: `ImageDisplayFields` abstract model (align_x/align_y, zoom 1.0–3.0, effect none/zoom/pan/grayscale, transition_ms) on `ProductImage` + `StoreSection` (migrations `products.0006`/`storefront.0004`, applied live); serializers expose the 5 fields + `primary_image_display` on product list & detail; admin `ImageDisplayEditor` (preview + align grid + sliders + effect select) wired into ProductsPage ✎ panel and StorefrontPage section-design image block; customer `fxClass/fxStyle` on cards/PDP/thumbs/heroes (wrapper-safe CSS + direct-`img` variant); 268/268 tests, both builds green, live smoke 14/14 |
+| 2026-09-27 | fix/flutter-web-and-ordering | `7887104` | Designer layout: `.section-head` flex row pins controls right (no more clipping), `.section-row` min-width 0, title/badge truncation, `.item-strip` nowrap + horizontal scroll with styled scrollbar |
+| 2026-09-27 | fix/flutter-web-and-ordering | `a7780b8` | Admin product image gallery: backend `GET/POST products/<slug>/images/` + `GET/PATCH/DELETE products/images/<pk>/` (routes before router; tenant object perms against the product, platform products staff-only; atomic primary demote, promote-on-delete; WebP via existing signal); **fixed latent `ProductDetailSerializer.primary_image` instance→JSON 500** (model property auto-mapped — fired the moment a product had an image; shared `_primary_image_url()` + regression test); ProductsPage Images block (upload/star/remove tiles, detail fetch on edit, save-first hint) + `api.ts` helpers + shared `mediaSrc`; 262/262 tests, admin build green, live smoke 27/27 |
+| 2026-09-27 | fix/flutter-web-and-ordering | `a079dcd` | Designer UX + dark mode + infinite scroll: Sections/Store theme tabs (theme no longer overlays the board) + add-section jumps to board & scrolls new row into view; HERO banner image field (preview/upload/replace/remove, immediate multipart PATCH via `updateSection(FormData)`, remove `{image:null}`, `StoreSection.image` typed); customer-web dark mode (header Sun/Moon toggle, `eg-theme` localStorage + OS pref, no-flash boot script, 200ms theme-switch transition reduced-motion aware, palette `!important` over merchant inline `--bg`, hardcoded light colors var-ized with new `--warn-ink`); BrowsePage IntersectionObserver sentinel (200px) auto-fetch + Load More hidden at bottom/all-loaded; backend `MEDIA_URL`/`MEDIA_ROOT` + DEBUG `static()` media + `.webp` mimetype (uploads were cwd-relative and 404'd); 252/252 + both builds + live upload→GET 200 image/webp |
+| 2026-09-27 | fix/flutter-web-and-ordering | `33d84fe` | Docs: currentUpdate §0 perf batch (6-part breakdown, verification 252/252 + builds + live RLS 68/68, open edges) + GitCheck rows for `891e278`/`0e5a230` + GETTING_STARTED test count 242 → 252 (this row added by follow-up) |
+| 2026-09-27 | fix/flutter-web-and-ordering | `0e5a230` | Perf: DRF global `Max20PagePagination` (20/page hard cap; Product/Review clamped; admin `listAllProducts` retuned); Supabase RLS via post_migrate without sender (RLS on all owned public tables + anon/auth revoked — 68/68 verified live, sqlite no-op); tests updated for `{results}` + storefront `cache.clear()` isolation; product-card rest border; `decoding`/`lazy` on all imgs; TanStack Query providers + list/detail conversions both SPAs |
+| 2026-09-27 | fix/flutter-web-and-ordering | `891e278` | Perf foundation: 1h cache-aside storefront/category reads + signal invalidation; WebP upload compression (q80, 1200/800px, committed-field guard); `ProductSearchIndex` full-text rewrite + rebuild command; composite index migrations; guest-browse `AllowAny`; `seed_platform_storefront`; customer-web favicon/401-retry/tokenized search fallback |
+| 2026-09-26 | fix/flutter-web-and-ordering | `151e624` | Docs: GETTING_STARTED refresh — split orders/platform storefront in "what works", designer staff-only, test count 195 → 242 |
+| 2026-09-26 | fix/flutter-web-and-ordering | `4433554` | Docs: currentUpdate §0 platform storefront + split orders (D1–D6, verification 242/242 + builds + 8/8 smoke, open edges) + GitCheck changelog rows for every plan commit |
+| 2026-09-26 | fix/flutter-web-and-ordering | `0ca975e` | Admin-web: storefront designer staff-only (NAV filter + `#/storefront` route guard, merchant deep-link falls to dashboard); designer default = platform > saved `eg-store` > first store (resolved once via ref); `getStoreSlug()` fallback `easyget`; `listStores` typed with `is_platform` |
+| 2026-09-26 | fix/flutter-web-and-ordering | `eee9843` | customer-web: cart grouped by `Sold by {seller}` + per-seller subtotal; checkout review groups + "This will be placed as N orders — one per seller." + split placement (toast N orders → orders list, legacy fallback); orders list/detail Seller lines; `createOrder` → `{orders?} & Partial<OrderDetail>`; `OrderCreateInput.store?` |
+| 2026-09-26 | fix/flutter-web-and-ordering | `e4eb016` | customer-web: StorefrontContext always fetches `/storefront/platform/` (slug/localStorage/hash machinery + `getStorefront` removed); EASYGET branding (index.html title, loading/fallback, footer, PDP "Sold by"); `eg-cust-store` already covered by `eg-*` purge sweep |
+| 2026-09-26 | fix/flutter-web-and-ordering | `03abb1e` | Backend: split-order creation — `POST /orders/` without `store` groups cart by product tenant, resolves all stores first (dead seller → 400, nothing created), one Order+items per seller atomically → `{orders}`; `{store}` present = legacy single mode untouched; `OrderCreateSerializer` `store` optional; `OrderListSerializer.store_name` (+6 tests) |
+| 2026-09-26 | fix/flutter-web-and-ordering | `d0d524b` | Backend: marketplace cart — cross-tenant add/merge guards removed (split at checkout); `CartItemSerializer` exposes `tenant_id` + `seller_name` (active non-platform store → tenant name → EasyGet, prefetched `to_attr=active_stores`); 2 flipped guards + 2 seller-field tests |
+| 2026-09-26 | fix/flutter-web-and-ordering | `f046741` | Backend: `GET /api/v1/storefront/platform/` (AllowAny, lookup by `is_platform` flag, routed before slug); `_product_allowed_for_store` platform branch = any active product (merchants stay strict) (+5 tests) |
+| 2026-09-26 | fix/flutter-web-and-ordering | `8025962` | Backend: `Store.is_platform` + partial `unique_platform_store` + data migration (EASYGET platform row slug `easyget` tenant NULL; demo rename both spellings → `EasyGet Demo Store`, slug kept); store list/detail + `_store_state` hide platform from non-staff; orders reject `store=platform`; live migrate + one-off rename (+6 stores tests, pincode store-state pins, orders guard) |
+| 2026-09-26 | fix/flutter-web-and-ordering | `cfac509` | Docs: platform storefront implementation plan (8 tasks, TDD, Review Focus) + `.superpowers/` gitignored |
+| 2026-09-26 | fix/flutter-web-and-ordering | `cc69ec6` | Docs: EASYGET platform storefront design spec (D1–D6 decisions, §4 design, §5 error handling, §6 testing, §7 risks) |
+| 2026-09-26 | fix/flutter-web-and-ordering | `ab14c95` | Security hardening: full auth/authz review (14 findings) → 13 fixed (VULN-001…013): pwa writes admin-only; inventory cross-tenant create blocked; delivery permission tiers + agents PII scoping; chat message/participant guards; WS order/room access checks; payment webhook staff-only; payment attach ownership; refund validation + `pk` latent-500 fix; storefront product-tenant + inactive-section guards; enumeration-safe OTP errors + resend quota; DRF `ScopedRateThrottle` wired (login 5/min, register 3/min, otp 10/min — scopes were dead) live-verified `401×5→429×2`; password validators (min 10/similarity/common/numeric) + register serializer + signup form minLength; **Redis cache was silently dead** (redis-py 8 `HELLO` vs old server → `protocol=2`) — all throttling was off; + UX: signup grid overflow fix, guest route gate, logout localStorage purge; 221 tests green (+26 security tests), both builds green, 13/13 live-verified |
+| 2026-09-26 | fix/flutter-web-and-ordering | `d331319` | Phase B1 marketplace depth: wishlist model + `/products/wishlist/` endpoints + server-synced heart + `#/wishlist` page; `sort=rating` (products+search) + sort-visibility leak fix; PDP offers from active coupons + demo coupons seeded; live pincode `GET /pincode/<6>/` (postal API + UA fix + state alias + fallback + cache); admin `GET/PATCH/DELETE /admin/reviews/` + admin-web ReviewsPage; 195 tests green, both builds green; root junk cleanup (JWT dumps, scratch scripts); docs rewritten (README/GETTING_STARTED/PROJECT/currentUpdate) |
+| 2026-09-24 | fix/flutter-web-and-ordering | `bbb2afa` | Phase A discovery (web): deals/category/recent/recommended rails, brand+discount+sort backend filters, brands endpoint, search recents/trending; demo-enriched catalog (20 brands, varied prices/MRP) |
+| 2026-09-24 | fix/flutter-web-and-ordering | `b896cd6` | Phase A2 Flipkart look: reviews/ratings API (one-per-user, verified badge, subquery aggregates, 409 dup) + theme palette migration (#2874F0/#FB641B/Inter) + full UI overhaul (header/category strip/offer ticker, carousel, rating-pill cards + wishlist heart, PDP buy box + reviews UI, sidebar filters, 4-col footer, bottom nav); 177 tests green |
+| 2026-09-23 | phase-3-store-product-inventory | PR #2 | Closed PR #1 (stale CI history), opened fresh PR #2 â€” same branch, full description; CI restarting clean |
+| 2026-09-23 | phase-3-store-product-inventory | â€” (uncommitted) | Fix backend CI: pin missing deps (channels, channels-redis, drf-spectacular, django-ratelimit) + SQLite env for CI tests |
+| 2026-09-23 | phase-3-store-product-inventory | â€” (uncommitted) | `GETTING_STARTED.md`: full run guide (4 terminals, logins, per-screen map) + works/quirks/pending lists; README pointer |
 | 2026-09-23 | phase-3-store-product-inventory | `ed01af0` | Pushed branch to `origin` (all 14 commits); fixed stale changelog hashes; `origin/phase-3-store-product-inventory` now tracks local |
 | 2026-09-23 | phase-3-store-product-inventory | `af251ee` | Flutter app: full customer build (Riverpod 3.3 + go_router 17 + Dio + secure storage, clean arch, all screens); analyzer 0, debug APK built |
-| 2026-09-23 | phase-3-store-product-inventory | `0908e75` | Delivery v1: `delivery` app (Assignment model + state machine + order sync), assign/advance/agents APIs (tenant-scoped), admin Orders delivery section; 9 tests; live E2E confirm→assign→delivered; agent `agent@easyget.app` |
+| 2026-09-23 | phase-3-store-product-inventory | `0908e75` | Delivery v1: `delivery` app (Assignment model + state machine + order sync), assign/advance/agents APIs (tenant-scoped), admin Orders delivery section; 9 tests; live E2E confirmâ†’assignâ†’delivered; agent `agent@easyget.app` |
 | 2026-09-23 | phase-3-store-product-inventory | `efa1efb` | Tenant-wiring: Cart tenant FK + cross-tenant guards, Order tenant FK + scoped querysets, Payments inherit-via-order + scoped refunds, refunds-router order fix; products pagination (20/page, Load-more browse, listAll helpers); 58 tests pass |
 | 2026-09-23 | phase-3-store-product-inventory | `6fa9d12` | Customer-web polish (icons/branding/fonts, UUID order ids) + CORS :3000 |
 | 2026-09-23 | phase-3-store-product-inventory | `b24419b` | Docs refresh: README build-order statuses + Quick Start (run/logins/tests), local-development venv paths + logins + test instructions |
 |---|---|---|---|
 | 2026-09-23 | phase-3-store-product-inventory | `f72a14c` | Order Engine: admin `OrdersPage` (#/orders, filters, detail+timeline, advance/cancel) + Dashboard fulfilment link; fixed modal portal, storefront `.sf-layout` grid, sidebar overflow guard; stripped trailing `|` from 200 products + seed JSON |
 | 2026-09-22 | phase-3-store-product-inventory | `0283bd4`+`23ea54d`+`6ba7cc7` | Supabase live verify (health/admin-login/dashboard/stores/categories/storefront/products-200), created `admin@easyget.local` in Supabase, fixed products N+1 (`prefetch_related` + annotated `min_variant_price` + prefetched `primary_image`); 31 tests pass (products/stores/categories/tenants); both webs build pass |
-| 2026-09-20 | phase-3-store-product-inventory | — (uncommitted) | Admin dashboard UI (admin-web): dual-theme SPA, login/JWT+refresh, dashboard stats, categories/products/inventory CRUD, drag-and-drop storefront designer (sections+items, design knobs, theme panel); backend fixes: `/api/v1/admin/` route order, storefront template backend (`storefront` app: theme/sections/items + render API, 21 tests) — suite 141✅ |
-| 2026-09-20 | phase-3-store-product-inventory | — (uncommitted) | Phase 3: new `tenants` app (Tenant/TenantMembership/permissions/services), tenant FKs on Store/Product/StockItem + migrations, merchant onboarding flow, tenant-scoped products/inventory, 22 isolation tests (suite 120✅); fixed 6 generated-baseline bugs (Redis fail-soft throttle cache, product routes/filters, realtime signal); `seed_shop_catalog` → 10 categories / 200 products / 200 stock items from Shop Stock Checklist |
+| 2026-09-20 | phase-3-store-product-inventory | â€” (uncommitted) | Admin dashboard UI (admin-web): dual-theme SPA, login/JWT+refresh, dashboard stats, categories/products/inventory CRUD, drag-and-drop storefront designer (sections+items, design knobs, theme panel); backend fixes: `/api/v1/admin/` route order, storefront template backend (`storefront` app: theme/sections/items + render API, 21 tests) â€” suite 141âœ… |
+| 2026-09-20 | phase-3-store-product-inventory | â€” (uncommitted) | Phase 3: new `tenants` app (Tenant/TenantMembership/permissions/services), tenant FKs on Store/Product/StockItem + migrations, merchant onboarding flow, tenant-scoped products/inventory, 22 isolation tests (suite 120âœ…); fixed 6 generated-baseline bugs (Redis fail-soft throttle cache, product routes/filters, realtime signal); `seed_shop_catalog` â†’ 10 categories / 200 products / 200 stock items from Shop Stock Checklist |
 | 2026-09-19 | main | `66bc53a` | Phase 1 foundation baseline: Django API + health endpoint + CI + React/Flutter scaffolds; git/SSH setup; docs (README, currentUpdate.md, GitCheck.md) |
 
 ## 9. Gotchas
 
 - Run `manage.py test` and management commands **from `backend/`** (discovery finds 0 tests otherwise).
 - `.env` is gitignored, required locally; copy from `.env.example` and keep `DJANGO_DEBUG=true` in dev.
-- No Docker on dev machine → DB-touching Django commands hang with the Postgres URL; override `$env:DATABASE_URL="sqlite:///db.sqlite3"`.
-- `git branch -m main` already applied locally — branch is `main`, not `master`.
+- No Docker on dev machine â†’ DB-touching Django commands hang with the Postgres URL; override `$env:DATABASE_URL="sqlite:///db.sqlite3"`.
+- `git branch -m main` already applied locally â€” branch is `main`, not `master`.
 - Windows CRLF: commit LF-normalized files; avoid editing line endings across platforms.
 - Prefix terminal commands with `rtk` for token savings (see `~/.claude/CLAUDE.md`).
+- Anon `GET /api/v1/categories/` is Redis-cached 1h (`common/cache`, `categories` view) — goes stale after DB reseeds (returns old ids, e.g. `Grocery id:1` while Supabase has 6–15); invalidates only on Category `post_save`. Product create with a stale id 400s — verify ids against the DB (`manage.py shell`), not the cached list.
+- Live backend DB comes from repo-root `.env` (`DATABASE_URL` → Supabase); tests must override `$env:DATABASE_URL='sqlite:///db.sqlite3'`. Backend restart after any edit: `Start-Process .venv\Scripts\python.exe -ArgumentList 'backend\manage.py','runserver','0.0.0.0:8000','--noreload' -WorkingDirectory <repo>` (logs to `backend-dev.err.log`).
+- **Deploy = Render API + Netlify API via tokens in `$env:TEMP\opencode\` (never commit).** Render: creation-time `envVars` are dropped (PUT `/v1/services/{id}/env-vars` as `[{key,value}]`), branch field is `branch` (not `repoBranch`), no logs API (ask owner to paste dashboard logs), collectstatic needs the settings/requirements prep COMMITTED or start exits 1 (`ImproperlyConfigured: STATIC_ROOT`).
+- **Netlify gotchas:** `Compress-Archive` writes `assets\file.js` (backslash) entries → assets 404; rebuild zips with .NET `ZipFile.CreateEntryFromFile` + `rel.Replace('\','/')`. Zip deploys land unpublished (`state=ready`, site 404s) → publish with `POST /api/v1/deploys/{id}/restore` once state is `ready` (422 if not). Env vars are account-level: `POST /api/v1/accounts/{id}/env?site_id=...` (`/sites/{id}/env` → 404; `scopes` → 403 on free plan).
+- **gunicorn only runs on Render (Linux)** - on Windows dev it dies with `ModuleNotFoundError: fcntl`; use `runserver` locally.
 
 ## 10. Quick Reference Commands
 

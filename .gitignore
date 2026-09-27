@@ -1,41 +1,59 @@
-# Environment and secrets
+# ==========================================================================
+# EASYGET — gitignore
+# Rules: ignore ONLY what must never leave the machine (secrets) or has no
+# business value in source control (caches, build output, local data,
+# logs, IDE/OS state). Everything else here is product source and stays
+# tracked. Must stay in sync with .github/workflows/repo-hygiene.yml.
+# ==========================================================================
+
+# --- Secrets & environment (never commit) ---
 .env
 .env.*
 !.env.example
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+key.properties
+google-services.json
+service-account*.json
+credentials.json
 
-# Local tool logs and worktrees
-.kilo/
-*.log
-
-# Python
-.venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-coverage.xml
-htmlcov/
-
-# Django
-staticfiles/
-media/
+# --- Local data: database + uploaded media ---
 db.sqlite3
+*.sqlite3
+media/
 
-# Node
+# --- Dependencies & build output ---
+.venv/
 node_modules/
 dist/
-npm-debug.log*
+build/
+staticfiles/
 
-# Flutter/Dart
+# --- Python caches ---
+__pycache__/
+*.py[cod]
+
+# --- Flutter / Dart (customer-app) ---
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
-build/
 
-# IDE and OS
+# --- Logs ---
+*.log
+
+# --- IDE & OS state (local-only) ---
 .idea/
 .vscode/
 *.iml
 Thumbs.db
 .DS_Store
+
+# --- Local tooling artifacts (AI sessions, worktrees) ---
+.kilo/
+.superpowers/
+.freebuff/

@@ -33,7 +33,7 @@ class StoreListView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = Store.objects.select_related("tenant")
         if not self.request.user.is_staff:
-            qs = qs.filter(is_active=True)
+            qs = qs.filter(is_active=True, is_platform=False)
         return qs
 
     def get_serializer_class(self):
@@ -68,7 +68,7 @@ class StoreDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         qs = Store.objects.select_related("tenant")
         if self.request.method == "GET" and not self.request.user.is_staff:
-            qs = qs.filter(is_active=True)
+            qs = qs.filter(is_active=True, is_platform=False)
         return qs
 
     def get_serializer_class(self):

@@ -1,3 +1,10 @@
+from datetime import timedelta
+
+from django.contrib.auth.password_validation import (
+    validate_password as django_validate_password,
+)
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -6,15 +13,35 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Address, OTPCode, User
 from .services import send_otp_email
 
+# One message for every verify failure (unknown email, no OTP, expired, wrong
+# code) so responses never reveal whether an account exists.
+OTP_INVALID_MESSAGE = "Invalid or expired OTP code."
+
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+    password = serializers.CharField(write_only=True, min_length=10, max_length=128)
 
     class Meta:
         model = User
         fields = ("id", "email", "password", "first_name", "last_name", "phone")
         read_only_fields = ("id",)
         extra_kwargs = {"password": {"write_only": True}}
+
+    def validate(self, attrs):
+        password = attrs.get("password")
+        # Similarity validator needs the user attributes; build a throwaway
+        # instance (nothing is persisted until create()).
+        user = User(
+            email=attrs.get("email", ""),
+            first_name=attrs.get("first_name", ""),
+            last_name=attrs.get("last_name", ""),
+            phone=attrs.get("phone", ""),
+        )
+        try:
+            django_validate_password(password, user=user)
+        except DjangoValidationError as errors:
+            raise serializers.ValidationError({"password": list(errors.messages)})
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password")
@@ -32,7 +59,7 @@ class VerifyOTPSerializer(serializers.Serializer):
         try:
             user = User.objects.get(email__iexact=attrs["email"])
         except User.DoesNotExist:
-            raise serializers.ValidationError({"email": "No user found with this email."})
+            raise serializers.ValidationError({"code": OTP_INVALID_MESSAGE})
 
         otp = (
             OTPCode.objects.filter(
@@ -43,16 +70,14 @@ class VerifyOTPSerializer(serializers.Serializer):
             .order_by("-created_at")
             .first()
         )
-        if otp is None:
-            raise serializers.ValidationError({"code": "No active OTP found. Request a new one."})
-        if otp.is_expired:
-            raise serializers.ValidationError({"code": "OTP has expired. Request a new one."})
+        if otp is None or otp.is_expired:
+            raise serializers.ValidationError({"code": OTP_INVALID_MESSAGE})
         if otp.attempts >= 5:
             raise serializers.ValidationError({"code": "Too many attempts. Request a new OTP."})
         if otp.code != attrs["code"]:
             otp.attempts += 1
             otp.save(update_fields=["attempts"])
-            raise serializers.ValidationError({"code": "Invalid OTP code."})
+            raise serializers.ValidationError({"code": OTP_INVALID_MESSAGE})
 
         otp.is_used = True
         otp.save(update_fields=["is_used"])
@@ -66,12 +91,23 @@ class ResendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate(self, attrs):
-        try:
-            user = User.objects.get(email__iexact=attrs["email"])
-        except User.DoesNotExist:
-            raise serializers.ValidationError({"email": "No user found with this email."})
-        if user.is_email_verified:
-            raise serializers.ValidationError({"email": "Email is already verified."})
+        user = User.objects.filter(email__iexact=attrs["email"]).first()
+        if user is None or user.is_email_verified:
+            # No account (or already verified): no-op downstream, same response.
+            attrs["user"] = None
+            return attrs
+        # Per-account cap that survives reissue: each resend creates a fresh
+        # OTP (resetting `attempts`), so without this a 6-digit code could be
+        # brute-forced by resending indefinitely. Initial register counts too.
+        window_start = timezone.now() - timedelta(minutes=10)
+        recent = OTPCode.objects.filter(
+            user=user,
+            purpose=OTPCode.Purpose.EMAIL_VERIFICATION,
+            created_at__gte=window_start,
+        ).count()
+        if recent >= 4:
+            attrs["user"] = None
+            return attrs
         attrs["user"] = user
         return attrs
 

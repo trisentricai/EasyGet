@@ -1,14 +1,28 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createProduct,
   deleteProduct,
+  deleteProductImage,
   errText,
+  getProduct,
   listAllProducts,
   listCategories,
+  mediaSrc,
+  setPrimaryProductImage,
+  toImageDisplay,
   updateProduct,
-  type Category,
+  updateProductImage,
+  uploadProductImage,
+  DEFAULT_IMAGE_DISPLAY,
+  type ImageDisplay,
   type Product,
+  type ProductImage,
 } from "../services/api";
+import ImageDisplayEditor, {
+  imageFxClass,
+  imageFxStyle,
+} from "../components/ImageDisplayEditor";
 import { useToast } from "../context/ToastContext";
 import { Card, ConfirmDialog, EmptyState, Modal, Spinner } from "../components/ui";
 
@@ -40,8 +54,7 @@ function toArray<T>(res: { results: T[] } | T[]): T[] {
 
 export function ProductsPage() {
   const { push } = useToast();
-  const [products, setProducts] = useState<Product[] | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [editing, setEditing] = useState<Product | null>(null);
@@ -49,16 +62,29 @@ export function ProductsPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<Product | null>(null);
+  const [images, setImages] = useState<ProductImage[]>([]);
+  const [imgBusy, setImgBusy] = useState(false);
+  const [editImage, setEditImage] = useState<ProductImage | null>(null);
+  const [editDraft, setEditDraft] = useState<ImageDisplay>(DEFAULT_IMAGE_DISPLAY);
+  const [editCaption, setEditCaption] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    const [p, c] = await Promise.all([listAllProducts(), listCategories()]);
-    setProducts(p);
-    setCategories(toArray(c));
-  }, []);
+  const productsQuery = useQuery({
+    queryKey: ["admin", "products"],
+    queryFn: () => listAllProducts(),
+  });
+  const categoriesQuery = useQuery({
+    queryKey: ["admin", "categories"],
+    queryFn: async () => toArray(await listCategories()),
+  });
+
+  const products = productsQuery.data ?? null;
+  const categories = categoriesQuery.data ?? [];
 
   useEffect(() => {
-    load().catch((e) => push(e?.message ?? "Failed to load products", "err"));
-  }, [load, push]);
+    const e = productsQuery.error ?? categoriesQuery.error;
+    if (e) push(e?.message ?? "Failed to load products", "err");
+  }, [productsQuery.error, categoriesQuery.error, push]);
 
   const categoryById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
@@ -67,11 +93,13 @@ export function ProductsPage() {
 
   function openCreate() {
     setDraft({ ...emptyDraft, category: categories[0]?.id ?? "" });
+    setImages([]);
     setCreating(true);
   }
 
   function openEdit(p: Product) {
     setEditing(p);
+    setImages([]);
     setDraft({
       name: p.name,
       category: p.category?.id ?? "",
@@ -82,6 +110,9 @@ export function ProductsPage() {
       is_active: p.is_active,
       is_featured: p.is_featured,
     });
+    getProduct(p.slug)
+      .then((detail) => setImages(detail.images ?? []))
+      .catch((e) => push(errText(e, "Couldn't load images"), "err"));
   }
 
   function buildBody() {
@@ -114,7 +145,7 @@ export function ProductsPage() {
       }
       setCreating(false);
       setEditing(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
     } catch (e) {
       push(errText(e, "Save failed"), "err");
     } finally {
@@ -129,12 +160,94 @@ export function ProductsPage() {
       await deleteProduct(deleting.slug);
       push(`“${deleting.name}” deleted`);
       setDeleting(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
     } catch (e) {
       push(errText(e, "Delete failed"), "err");
       setDeleting(null);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function uploadImage(file: File) {
+    if (!editing) return;
+    setImgBusy(true);
+    try {
+      const img = await uploadProductImage(editing.slug, file);
+      setImages((list) => [...list, img]);
+      push("Image added");
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+    } catch (e) {
+      push(errText(e, "Upload failed"), "err");
+    } finally {
+      setImgBusy(false);
+    }
+  }
+
+  async function makePrimary(img: ProductImage) {
+    if (img.is_primary || imgBusy) return;
+    setImgBusy(true);
+    try {
+      await setPrimaryProductImage(img.id);
+      setImages((list) => list.map((i) => ({ ...i, is_primary: i.id === img.id })));
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+    } catch (e) {
+      push(errText(e, "Couldn't change primary"), "err");
+    } finally {
+      setImgBusy(false);
+    }
+  }
+
+  async function removeImage(img: ProductImage) {
+    if (imgBusy) return;
+    setImgBusy(true);
+    try {
+      await deleteProductImage(img.id);
+      setImages((list) => {
+        const next = list.filter((i) => i.id !== img.id);
+        if (img.is_primary && next.length) {
+          const first = [...next].sort(
+            (a, b) => a.sort_order - b.sort_order || a.id - b.id,
+          )[0];
+          return next.map((i) => ({ ...i, is_primary: i.id === first.id }));
+        }
+        return next;
+      });
+      push("Image removed");
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+    } catch (e) {
+      push(errText(e, "Remove failed"), "err");
+    } finally {
+      setImgBusy(false);
+    }
+  }
+
+  function openImageEditor(img: ProductImage) {
+    setEditImage(img);
+    setEditDraft(toImageDisplay(img));
+    setEditCaption(img.caption ?? "");
+  }
+
+  async function saveImageEditor() {
+    if (!editImage || editSaving) return;
+    setEditSaving(true);
+    try {
+      const updated = await updateProductImage(editImage.id, {
+        caption: editCaption,
+        align_x: editDraft.align_x,
+        align_y: editDraft.align_y,
+        zoom: editDraft.zoom,
+        effect: editDraft.effect,
+        transition_ms: editDraft.transition_ms,
+      });
+      setImages((list) => list.map((i) => (i.id === updated.id ? updated : i)));
+      setEditImage(null);
+      push("Image updated");
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+    } catch (e) {
+      push(errText(e, "Update failed"), "err");
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -266,7 +379,7 @@ export function ProductsPage() {
                 ))}
               </select>
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14 }}>
               <label>
                 MRP (₹)
                 <input
@@ -327,6 +440,147 @@ export function ProductsPage() {
                 Featured
               </label>
             </div>
+          </div>
+          <div style={{ marginTop: 18 }}>
+            <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+              Images
+            </div>
+            {!editing ? (
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                Save the product first, then edit it to add images.
+              </p>
+            ) : (
+              <>
+                <div className="prod-gallery">
+                  {images.map((img) => {
+                    const src = mediaSrc(img.image);
+                    return (
+                      <div
+                        key={img.id}
+                        className={`prod-img-tile ${imageFxClass(img)} ${
+                          img.is_primary ? "primary" : ""
+                        }`}
+                      >
+                        {src ? (
+                          <img
+                            src={src}
+                            alt=""
+                            decoding="async"
+                            style={imageFxStyle(img)}
+                          />
+                        ) : (
+                          <div className="prod-img-empty">?</div>
+                        )}
+                        <div className="prod-img-overlay">
+                          <button
+                            type="button"
+                            title="Edit align / zoom / effect"
+                            onClick={() => openImageEditor(img)}
+                            disabled={imgBusy}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            title={img.is_primary ? "Primary image" : "Make primary"}
+                            onClick={() => makePrimary(img)}
+                            disabled={img.is_primary || imgBusy}
+                          >
+                            {img.is_primary ? "★" : "☆"}
+                          </button>
+                          <button
+                            type="button"
+                            title="Remove image"
+                            onClick={() => removeImage(img)}
+                            disabled={imgBusy}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {img.is_primary && <span className="prod-img-badge">Primary</span>}
+                      </div>
+                    );
+                  })}
+                  <label
+                    className={`prod-img-tile prod-img-add ${imgBusy ? "busy" : ""}`}
+                    title="Upload image"
+                  >
+                    {imgBusy ? "…" : "+"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      disabled={imgBusy}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        e.target.value = "";
+                        if (file) void uploadImage(file);
+                      }}
+                    />
+                  </label>
+                </div>
+                <p className="muted" style={{ margin: "8px 0 0", fontSize: 12.5 }}>
+                  Uploads are compressed to WebP (max 800px). The starred image is
+                  the one shown on product cards.
+                </p>
+                {editImage && (
+                  <div className="ide-panel">
+                    <div className="ide-panel-head">
+                      <strong>Edit image</strong>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => setEditImage(null)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <ImageDisplayEditor
+                      src={mediaSrc(editImage.image)}
+                      value={editDraft}
+                      onChange={(patch) =>
+                        setEditDraft((d) => ({ ...d, ...patch }))
+                      }
+                    />
+                    <label
+                      style={{
+                        display: "grid",
+                        gap: 6,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: "var(--text-faint)",
+                      }}
+                    >
+                      Caption
+                      <input
+                        className="input"
+                        value={editCaption}
+                        maxLength={200}
+                        placeholder="Optional description for this angle"
+                        onChange={(e) => setEditCaption(e.target.value)}
+                      />
+                    </label>
+                    <div className="modal-actions">
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => setEditImage(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={editSaving}
+                        onClick={() => void saveImageEditor()}
+                      >
+                        {editSaving ? "Saving…" : "Save image"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
           <div className="modal-actions">
             <button
