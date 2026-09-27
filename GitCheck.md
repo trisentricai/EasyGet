@@ -75,6 +75,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-27 | fix/flutter-web-and-ordering | `33d84fe` | Docs: currentUpdate §0 perf batch (6-part breakdown, verification 252/252 + builds + live RLS 68/68, open edges) + GitCheck rows for `891e278`/`0e5a230` + GETTING_STARTED test count 242 → 252 (this row added by follow-up) |
 | 2026-09-27 | fix/flutter-web-and-ordering | `0e5a230` | Perf: DRF global `Max20PagePagination` (20/page hard cap; Product/Review clamped; admin `listAllProducts` retuned); Supabase RLS via post_migrate without sender (RLS on all owned public tables + anon/auth revoked — 68/68 verified live, sqlite no-op); tests updated for `{results}` + storefront `cache.clear()` isolation; product-card rest border; `decoding`/`lazy` on all imgs; TanStack Query providers + list/detail conversions both SPAs |
 | 2026-09-27 | fix/flutter-web-and-ordering | `891e278` | Perf foundation: 1h cache-aside storefront/category reads + signal invalidation; WebP upload compression (q80, 1200/800px, committed-field guard); `ProductSearchIndex` full-text rewrite + rebuild command; composite index migrations; guest-browse `AllowAny`; `seed_platform_storefront`; customer-web favicon/401-retry/tokenized search fallback |
 | 2026-09-26 | fix/flutter-web-and-ordering | `151e624` | Docs: GETTING_STARTED refresh — split orders/platform storefront in "what works", designer staff-only, test count 195 → 242 |
