@@ -42,7 +42,7 @@ The customer experience deliberately matches Flipkart/Meesho/Amazon conventions:
 - Cart / checkout / orders / account (addresses) on the standard APIs
 - Responsive: mobile bottom nav, touch-friendly, empty states everywhere
 
-**Admin web (`:5174`):** dashboard stats, orders fulfilment queue (status pills, detail + timeline, advance/cancel), categories/products/inventory CRUD, **review moderation** (approve/hide/delete), storefront designer (drag-order sections/items, theme panel with Flipkart palette), coupons/banners via API.
+**Admin web (`:5174`):** dashboard stats, orders fulfilment queue (status pills, detail + timeline, advance/cancel), categories/products/inventory CRUD, product **image gallery** (multi-image upload, primary selection, per-image focal align / zoom / hover-effect styling — also on storefront section images), **review moderation** (approve/hide/delete), storefront designer (drag-order sections/items, theme panel with Flipkart palette), coupons/banners via API.
 
 **Backend (Django + DRF + Postgres/Supabase):** auth (JWT + refresh + OTP verify), multi-tenant stores, catalog (variants, images, brands, min-discount & rating sorts), stock per store, cart (guest + merge), orders (state machine + timeline), payments (gateway-agnostic `Payment` model + saved methods), delivery assignments, notifications, full-text search + suggestions + logs, analytics, realtime channels, PWA manifest, storefront templates/sections/items/theme, admin config/audit/coupons/banners/scheduled tasks, **reviews & ratings** (one per user, masked names, verified purchase, moderation), **wishlist**, **pincode ETA service**.
 
