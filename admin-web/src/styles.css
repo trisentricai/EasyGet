@@ -1,5 +1,5 @@
 /* ============================================================
-   EASYGET ADMIN — Design System
+   EASYGET ADMIN â€” Design System
    Dual theme (light/dark) via [data-theme] custom properties.
    ============================================================ */
 
@@ -721,7 +721,7 @@ tbody tr:hover {
 
 /* ============================ Storefront editor ============================ */
 
-/* Sections | Store theme tabs — the theme editor gets its own full-width
+/* Sections | Store theme tabs â€” the theme editor gets its own full-width
    view instead of sitting beside (and overlaying) the section board. */
 .sf-tabs {
   display: flex;
@@ -859,6 +859,7 @@ tbody tr:hover {
   display: flex;
   gap: 14px;
   align-items: flex-start;
+  min-width: 0;
   cursor: grab;
   border-radius: var(--radius-lg);
   transition: box-shadow var(--t-fast), transform var(--t-fast),
@@ -906,35 +907,71 @@ tbody tr:hover {
 
 .section-head {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
+  width: 100%;
+  min-width: 0;
   gap: 10px;
   margin-bottom: 10px;
+}
+
+.section-head > span:first-child {
+  flex: none;
 }
 
 .section-head .title {
   font-weight: 800;
   font-size: 15.5px;
-  flex: 1;
-  /* Was min-width: 140px — forced the row wider than narrow columns,
-     pushing the whole board (and page) into horizontal overflow. */
+  flex: 1 1 auto;
   min-width: 0;
-  width: 100%;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.section-head .badge {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .section-actions {
   display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  margin-left: auto;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .item-strip {
   display: flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 6px;
+  overscroll-behavior-x: contain;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg-sunken);
+}
+
+.item-strip::-webkit-scrollbar {
+  height: 8px;
+}
+
+.item-strip::-webkit-scrollbar-track {
+  background: var(--bg-sunken);
+  border-radius: 99px;
+}
+
+.item-strip::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+
+.item-strip::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
 }
 
 .item-chip {
