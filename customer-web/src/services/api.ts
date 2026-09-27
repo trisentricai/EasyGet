@@ -170,6 +170,18 @@ export type SectionItem = {
   position: number;
 };
 
+/** Display knobs every rendered image carries (focal point, scale, hover).
+ *  All optional — absent fields fall back to neutral defaults. */
+export type ImageEffect = "none" | "zoom" | "pan" | "grayscale";
+
+export type ImageDisplay = {
+  align_x?: number;
+  align_y?: number;
+  zoom?: number;
+  effect?: ImageEffect;
+  transition_ms?: number;
+};
+
 export type StoreSection = {
   id: number;
   section_type:
@@ -191,7 +203,7 @@ export type StoreSection = {
   position: number;
   is_active: boolean;
   items: SectionItem[];
-};
+} & ImageDisplay;
 
 export type StorefrontPayload = {
   store: { name: string; slug: string; city: string; description: string };
@@ -280,15 +292,24 @@ export type Product = {
   discount_percent: number;
   is_featured: boolean;
   primary_image: string | null;
+  primary_image_display?: ImageDisplay | null;
   rating_avg: number | null;
   rating_count: number;
 };
+
+export type ProductImageItem = {
+  id: number;
+  image: string;
+  caption: string;
+  is_primary: boolean;
+  sort_order: number;
+} & ImageDisplay;
 
 export type ProductDetail = Product & {
   description: string;
   offers: Offer[];
   variants: { id: number; name: string; sku: string; price: string; discount_percent: number; is_active: boolean }[];
-  images: { id: number; image: string; caption: string; is_primary: boolean; sort_order: number }[];
+  images: ProductImageItem[];
 };
 
 export type Paged<T> = {

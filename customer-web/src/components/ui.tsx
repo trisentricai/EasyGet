@@ -8,6 +8,7 @@ import {
   type Product,
 } from "../services/api";
 import { isWished, syncWishlistCache, toggleWishlist } from "../utils/history";
+import { fxClass, fxStyle } from "../utils/imageFx";
 import { Icon, type IconName } from "./icons";
 
 export function money(value: string | number | null | undefined): string {
@@ -118,7 +119,10 @@ export function ProductCard({ product }: { product: Product }) {
   const freeDelivery = Number(product.base_price ?? 0) >= 499;
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
-      <div className="product-thumb">
+      <div
+        className={`product-thumb ${fxClass(product.primary_image_display)}`}
+        style={fxStyle(product.primary_image_display)}
+      >
         {image ? <img src={image} alt={product.name} loading="lazy" decoding="async" /> : <Monogram text={product.name} />}
         {(product.discount_percent ?? 0) >= 50 ? (
           <span className="chip chip-deal">{product.discount_percent}% off</span>

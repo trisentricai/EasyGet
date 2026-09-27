@@ -3,6 +3,7 @@ import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Monogram, Price, ProductCard, Section, Spinner } from "../components/ui";
+import { fxClass, fxStyle } from "../utils/imageFx";
 import {
   BannerCarousel,
   CategoryRail,
@@ -112,7 +113,15 @@ function HeroSection({ section }: { section: StoreSection }) {
   const align = (cfg.align as string) === "right" ? "right" : "left";
   return (
     <section className="hero" style={effects.hero_animation === "fade" ? { animation: "rise 0.6s ease" } : undefined}>
-      {heroImg ? <img className="hero-img" src={heroImg} alt="" decoding="async" /> : null}
+      {heroImg ? (
+        <img
+          className={`hero-img ${fxClass(section)}`}
+          style={fxStyle(section)}
+          src={heroImg}
+          alt=""
+          decoding="async"
+        />
+      ) : null}
       <div className="hero-content" style={align === "right" ? { marginLeft: "auto", textAlign: "right" } : undefined}>
         {section.subtitle ? <p>{section.subtitle}</p> : null}
         <h1>{section.title || "Fresh groceries, fast"}</h1>

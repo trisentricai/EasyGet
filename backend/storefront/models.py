@@ -1,5 +1,6 @@
 from django.db import models
 
+from products.models import ImageDisplayFields
 from stores.models import Store
 
 
@@ -40,7 +41,7 @@ class StorefrontTheme(models.Model):
         return f"Theme for {self.store.name}"
 
 
-class StoreSection(models.Model):
+class StoreSection(ImageDisplayFields):
     """One ordered row of the storefront page (hero, banner, grids, text...).
 
     The page layout is simply the sections of a store ordered by `position` —

@@ -7,18 +7,40 @@ from categories.serializers import CategoryBriefSerializer
 
 from .models import Product, ProductImage, ProductReview, ProductVariant
 
+IMAGE_DISPLAY_FIELDS = [
+    "align_x",
+    "align_y",
+    "zoom",
+    "effect",
+    "transition_ms",
+]
+
+
+def _image_display(img):
+    if img is None:
+        return None
+    return {k: getattr(img, k) for k in IMAGE_DISPLAY_FIELDS}
+
 
 class ProductImageListSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
-        fields = ["id", "image", "caption", "is_primary", "sort_order"]
+        fields = ["id", "image", "caption", "is_primary", "sort_order"] + IMAGE_DISPLAY_FIELDS
         read_only_fields = fields
 
 
 class ProductImageWriteSerializer(serializers.ModelSerializer):
+    align_x = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    align_y = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    zoom = serializers.FloatField(min_value=1.0, max_value=3.0, required=False)
+    effect = serializers.ChoiceField(
+        choices=ProductImage.ImageEffect.choices, required=False
+    )
+    transition_ms = serializers.IntegerField(min_value=0, max_value=2000, required=False)
+
     class Meta:
         model = ProductImage
-        fields = ["image", "caption", "is_primary", "sort_order"]
+        fields = ["image", "caption", "is_primary", "sort_order"] + IMAGE_DISPLAY_FIELDS
 
 
 class ProductVariantListSerializer(serializers.ModelSerializer):
@@ -52,7 +74,7 @@ class VariantBriefSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-def _primary_image_url(obj):
+def _primary_image(obj):
     # Use prefetched images cache (obj.images.all() hits prefetch, while
     # .filter().first() would issue a new query per product on Supabase).
     try:
@@ -61,7 +83,13 @@ def _primary_image_url(obj):
         return None
     if not imgs:
         return None
-    primary = next((i for i in imgs if getattr(i, "is_primary", False)), imgs[0])
+    return next((i for i in imgs if getattr(i, "is_primary", False)), imgs[0])
+
+
+def _primary_image_url(obj):
+    primary = _primary_image(obj)
+    if primary is None:
+        return None
     img = getattr(primary, "image", None)
     try:
         return img.url if img else None
@@ -74,6 +102,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     discount_percent = serializers.SerializerMethodField()
     base_price = serializers.SerializerMethodField()
     primary_image = serializers.SerializerMethodField()
+    primary_image_display = serializers.SerializerMethodField()
     rating_avg = serializers.SerializerMethodField()
     rating_count = serializers.SerializerMethodField()
 
@@ -91,6 +120,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "is_featured",
             "is_active",
             "primary_image",
+            "primary_image_display",
             "rating_avg",
             "rating_count",
         ]
@@ -120,6 +150,9 @@ class ProductListSerializer(serializers.ModelSerializer):
     def get_primary_image(self, obj):
         return _primary_image_url(obj)
 
+    def get_primary_image_display(self, obj):
+        return _image_display(_primary_image(obj))
+
     def get_rating_avg(self, obj):
         avg, _ = _review_stats(obj)
         return round(float(avg), 1) if avg is not None else None
@@ -148,6 +181,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     discount_percent = serializers.SerializerMethodField()
     base_price = serializers.SerializerMethodField()
     primary_image = serializers.SerializerMethodField()
+    primary_image_display = serializers.SerializerMethodField()
     rating_avg = serializers.SerializerMethodField()
     rating_count = serializers.SerializerMethodField()
     offers = serializers.SerializerMethodField()
@@ -167,6 +201,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "is_featured",
             "is_active",
             "primary_image",
+            "primary_image_display",
             "rating_avg",
             "rating_count",
             "offers",
@@ -186,6 +221,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     def get_primary_image(self, obj):
         return _primary_image_url(obj)
+
+    def get_primary_image_display(self, obj):
+        return _image_display(_primary_image(obj))
 
     def get_rating_avg(self, obj):
         avg, _ = _review_stats(obj)

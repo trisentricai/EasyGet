@@ -14,11 +14,13 @@ import {
   ApiError,
   checkPincode as fetchPincode,
   offerLine,
+  type ImageDisplay,
   type Product,
 } from "../services/api";
 import { EmptyState, Monogram, RatingPill, Spinner, WishButton } from "../components/ui";
 import { Icon } from "../components/icons";
 import { recordView } from "../utils/history";
+import { fxClass, fxStyle } from "../utils/imageFx";
 
 export function ProductPage({ slug }: { slug: string }) {
   const { user } = useAuth();
@@ -30,6 +32,7 @@ export function ProductPage({ slug }: { slug: string }) {
   });
   const [variantId, setVariantId] = useState<number | null>(null);
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [activeFx, setActiveFx] = useState<ImageDisplay | null>(null);
   const [busy, setBusy] = useState(false);
   const [qty, setQty] = useState(1);
   const [pincode, setPincode] = useState("");
@@ -46,6 +49,7 @@ export function ProductPage({ slug }: { slug: string }) {
     const firstActive = product.variants.find((v) => v.is_active) ?? product.variants[0];
     setVariantId(firstActive?.id ?? null);
     setActiveImage(img(product.primary_image));
+    setActiveFx(product.primary_image_display ?? null);
     recordView(product);
   }, [product]);
 
@@ -63,7 +67,16 @@ export function ProductPage({ slug }: { slug: string }) {
   const images = product.images.length
     ? product.images
     : product.primary_image
-      ? [{ id: 0, image: product.primary_image, caption: "", is_primary: true, sort_order: 0 }]
+      ? [
+          {
+            id: 0,
+            image: product.primary_image,
+            caption: "",
+            is_primary: true,
+            sort_order: 0,
+            ...(product.primary_image_display ?? {}),
+          },
+        ]
       : [];
 
   const addToCart = async (thenCheckout = false) => {
@@ -137,7 +150,10 @@ export function ProductPage({ slug }: { slug: string }) {
       <div className="product-detail">
         {/* gallery */}
         <div className="pdp-gallery">
-          <div className="product-thumb detail-thumb">
+          <div
+            className={`product-thumb detail-thumb ${fxClass(activeFx)}`}
+            style={fxStyle(activeFx)}
+          >
             {activeImage ? <img src={activeImage} alt={product.name} decoding="async" /> : <Monogram text={product.name} />}
           </div>
           {images.length > 1 ? (
@@ -145,9 +161,13 @@ export function ProductPage({ slug }: { slug: string }) {
               {images.map((im) => (
                 <button
                   key={im.id}
-                  onClick={() => setActiveImage(img(im.image))}
+                  onClick={() => {
+                    setActiveImage(img(im.image));
+                    setActiveFx(im);
+                  }}
                   aria-label={`Show image: ${im.caption || "product"}`}
-                  className={`thumb-btn ${img(im.image) === activeImage ? "active" : ""}`}
+                  className={`thumb-btn ${fxClass(im)} ${img(im.image) === activeImage ? "active" : ""}`}
+                  style={fxStyle(im)}
                 >
                   <img src={img(im.image)!} alt={im.caption} loading="lazy" decoding="async" />
                 </button>
@@ -340,7 +360,10 @@ function SimilarCard({ product }: { product: Product }) {
   const image = img(product.primary_image);
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
-      <div className="product-thumb">
+      <div
+        className={`product-thumb ${fxClass(product.primary_image_display)}`}
+        style={fxStyle(product.primary_image_display)}
+      >
         {image ? <img src={image} alt={product.name} loading="lazy" decoding="async" /> : <Monogram text={product.name} />}
       </div>
       <div className="product-body">

@@ -1,11 +1,58 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 
 from categories.models import Category
 from tenants.models import Tenant
+
+
+class ImageDisplayFields(models.Model):
+    """Display knobs shared by every image we render (product gallery,
+    storefront sections): focal alignment, scale and hover interaction.
+
+    Pure data — clients map it to `object-position`, `transform: scale()`
+    and hover effect classes. Defaults are a no-op so images look exactly
+    the same until someone edits them.
+    """
+
+    class ImageEffect(models.TextChoices):
+        NONE = "none", "None"
+        ZOOM = "zoom", "Zoom on hover"
+        PAN = "pan", "Pan on hover"
+        GRAYSCALE = "grayscale", "Grayscale to color"
+
+    align_x = models.PositiveSmallIntegerField(
+        default=50,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Horizontal focal point, 0-100 (%).",
+    )
+    align_y = models.PositiveSmallIntegerField(
+        default=50,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Vertical focal point, 0-100 (%).",
+    )
+    zoom = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(1.0), MaxValueValidator(3.0)],
+        help_text="Scale multiplier applied over the cover crop (1.0-3.0).",
+    )
+    effect = models.CharField(
+        max_length=16,
+        choices=ImageEffect.choices,
+        default=ImageEffect.NONE,
+        help_text="Interactive hover effect shown on the storefront.",
+    )
+    transition_ms = models.PositiveIntegerField(
+        default=400,
+        validators=[MinValueValidator(0), MaxValueValidator(2000)],
+        help_text="Effect transition duration in milliseconds.",
+    )
+
+    class Meta:
+        abstract = True
 
 
 class Product(models.Model):
@@ -126,7 +173,7 @@ class ProductVariant(models.Model):
         return f"{self.product.name} — {label}"
 
 
-class ProductImage(models.Model):
+class ProductImage(ImageDisplayFields):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="images"
     )

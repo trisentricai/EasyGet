@@ -14,15 +14,18 @@ import {
   reorderItems,
   reorderSections,
   setStoreSlug,
+  toImageDisplay,
   updateItem,
   updateSection,
   updateTheme,
   type Category,
+  type ImageDisplay,
   type Product,
   type SectionItem,
   type StoreSection,
   type Theme,
 } from "../services/api";
+import ImageDisplayEditor from "../components/ImageDisplayEditor";
 import { useToast } from "../context/ToastContext";
 import { Card, ConfirmDialog, Modal, Spinner } from "../components/ui";
 
@@ -584,6 +587,7 @@ function SectionDesignModal({
   const [columns, setColumns] = useState(Number(cfg.columns ?? 4));
   const [size, setSize] = useState<"sm" | "md" | "lg">((cfg.size as "sm" | "md" | "lg") ?? "md");
   const [imgBusy, setImgBusy] = useState(false);
+  const [disp, setDisp] = useState<ImageDisplay>(toImageDisplay(section));
   const preview = mediaSrc(section.image);
   const [effects, setEffects] = useState<string[]>(
     Array.isArray(cfg.effects) ? [] : Object.keys(cfg.effects ?? {}).filter((k) => (cfg.effects as Record<string, unknown>)[k]),
@@ -595,6 +599,11 @@ function SectionDesignModal({
     onSave({
       title,
       subtitle,
+      align_x: disp.align_x,
+      align_y: disp.align_y,
+      zoom: disp.zoom,
+      effect: disp.effect,
+      transition_ms: disp.transition_ms,
       config: {
         ...cfg,
         columns,
@@ -645,17 +654,24 @@ function SectionDesignModal({
             </select>
           </label>
         </div>
-        {section.section_type === "HERO" && (
+        {["HERO", "BANNER", "IMAGE_GALLERY"].includes(section.section_type) && (
           <div style={{ gridColumn: "1 / -1" }}>
             <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
-              Banner image
+              {section.section_type === "HERO" ? "Banner image" : "Section image"}
             </div>
-            <div className="sf-img-row">
-              {preview ? (
-                <img className="sf-img-preview" src={preview} alt="Banner preview" />
-              ) : (
+            {preview ? (
+              <ImageDisplayEditor
+                src={preview}
+                value={disp}
+                onChange={(patch) => setDisp((d) => ({ ...d, ...patch }))}
+                aspect="21 / 9"
+              />
+            ) : (
+              <div className="sf-img-row">
                 <div className="sf-img-preview sf-img-empty">No image</div>
-              )}
+              </div>
+            )}
+            <div className="sf-img-row" style={{ marginTop: preview ? 10 : 0 }}>
               <label className="btn btn-sm btn-ghost" style={{ cursor: "pointer" }}>
                 {imgBusy ? "Uploading…" : preview ? "Replace image" : "Upload image"}
                 <input
@@ -686,7 +702,9 @@ function SectionDesignModal({
               )}
             </div>
             <p className="muted" style={{ margin: "8px 0 0", fontSize: 12.5 }}>
-              Saves immediately — shown behind the hero text on the storefront.
+              Align, zoom and the hover effect are saved with{" "}
+              <strong>Save design</strong> — they apply to every card and banner
+              that shows this image.
             </p>
           </div>
         )}

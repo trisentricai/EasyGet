@@ -1310,3 +1310,45 @@ button { font-family: inherit; }
   padding: 1px 6px;
   border-radius: 4px;
 }
+
+/* ============ Image display: focal align / zoom / hover effects ============
+   Configured per image in the admin (align_x/align_y/zoom/effect/
+   transition_ms) and applied as inline object-position + `--fx-zoom` /
+   `--fx-ms` custom properties. Two forms are supported:
+   - wrapper (.img-fx > img) — cards, PDP gallery, thumbnails
+   - direct (img.img-fx) — absolutely-positioned heroes
+   Defaults are a no-op, so unconfigured images render exactly as before. */
+.img-fx:not(img) {
+  position: relative;
+  overflow: hidden;
+}
+
+.img-fx > img,
+img.img-fx {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(var(--fx-zoom, 1));
+  transition: transform var(--fx-ms, 400ms) ease, filter var(--fx-ms, 400ms) ease;
+}
+
+.img-fx-zoom:hover > img,
+img.img-fx-zoom:hover {
+  transform: scale(calc(var(--fx-zoom, 1) * 1.08));
+}
+
+.img-fx-pan:hover > img,
+img.img-fx-pan:hover {
+  transform: scale(calc(var(--fx-zoom, 1) * 1.14)) translateX(-4%);
+}
+
+.img-fx-gray > img,
+img.img-fx-gray {
+  filter: grayscale(1);
+}
+
+.img-fx-gray:hover > img,
+img.img-fx-gray:hover {
+  filter: grayscale(0);
+}

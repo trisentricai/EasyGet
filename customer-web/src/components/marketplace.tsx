@@ -8,6 +8,7 @@ import {
   type StoreSection,
 } from "../services/api";
 import { href } from "../hooks/useHashRoute";
+import { fxClass, fxStyle } from "../utils/imageFx";
 import { Icon } from "./icons";
 import { ProductCard, Section } from "./ui";
 import {
@@ -82,7 +83,15 @@ function HeroSlide({ section }: { section: StoreSection }) {
   const link = ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink);
   return (
     <div className="hero hero-slide">
-      {image ? <img className="hero-img" src={image} alt="" decoding="async" /> : null}
+      {image ? (
+        <img
+          className={`hero-img ${fxClass(section)}`}
+          style={fxStyle(section)}
+          src={image}
+          alt=""
+          decoding="async"
+        />
+      ) : null}
       <div className="hero-content">
         {section.subtitle ? <p>{section.subtitle}</p> : null}
         <h1>{section.title}</h1>

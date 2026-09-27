@@ -185,6 +185,48 @@ class SectionCrudTests(StorefrontTestBase):
         )
         self.assertEqual(response.status_code, 200)
 
+    def test_owner_can_edit_image_display_fields(self):
+        response = self.as_user(self.owner).patch(
+            section_url(self.hero.id),
+            {"align_x": 80, "align_y": 20, "zoom": 1.5, "effect": "zoom",
+             "transition_ms": 600},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.hero.refresh_from_db()
+        self.assertEqual((self.hero.align_x, self.hero.align_y), (80, 20))
+        self.assertEqual(self.hero.zoom, 1.5)
+        self.assertEqual(self.hero.effect, "zoom")
+        self.assertEqual(self.hero.transition_ms, 600)
+
+    def test_display_field_validation_rejects_out_of_range(self):
+        for payload in (
+            {"align_x": 150},
+            {"align_y": -5},
+            {"zoom": 0.5},
+            {"zoom": 4.0},
+            {"effect": "disco"},
+            {"transition_ms": 99999},
+        ):
+            response = self.as_user(self.owner).patch(
+                section_url(self.hero.id), payload, format="json"
+            )
+            self.assertEqual(response.status_code, 400, payload)
+
+    def test_render_includes_image_display(self):
+        self.as_user(self.owner).patch(
+            section_url(self.hero.id),
+            {"zoom": 1.25, "effect": "grayscale", "transition_ms": 250},
+            format="json",
+        )
+        self.client.force_authenticate(user=None)
+        sections = self.client.get(RENDER_URL).data["sections"]
+        hero = next(s for s in sections if s["section_type"] == "HERO")
+        self.assertEqual(hero["zoom"], 1.25)
+        self.assertEqual(hero["effect"], "grayscale")
+        self.assertEqual(hero["transition_ms"], 250)
+        self.assertEqual(hero["align_x"], 50)
+
 
 class ReorderTests(StorefrontTestBase):
     def as_user(self, user):

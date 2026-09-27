@@ -494,6 +494,67 @@ class ProductImageEndpointTests(TestCase):
         self.assertEqual(len(res.data["images"]), 1)
         self.assertIn("/media/products/", res.data["images"][0]["image"])
 
+    def test_display_fields_defaults_on_upload(self):
+        res = self._upload()
+        self.assertEqual(res.data["align_x"], 50)
+        self.assertEqual(res.data["align_y"], 50)
+        self.assertEqual(res.data["zoom"], 1.0)
+        self.assertEqual(res.data["effect"], "none")
+        self.assertEqual(res.data["transition_ms"], 400)
+
+    def test_display_fields_edit_and_validation(self):
+        first = self._upload().data
+        res = self.client.patch(
+            f"/api/v1/products/images/{first['id']}/",
+            {
+                "align_x": 75,
+                "align_y": 25,
+                "zoom": 2.0,
+                "effect": "pan",
+                "transition_ms": 750,
+                "caption": "Front of bottle",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data["align_x"], 75)
+        self.assertEqual(res.data["align_y"], 25)
+        self.assertEqual(res.data["zoom"], 2.0)
+        self.assertEqual(res.data["effect"], "pan")
+        self.assertEqual(res.data["transition_ms"], 750)
+        self.assertEqual(res.data["caption"], "Front of bottle")
+
+        for payload in (
+            {"align_x": 150},
+            {"align_y": -5},
+            {"zoom": 0.9},
+            {"zoom": 4.0},
+            {"effect": "disco"},
+            {"transition_ms": 5000},
+        ):
+            bad = self.client.patch(
+                f"/api/v1/products/images/{first['id']}/", payload, format="json"
+            )
+            self.assertEqual(bad.status_code, 400, payload)
+
+        detail = self.client.get(f"/api/v1/products/{self.product.slug}/")
+        img = detail.data["images"][0]
+        self.assertEqual(img["zoom"], 2.0)
+        self.assertEqual(img["effect"], "pan")
+
+    def test_product_list_exposes_primary_image_display(self):
+        self._upload()
+        res = self.client.get("/api/v1/products/")
+        row = next(
+            p for p in res.data["results"] if p["slug"] == self.product.slug
+        )
+        display = row["primary_image_display"]
+        self.assertEqual(
+            display,
+            {"align_x": 50, "align_y": 50, "zoom": 1.0, "effect": "none",
+             "transition_ms": 400},
+        )
+
     def test_second_upload_keeps_first_primary(self):
         first = self._upload().data
         second = self._upload().data

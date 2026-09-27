@@ -10,11 +10,19 @@ import {
   listCategories,
   mediaSrc,
   setPrimaryProductImage,
+  toImageDisplay,
   updateProduct,
+  updateProductImage,
   uploadProductImage,
+  DEFAULT_IMAGE_DISPLAY,
+  type ImageDisplay,
   type Product,
   type ProductImage,
 } from "../services/api";
+import ImageDisplayEditor, {
+  imageFxClass,
+  imageFxStyle,
+} from "../components/ImageDisplayEditor";
 import { useToast } from "../context/ToastContext";
 import { Card, ConfirmDialog, EmptyState, Modal, Spinner } from "../components/ui";
 
@@ -56,6 +64,10 @@ export function ProductsPage() {
   const [deleting, setDeleting] = useState<Product | null>(null);
   const [images, setImages] = useState<ProductImage[]>([]);
   const [imgBusy, setImgBusy] = useState(false);
+  const [editImage, setEditImage] = useState<ProductImage | null>(null);
+  const [editDraft, setEditDraft] = useState<ImageDisplay>(DEFAULT_IMAGE_DISPLAY);
+  const [editCaption, setEditCaption] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   const productsQuery = useQuery({
     queryKey: ["admin", "products"],
@@ -207,6 +219,35 @@ export function ProductsPage() {
       push(errText(e, "Remove failed"), "err");
     } finally {
       setImgBusy(false);
+    }
+  }
+
+  function openImageEditor(img: ProductImage) {
+    setEditImage(img);
+    setEditDraft(toImageDisplay(img));
+    setEditCaption(img.caption ?? "");
+  }
+
+  async function saveImageEditor() {
+    if (!editImage || editSaving) return;
+    setEditSaving(true);
+    try {
+      const updated = await updateProductImage(editImage.id, {
+        caption: editCaption,
+        align_x: editDraft.align_x,
+        align_y: editDraft.align_y,
+        zoom: editDraft.zoom,
+        effect: editDraft.effect,
+        transition_ms: editDraft.transition_ms,
+      });
+      setImages((list) => list.map((i) => (i.id === updated.id ? updated : i)));
+      setEditImage(null);
+      push("Image updated");
+      await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+    } catch (e) {
+      push(errText(e, "Update failed"), "err");
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -416,14 +457,29 @@ export function ProductsPage() {
                     return (
                       <div
                         key={img.id}
-                        className={`prod-img-tile ${img.is_primary ? "primary" : ""}`}
+                        className={`prod-img-tile ${imageFxClass(img)} ${
+                          img.is_primary ? "primary" : ""
+                        }`}
                       >
                         {src ? (
-                          <img src={src} alt="" decoding="async" />
+                          <img
+                            src={src}
+                            alt=""
+                            decoding="async"
+                            style={imageFxStyle(img)}
+                          />
                         ) : (
                           <div className="prod-img-empty">?</div>
                         )}
                         <div className="prod-img-overlay">
+                          <button
+                            type="button"
+                            title="Edit align / zoom / effect"
+                            onClick={() => openImageEditor(img)}
+                            disabled={imgBusy}
+                          >
+                            ✎
+                          </button>
                           <button
                             type="button"
                             title={img.is_primary ? "Primary image" : "Make primary"}
@@ -467,6 +523,62 @@ export function ProductsPage() {
                   Uploads are compressed to WebP (max 800px). The starred image is
                   the one shown on product cards.
                 </p>
+                {editImage && (
+                  <div className="ide-panel">
+                    <div className="ide-panel-head">
+                      <strong>Edit image</strong>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => setEditImage(null)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <ImageDisplayEditor
+                      src={mediaSrc(editImage.image)}
+                      value={editDraft}
+                      onChange={(patch) =>
+                        setEditDraft((d) => ({ ...d, ...patch }))
+                      }
+                    />
+                    <label
+                      style={{
+                        display: "grid",
+                        gap: 6,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: "var(--text-faint)",
+                      }}
+                    >
+                      Caption
+                      <input
+                        className="input"
+                        value={editCaption}
+                        maxLength={200}
+                        placeholder="Optional description for this angle"
+                        onChange={(e) => setEditCaption(e.target.value)}
+                      />
+                    </label>
+                    <div className="modal-actions">
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => setEditImage(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={editSaving}
+                        onClick={() => void saveImageEditor()}
+                      >
+                        {editSaving ? "Saving…" : "Save image"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

@@ -188,13 +188,43 @@ export type Product = {
   is_active: boolean;
 };
 
+/** Display knobs every rendered image carries (focal point, scale, hover). */
+export type ImageEffect = "none" | "zoom" | "pan" | "grayscale";
+
+export type ImageDisplay = {
+  align_x: number;
+  align_y: number;
+  zoom: number;
+  effect: ImageEffect;
+  transition_ms: number;
+};
+
+export const DEFAULT_IMAGE_DISPLAY: ImageDisplay = {
+  align_x: 50,
+  align_y: 50,
+  zoom: 1,
+  effect: "none",
+  transition_ms: 400,
+};
+
+export const EFFECT_LABELS: Record<ImageEffect, string> = {
+  none: "None (static)",
+  zoom: "Zoom on hover",
+  pan: "Pan on hover",
+  grayscale: "Grayscale → color",
+};
+
+export function toImageDisplay(v: Partial<ImageDisplay> | null | undefined): ImageDisplay {
+  return { ...DEFAULT_IMAGE_DISPLAY, ...(v ?? {}) };
+}
+
 export type ProductImage = {
   id: number;
   image: string | null;
   caption: string;
   is_primary: boolean;
   sort_order: number;
-};
+} & ImageDisplay;
 
 export type ProductDetail = Product & { images: ProductImage[] };
 
@@ -253,6 +283,11 @@ export async function setPrimaryProductImage(id: number) {
   });
 }
 
+/** Edit caption / align / zoom / effect (partial — send only what changed). */
+export async function updateProductImage(id: number, body: Record<string, unknown>) {
+  return api<ProductImage>(`/products/images/${id}/`, { method: "PATCH", body });
+}
+
 export async function deleteProductImage(id: number) {
   return api<void>(`/products/images/${id}/`, { method: "DELETE" });
 }
@@ -291,11 +326,11 @@ export type StoreSection = {
   title: string;
   subtitle: string;
   config: { columns?: number; size?: "sm" | "md" | "lg"; effects?: Record<string, unknown>; placeholder?: string } & Record<string, unknown>;
-  position: number;
-  is_active: boolean;
-  image: string | null;
-  items: SectionItem[];
-};
+      position: number;
+      is_active: boolean;
+      image: string | null;
+      items: SectionItem[];
+    } & ImageDisplay;
 
 export type Theme = {
   primary_color: string;
