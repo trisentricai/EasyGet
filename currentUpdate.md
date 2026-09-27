@@ -1,13 +1,29 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-09-26
-**Phase in progress:** **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`; backend 242/242, both builds green, 8/8 live smoke) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Last updated:** 2026-09-27
+**Phase in progress:** **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST — Perf batch: indexes/cache/search, pagination ≤20, Supabase RLS, React Query (2026-09-27)
+
+**Goal hit:** the 3-prompt perf/security batch fully applied (audited first — much of it had landed uncommitted from a parallel session, verified + completed here). Commits **`891e278`** (perf foundation) + **`0e5a230`** (pagination/RLS/React Query/UI). **Backend 252/252 green (1 skipped, +10 tests); both builds green; live: 68/68 public tables RLS-on, 0 anon/auth grants.**
+
+**What changed:**
+1. **Perf foundation** (`891e278`) — 1h cache-aside for storefront renders + public category list (signal-invalidated via `common/cache.py` + `cache_signals.py`); upload→WebP q80 compression 1200/800px (`common/images.py` + `image_signals.py`, name-only/committed fields skipped); search rebuilt on `ProductSearchIndex` (multi-token match, suggestions, query log, popularity) + `rebuild_search_index` command; composite index migrations (Product/Category/Banner); guest browsing `AllowAny` on products/brands/reviews/categories GET; `seed_platform_storefront` command; customer-web EASYGET favicon + stale-token 401 retry + tokenized search fallback.
+2. **Global pagination ≤20** (`0e5a230`) — DRF default `common.pagination.Max20PagePagination` (PAGE_SIZE 20, hard max 20); `ProductPagination` 100→20, `ReviewPagination` 50→20; admin `listAllProducts` loop retuned (20/page × 50 pages — 200-item cap removed); every consumer verified tolerant of `{count,next,previous,results}` (customer `asArray`, admin `toArray`, Flutter `json['results']`).
+3. **Supabase RLS** (`0e5a230`) — `common/rls.py` runs from **post_migrate connected WITHOUT a sender** (a sender-filtered hook never fires: `common` has no `models_module` and Django skips such apps — see `django/core/management/sql.py:45`). Enables RLS on every owned public table + revokes `anon`/`authenticated` table/sequence/default-table privileges. Django connects as table owner (`postgres`, no FORCE) → owner bypass keeps the API working. Live verified: **68 tables, 0 RLS-off, 0 leftover grants**; idempotent (`rowsecurity=false` filter), ownership-guarded, sqlite no-op for tests.
+4. **React Query** (`0e5a230`) — `@tanstack/react-query@5` in both SPAs (one `QueryClient`: staleTime 30s, refetchOnWindowFocus false, retry 1). customer-web: Browse (`useInfiniteQuery` load-more), Orders + order detail, Product detail/related/reviews, Search (`keepPreviousData`); user id in keys to prevent cross-user cache bleed. admin-web: Products/Categories/Orders/Reviews/Inventory/Dashboard with `invalidateQueries` replacing manual reloads after mutations. **Left effect-based by agreement:** auth/cart/storefront contexts, StorefrontPage designer (mutation-coupled), suggestion debounce, checkout submit flow.
+5. **UI perf polish** (`0e5a230`) — `.product-card` rest border `1px solid var(--border)` (was transparent) + primary-tinted hover; **all 8 `<img>` tags** now `decoding="async"`, below-fold ones also `loading="lazy"` (heroes/PDP main deliberately eager for LCP).
+6. **Test fixes for the new contract** — paginated `{results}` assertions (admin reviews, delivery queue, inventory transactions); `cache.clear()` in `StorefrontTestBase.setUp` (render caching + `on_commit` invalidation never fires under `TestCase` rollback → cross-test Redis leaks); `images.py` `_committed` guard fixed the banner-upload `FileNotFoundError`.
+
+**Verification:** suite **252/252 OK (1 skipped)**; `tsc --noEmit && vite build` green for customer-web + admin-web; live smoke: `/products/` → `{count:200,next,previous,results:20}`, anon `/categories/` 200, `/search/` 200, customer `/orders/` paginated, admin `/orders/`,`/products/`,`/inventory/`,`/admin/dashboard/` 200, both SPAs 200 (EASYGET titles), dist CSS carries the new border, dev HMR clean.
+
+**Known open edges:** StorefrontPage designer + Auth/Cart/Checkout still effect-based (scope-agreed, follow-up if wanted); if Redis is down, cached endpoints stay correct but slow (IGNORE_EXCEPTIONS, up-to-1h staleness only when signals can't invalidate — signals no-op when Redis down); RLS has **no per-row policies** (owner + `service_role` bypass, anon/authenticated fully denied) — revisit if PostgREST/anon access is ever introduced; multi-seller split E2E still sqlite-proven only; no frontend test runner (React Query conversions gated on tsc/build + manual smoke).
 
 ## 0. LATEST — EASYGET platform storefront + split orders (2026-09-26)
 

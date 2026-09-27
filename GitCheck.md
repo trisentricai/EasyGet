@@ -1,6 +1,6 @@
 ﻿# GIT CHECK â€” EASYGET (Git & GitHub Reference)
 
-**Last updated:** 2026-09-26
+**Last updated:** 2026-09-27
 **Read BEFORE working:** together with `README.md` (roadmap) and `currentUpdate.md` (live code status). Update this file after every commit/change.
 
 ---
@@ -75,6 +75,8 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-09-27 | fix/flutter-web-and-ordering | `0e5a230` | Perf: DRF global `Max20PagePagination` (20/page hard cap; Product/Review clamped; admin `listAllProducts` retuned); Supabase RLS via post_migrate without sender (RLS on all owned public tables + anon/auth revoked — 68/68 verified live, sqlite no-op); tests updated for `{results}` + storefront `cache.clear()` isolation; product-card rest border; `decoding`/`lazy` on all imgs; TanStack Query providers + list/detail conversions both SPAs |
+| 2026-09-27 | fix/flutter-web-and-ordering | `891e278` | Perf foundation: 1h cache-aside storefront/category reads + signal invalidation; WebP upload compression (q80, 1200/800px, committed-field guard); `ProductSearchIndex` full-text rewrite + rebuild command; composite index migrations; guest-browse `AllowAny`; `seed_platform_storefront`; customer-web favicon/401-retry/tokenized search fallback |
 | 2026-09-26 | fix/flutter-web-and-ordering | `151e624` | Docs: GETTING_STARTED refresh — split orders/platform storefront in "what works", designer staff-only, test count 195 → 242 |
 | 2026-09-26 | fix/flutter-web-and-ordering | `4433554` | Docs: currentUpdate §0 platform storefront + split orders (D1–D6, verification 242/242 + builds + 8/8 smoke, open edges) + GitCheck changelog rows for every plan commit |
 | 2026-09-26 | fix/flutter-web-and-ordering | `0ca975e` | Admin-web: storefront designer staff-only (NAV filter + `#/storefront` route guard, merchant deep-link falls to dashboard); designer default = platform > saved `eg-store` > first store (resolved once via ref); `getStoreSlug()` fallback `easyget`; `listStores` typed with `is_platform` |

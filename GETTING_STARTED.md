@@ -86,7 +86,7 @@ $env:DATABASE_URL='sqlite:///db.sqlite3'
   pwa realtime search storefront stores tenants users webhooks
 ```
 
-Expected: `Ran 242 tests ... OK (skipped=1)`.
+Expected: `Ran 252 tests ... OK (skipped=1)`.
 
 Web builds (both must pass):
 
