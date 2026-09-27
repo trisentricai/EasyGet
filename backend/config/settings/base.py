@@ -55,6 +55,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Serves collectstatic output in production (Render has no separate
+    # web server); must come right after SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -96,12 +99,39 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 # Windows' mimetypes registry often lacks .webp → static serve would fall
 # back to application/octet-stream.
 mimetypes.add_type("image/webp", ".webp", True)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+
+# Supabase Storage (S3 interop) for media — used when the S3 env vars are
+# present (Render); local dev falls back to the filesystem above.
+if env("SUPABASE_S3_ENDPOINT", default=""):
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "endpoint_url": env("SUPABASE_S3_ENDPOINT"),
+            "region_name": env("SUPABASE_S3_REGION", default="us-east-1"),
+            "access_key": env("SUPABASE_S3_ACCESS_KEY_ID"),
+            "secret_key": env("SUPABASE_S3_SECRET_ACCESS_KEY"),
+            "bucket_name": env("SUPABASE_S3_BUCKET", default="easyget-media"),
+            # Public URLs go through /storage/v1/object/public/<bucket>/...
+            # (the S3 endpoint itself is for API calls only).
+            "custom_domain": env("SUPABASE_S3_PUBLIC_HOST", default=""),
+            "file_overwrite": False,
+            "querystring_auth": False,
+        },
+    }
+    # Media are absolute Supabase URLs from here on.
+    MEDIA_URL = env("SUPABASE_S3_PUBLIC_URL_PREFIX", default="/media/")
 
 CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
@@ -245,6 +275,13 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    # Render terminates TLS at its proxy — without this Django sees plain
+    # HTTP on every request and SECURE_SSL_REDIRECT loops forever.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Origins allowed to POST session/CSRF-protected forms (Django admin, DRF
+# browsable bits). JWT API calls only need CORS_ALLOWED_ORIGINS above.
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
 # Logging
 LOGGING = {

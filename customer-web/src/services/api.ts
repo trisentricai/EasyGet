@@ -1,4 +1,7 @@
-const BASE = "http://127.0.0.1:8000/api/v1";
+// Backend origin — overridden at build time on deployed environments
+// (Netlify sets VITE_API_URL=https://<render-service>.onrender.com).
+const ORIGIN = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const BASE = `${ORIGIN}/api/v1`;
 
 export type Tokens = { access: string; refresh: string };
 
@@ -604,5 +607,5 @@ export function asArray<T>(data: { results?: T[] } | T[] | undefined | null): T[
 export function img(path: string | null | undefined): string | null {
   if (!path) return null;
   if (path.startsWith("http") || path.startsWith("data:")) return path;
-  return `http://127.0.0.1:8000${path.startsWith("/") ? "" : "/media/"}${path}`;
+  return `${ORIGIN}${path.startsWith("/") ? "" : "/media/"}${path}`;
 }

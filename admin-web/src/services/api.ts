@@ -1,4 +1,7 @@
-const BASE = "http://127.0.0.1:8000/api/v1";
+// Backend origin — overridden at build time on deployed environments
+// (Netlify sets VITE_API_URL=https://<render-service>.onrender.com).
+const ORIGIN = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const BASE = `${ORIGIN}/api/v1`;
 
 export type Tokens = { access: string; refresh: string };
 
@@ -296,7 +299,7 @@ export async function deleteProductImage(id: number) {
 export function mediaSrc(value: string | null | undefined): string | null {
   if (!value) return null;
   if (value.startsWith("http") || value.startsWith("data:")) return value;
-  return `http://127.0.0.1:8000${value.startsWith("/") ? "" : "/media/"}${value}`;
+  return `${ORIGIN}${value.startsWith("/") ? "" : "/media/"}${value}`;
 }
 
 /* ---------------- Storefront ---------------- */
