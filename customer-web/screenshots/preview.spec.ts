@@ -1,13 +1,20 @@
 /**
  * NEXT_UI vertical-slice screenshots (DESIGN.md §7 acceptance evidence).
  *
- * Captures the flag-gated preview page against LIVE catalog data at
- * 375 / 768 / 1280 wide, light + dark — six shots per run, uploaded as the
- * `preview-shots` artifact. Runs in CI (see preview-shots.yml) against
- * `vite preview` serving the just-built dist; runs locally the same way:
+ * Captures the flag-gated preview page at 375 / 768 / 1280 wide, light +
+ * dark — six shots per run, uploaded as the `preview-shots` artifact. Runs
+ * in CI (see preview-shots.yml) against `vite preview` serving the
+ * just-built dist; runs locally the same way:
  *   1. npm run build
  *   2. npx vite preview --port 4173 --strictPort
  *   3. npx playwright test --config=screenshots/playwright.config.ts
+ *
+ * Deterministic by design: the catalog call is fulfilled with a FROZEN
+ * capture of real live copy (below), so shots never flake on Render
+ * cold-starts, data drift, or CORS (the CI origin is not allow-listed).
+ * Refresh FIXTURE from GET /products/ when real copy changes. Images stay
+ * null on purpose — live media 404s until Supabase storage lands, so the
+ * washes (the surface under review) are what gets screenshotted.
  *
  * Readiness gates (not beauty assertions): the serif heading renders and at
  * least one populated card renders. The human (or vision-model) critique of
@@ -21,6 +28,16 @@ interface Shot {
   height: number;
   theme: "light" | "dark";
 }
+
+/** Frozen 2026-10-04 from GET /api/v1/products/ (names, brands, prices, mrp, ratings verbatim). */
+const FIXTURE = [
+  { id: 294, name: "Baby skin care products", slug: "baby-skin-care-products", brand: "GlowHerb", base_price: "97.00", mrp: "152.00", rating_avg: 5.0, rating_count: 1, primary_image: null, category: { id: 15, name: "Skin Care", slug: "skin-care" } },
+  { id: 295, name: "Deodorant", slug: "deodorant", brand: "SkinMild", base_price: "60.00", mrp: "86.00", rating_avg: null, rating_count: 0, primary_image: null, category: null },
+  { id: 296, name: "Hair oil", slug: "hair-oil", brand: "GlowHerb", base_price: "493.00", mrp: "646.00", rating_avg: null, rating_count: 0, primary_image: null, category: null },
+  { id: 297, name: "Makeup remover", slug: "makeup-remover", brand: "SkinMild", base_price: "456.00", mrp: "538.00", rating_avg: null, rating_count: 0, primary_image: null, category: null },
+  { id: 298, name: "Cleansing milk", slug: "cleansing-milk", brand: "GlowHerb", base_price: "419.00", mrp: "628.00", rating_avg: null, rating_count: 0, primary_image: null, category: null },
+  { id: 299, name: "Face oil", slug: "face-oil", brand: "SkinMild", base_price: "382.00", mrp: "523.00", rating_avg: null, rating_count: 0, primary_image: null, category: null },
+];
 
 const SHOTS: Shot[] = [
   { name: "375-light", width: 375, height: 812, theme: "light" },
@@ -39,10 +56,19 @@ for (const shot of SHOTS) {
       (theme: string) => window.localStorage.setItem("eg-theme", theme),
       shot.theme,
     );
+    // Fulfill the catalog call locally: no Render cold-start, no drift, no
+    // CORS (the CI origin is not allow-listed on the API).
+    await page.route("**/api/v1/products*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "Access-Control-Allow-Origin": "*" },
+        body: JSON.stringify({ results: FIXTURE }),
+      }),
+    );
     await page.goto("/preview.html?next_ui=1");
-    // Live Render API cold-starts can take ~60s — wait generously.
-    await page.getByRole("heading", { name: "Fresh picks" }).waitFor({ timeout: 120_000 });
-    await expect(page.locator("article").first()).toBeVisible({ timeout: 120_000 });
+    await page.getByRole("heading", { name: "Fresh picks" }).waitFor({ timeout: 30_000 });
+    await expect(page.locator("article").first()).toBeVisible({ timeout: 30_000 });
     // eslint-disable-next-line no-await-in-loop
     await page.waitForTimeout(800); // let washes, fonts and images settle
     await page.screenshot({ path: `screenshots/shots/shot-${shot.name}.png`, fullPage: true });
