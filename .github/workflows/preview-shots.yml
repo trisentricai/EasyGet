@@ -46,12 +46,12 @@ jobs:
       - name: Serve dist
         working-directory: customer-web
         run: |
-          (npx vite preview --port 4173 --strictPort > /tmp/vite-preview.log 2>&1 &)
+          (npx vite preview --port 4173 --strictPort --host 127.0.0.1 > /tmp/vite-preview.log 2>&1 &)
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:4173/preview.html > /dev/null && break
             sleep 2
           done
-          curl -sf http://127.0.0.1:4173/preview.html > /dev/null
+          curl -sf http://127.0.0.1:4173/preview.html > /dev/null || (cat /tmp/vite-preview.log; exit 1)
 
       - name: Capture 375/768/1280 x light/dark
         working-directory: customer-web
