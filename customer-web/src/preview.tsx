@@ -29,6 +29,17 @@ function pickRows(payload: unknown): LooseRow[] {
   return list.filter((r): r is LooseRow => typeof r === "object" && r !== null).slice(0, 6);
 }
 
+function toCategory(v: unknown): { slug?: string; name?: string } | null {
+  if (typeof v === "string" && v !== "") return { name: v };
+  if (typeof v === "object" && v !== null) {
+    const o = v as Record<string, unknown>;
+    const slug = typeof o.slug === "string" ? o.slug : undefined;
+    const name = typeof o.name === "string" ? o.name : undefined;
+    if (slug || name) return { slug, name };
+  }
+  return null;
+}
+
 function toCard(r: LooseRow, index: number): NextProductCardData {
   return {
     id: typeof r.id === "number" || typeof r.id === "string" ? r.id : `row-${index}`,
@@ -40,6 +51,7 @@ function toCard(r: LooseRow, index: number): NextProductCardData {
     ratingCount: num(r.rating_count) ?? 0,
     image: img(str(r.primary_image)),
     slug: str(r.slug) ?? undefined,
+    category: toCategory(r.category),
   };
 }
 
@@ -48,6 +60,9 @@ function PreviewApp() {
   const [items, setItems] = useState<NextProductCardData[]>([]);
   const [status, setStatus] = useState<Status>("loading");
   const [bag, setBag] = useState<Array<number | string>>([]);
+  const [wished, setWished] = useState<Array<number | string>>([]);
+  const toggleWish = (id: number | string) =>
+    setWished((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]));
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -98,7 +113,7 @@ function PreviewApp() {
                 <h1 className="font-display text-h1 text-ink-strong">Fresh picks</h1>
               </div>
               <p aria-live="polite" className="font-mono text-sm text-ink-muted tabular-nums">
-                Bag · {bag.length}
+                Bag · {bag.length} · Saved · {wished.length}
               </p>
             </header>
             <p className="mb-6 font-ui text-body text-ink-muted">
@@ -148,6 +163,8 @@ function PreviewApp() {
                     key={p.id}
                     product={p}
                     onAdd={(added) => setBag((b) => (b.includes(added.id) ? b : [...b, added.id]))}
+                    wishlisted={wished.includes(p.id)}
+                    onToggleWishlist={(toggled) => toggleWish(toggled.id)}
                   />
                 ))}
               </div>

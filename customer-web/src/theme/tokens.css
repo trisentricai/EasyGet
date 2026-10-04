@@ -191,8 +191,10 @@ html[data-theme="dark"] {
   --color-ink-muted: #a39d96; /* 7.18:1 — clears AA body */
   --color-ink-faint: #6b6560; /* 3.36:1 — large/UI only, never body */
 
-  --color-border-subtle: #2a2724;
-  --color-border-strong: #3d3a36;
+  /* Borders GAIN contrast in dark: dark surfaces swallow hairlines, so
+     subtle takes the old strong step (1.71:1) and strong steps up. */
+  --color-border-subtle: #3d3a36;
+  --color-border-strong: #4a4640;
 
   --color-accent: #2d5a45; /* lighter forest for dark mode */
   --color-accent-fg: #ffffff;

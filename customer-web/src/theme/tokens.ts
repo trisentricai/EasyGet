@@ -117,6 +117,8 @@ export const CONTRAST = {
  *   warning      4.74:1 light / 11.55:1 dark
  *   danger       6.10:1 light /  6.97:1 dark
  *   cta-dark-fg/cta-dark  12.36:1 — immersive brand moments stay legible
+ *   border-subtle/canvas  1.27:1 light / 1.71:1 dark — hairline only, never
+ *                                              a state boundary alone
  */
 export const MEASURED_CONTRAST = {
   "ink-strong/canvas": { light: 16.71, dark: 17.28 },
@@ -129,4 +131,5 @@ export const MEASURED_CONTRAST = {
   "success/canvas": { light: 4.73, dark: 11.07 },
   "warning/canvas": { light: 4.74, dark: 11.55 },
   "danger/canvas": { light: 6.1, dark: 6.97 },
+  "border-subtle/canvas": { light: 1.27, dark: 1.71 },
 } as const;
