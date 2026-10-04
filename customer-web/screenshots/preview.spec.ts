@@ -57,15 +57,26 @@ for (const shot of SHOTS) {
       shot.theme,
     );
     // Fulfill the catalog call locally: no Render cold-start, no drift, no
-    // CORS (the CI origin is not allow-listed on the API).
-    await page.route("**/api/v1/products*", (route) =>
-      route.fulfill({
+    // CORS (the CI origin is not allow-listed on the API). Regex, not glob —
+    // glob star semantics against query strings proved unreliable.
+    await page.route(/\/api\/v1\/products\//, (route) => {
+      if (route.request().method() === "OPTIONS") {
+        return route.fulfill({
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+          },
+        });
+      }
+      return route.fulfill({
         status: 200,
         contentType: "application/json",
         headers: { "Access-Control-Allow-Origin": "*" },
         body: JSON.stringify({ results: FIXTURE }),
-      }),
-    );
+      });
+    });
     await page.goto("/preview.html?next_ui=1");
     await page.getByRole("heading", { name: "Fresh picks" }).waitFor({ timeout: 30_000 });
     await expect(page.locator("article").first()).toBeVisible({ timeout: 30_000 });
