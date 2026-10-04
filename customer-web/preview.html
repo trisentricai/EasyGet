@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EASYGET · NEXT_UI preview</title>
+    <script>
+      // Same theme resolution as index.html: eg-theme key, else OS preference.
+      (function () {
+        try {
+          var t = localStorage.getItem("eg-theme");
+          if (t !== "dark" && t !== "light") {
+            t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          }
+          document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400..800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body style="margin: 0">
+    <div id="preview-root"></div>
+    <script type="module" src="/src/preview.tsx"></script>
+  </body>
+</html>
