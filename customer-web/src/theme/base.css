@@ -1,0 +1,98 @@
+/* =============================================================================
+ * EASYGET — base layer (hybrid revision)
+ *
+ * Deliberately minimal. Tailwind preflight is NOT loaded (see index.css),
+ * because resetting margins and box-sizing would reflow the entire existing
+ * marketplace UI that ships today. This file adds only what DESIGN.md §5
+ * requires globally and nothing that could regress what is already built:
+ *
+ *   - a visible focus ring (§5, using --cta)
+ *   - reduced-motion handling (§1, §3, §5)
+ *   - the 44×44 touch-target floor (§3, §5) as an opt-in utility
+ *
+ * Everything else is a token reference; no raw values.
+ * ========================================================================== */
+
+/* --- Visible focus ring (§5) ------------------------------------------------
+ * Applied globally rather than per component so no interactive element can ship
+ * without one. The ring uses --cta: 4.30:1 on the light canvas, 4.23:1 in
+ * dark — visible in either theme. DESIGN.md §5 fixes it at 2px with a 2px
+ * offset. `:focus-visible` rather than `:focus`, so a mouse click does not
+ * leave a ring behind. */
+:where(a, button, input, select, textarea, summary, [role="button"], [role="tab"]):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-none);
+}
+
+/* Keyboard focus on the document root itself (e.g. after a route change). */
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* --- Reduced motion (§1 "Always respect prefers-reduced-motion") -------------
+ * The duration tokens are redefined to 0 rather than removed, so a transition
+ * still runs and any state driven by transitionend still completes. The
+ * !important duration lines are the backstop for animations that read the
+ * timing from a static declaration. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    --dur-micro: 0ms;
+    --dur-base: 0ms;
+    --dur-editorial: 0ms;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- Touch target floor (§3, §5) --------------------------------------------
+ * Opt-in via `touch-target` on icon-only buttons and small controls. Kept as a
+ * utility rather than a global rule so it can be applied to the interactive
+ * elements that need it without bloating every layout. */
+@utility touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Editorial reveal (§1 dur-editorial) --------------------------------------
+ * `reveal` starts hidden; `reveal-stagger` fades a list in sequence. Both are
+ * gated with motion-safe rather than a media query, so the intent travels with
+ * the markup. Travel is capped at 8px and the reveal runs at --dur-editorial
+ * (500ms) so it reads as unhurried rather than snappy — dwell, not a
+ * deal-site snap.
+ *   motion-safe:reveal motion-safe:reveal-stagger
+  */
+@utility reveal {
+  opacity: 0;
+  translate: 0 8px;
+}
+
+@utility reveal-stagger {
+  opacity: 0;
+  translate: 0 8px;
+  transition:
+    opacity var(--dur-editorial) var(--ease-out),
+    translate var(--dur-editorial) var(--ease-out);
+}
+
+/* --- Hairline-separated stack (§1 Elevation, border-first) ------------------
+ * The replacement for shaded/boxed rows: children divided by a hairline
+ * rather than wrapped in a card. Use for spec lists, order summaries and any
+ * group where a card would make the page feel busy. */
+/* Plain rule rather than @utility: Tailwind rejects any utility name that
+ * contains a combinator ("defines an invalid utility name"), so a child
+ * selector cannot be registered as a utility. A normal class is emitted as-is
+ * and used directly in markup: className="hairline-stack". */
+.hairline-stack > * + * {
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--spacing-24);
+  margin-top: var(--spacing-24);
+}
