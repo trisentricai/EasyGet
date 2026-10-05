@@ -478,7 +478,9 @@ class ProductImageEndpointTests(TestCase):
         self.assertEqual(res.status_code, 201, res.data)
         self.assertTrue(res.data["is_primary"])
         self.assertEqual(res.data["sort_order"], 1)
-        self.assertTrue(res.data["image"].startswith("/media/products/"))
+        # Absolute URL contract: uploads come back renderable (the request is
+        # build_absolute_uri'd onto the stored /media/ path).
+        self.assertTrue(res.data["image"].startswith("http://testserver/media/products/"))
         self.assertTrue(res.data["image"].endswith(".webp"))
 
     def test_product_detail_serializes_primary_image_as_url(self):

@@ -229,7 +229,10 @@ export type ProductImage = {
   sort_order: number;
 } & ImageDisplay;
 
-export type ProductDetail = Product & { images: ProductImage[] };
+export type ProductDetail = Product & {
+  images: ProductImage[];
+  variants: Array<{ id: number; name: string; price: string }>;
+};
 
 export function listProducts(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();

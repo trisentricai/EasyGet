@@ -133,6 +133,16 @@ if env("SUPABASE_S3_ENDPOINT", default=""):
     # Media are absolute Supabase URLs from here on.
     MEDIA_URL = env("SUPABASE_S3_PUBLIC_URL_PREFIX", default="/media/")
 
+# Uploads switch: serve MEDIA_ROOT from Django when no object storage is
+# configured, so uploads display instead of 404ing with zero setup. Default
+# ON (uploads must work out of the box); auto-disabled the moment
+# SUPABASE_S3_* keys land. WARNING: on ephemeral disks (Render free) files
+# vanish on every deploy — treat those uploads as test data and re-upload
+# after the S3 cutover (dead /media/ rows need cleanup then).
+SERVE_MEDIA_EPHEMERAL = env.bool("SERVE_MEDIA_EPHEMERAL", default=True) and not bool(
+    env("SUPABASE_S3_ENDPOINT", default="")
+)
+
 CORS_ALLOWED_ORIGINS = env.list(
     "DJANGO_CORS_ALLOWED_ORIGINS",
     default=[

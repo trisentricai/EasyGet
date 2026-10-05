@@ -35,5 +35,5 @@ urlpatterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG or settings.SERVE_MEDIA_EPHEMERAL:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

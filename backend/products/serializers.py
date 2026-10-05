@@ -60,9 +60,14 @@ class ProductVariantListSerializer(serializers.ModelSerializer):
 
 
 class ProductVariantWriteSerializer(serializers.ModelSerializer):
+    # Accepted on update only: routes the dict to an existing variant of the
+    # same product instead of creating a duplicate. Ignored on create (the
+    # database owns PKs; explicit ids would collide).
+    id = serializers.IntegerField(required=False)
+
     class Meta:
         model = ProductVariant
-        fields = ["name", "sku", "attributes", "price", "is_active"]
+        fields = ["id", "name", "sku", "attributes", "price", "is_active"]
 
 
 class VariantBriefSerializer(serializers.ModelSerializer):
@@ -330,6 +335,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         images = validated_data.pop("images", [])
         product = Product.objects.create(**validated_data)
         for variant in variants:
+            variant.pop("id", None)
             ProductVariant.objects.create(product=product, **variant)
         for image in images:
             ProductImage.objects.create(product=product, **image)
@@ -342,9 +348,20 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         if variants is not None:
-            instance.variants.all().delete()
             for variant in variants:
-                ProductVariant.objects.create(product=instance, **variant)
+                variant_id = variant.pop("id", None)
+                if variant_id is None:
+                    ProductVariant.objects.create(product=instance, **variant)
+                    continue
+                try:
+                    existing = instance.variants.get(pk=variant_id)
+                except ProductVariant.DoesNotExist:
+                    raise serializers.ValidationError(
+                        {"variants": f"Variant {variant_id} does not belong to this product."}
+                    )
+                for attr, value in variant.items():
+                    setattr(existing, attr, value)
+                existing.save()
         if images is not None:
             instance.images.all().delete()
             for image in images:

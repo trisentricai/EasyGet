@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from common.serializers import AbsoluteImageField
+
 from .models import Category
 
 
@@ -26,6 +28,9 @@ class CategoryDetailSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = fields
+
+    # Public payload — absolute so any client can render it directly.
+    icon = AbsoluteImageField(required=False, allow_null=True)
 
     def get_children(self, obj):
         kids = obj.children.filter(is_active=True)

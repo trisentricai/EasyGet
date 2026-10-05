@@ -63,6 +63,7 @@ export function ProductsPage() {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<Product | null>(null);
   const [images, setImages] = useState<ProductImage[]>([]);
+  const [variantId, setVariantId] = useState<number | null>(null);
   const [imgBusy, setImgBusy] = useState(false);
   const [editImage, setEditImage] = useState<ProductImage | null>(null);
   const [editDraft, setEditDraft] = useState<ImageDisplay>(DEFAULT_IMAGE_DISPLAY);
@@ -94,6 +95,7 @@ export function ProductsPage() {
   function openCreate() {
     setDraft({ ...emptyDraft, category: categories[0]?.id ?? "" });
     setImages([]);
+    setVariantId(null);
     setCreating(true);
   }
 
@@ -111,7 +113,10 @@ export function ProductsPage() {
       is_featured: p.is_featured,
     });
     getProduct(p.slug)
-      .then((detail) => setImages(detail.images ?? []))
+      .then((detail) => {
+        setImages(detail.images ?? []);
+        setVariantId(detail.variants?.[0]?.id ?? null);
+      })
       .catch((e) => push(errText(e, "Couldn't load images"), "err"));
   }
 
@@ -125,9 +130,12 @@ export function ProductsPage() {
     if (draft.description) body.description = draft.description;
     if (draft.brand) body.brand = draft.brand;
     if (draft.mrp) body.mrp = draft.mrp;
-    // Keep existing variants on edit; on create add one default variant.
+    // On create add one default variant; on edit, route a price change to the
+    // existing variant by id (the API updates in place instead of duplicating).
     if (creating && draft.price) {
       body.variants = [{ name: "1 unit", price: draft.price, is_active: true }];
+    } else if (editing && variantId != null && draft.price) {
+      body.variants = [{ id: variantId, price: draft.price }];
     }
     return body;
   }

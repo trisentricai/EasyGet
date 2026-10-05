@@ -22,6 +22,13 @@ class CategoryListView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategoryListSerializer
 
+    def get_serializer_class(self):
+        # Reads stay on the flat list shape; writes go through the writable
+        # fields (a fully read-only serializer would 201 an empty row).
+        if self.request.method == "POST":
+            return CategoryWriteSerializer
+        return CategoryListSerializer
+
     def get_permissions(self):
         if self.request.method == "GET":
             return [AllowAny()]
@@ -54,6 +61,13 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     lookup_field = "slug"
     serializer_class = CategoryDetailSerializer
+
+    def get_serializer_class(self):
+        # Same split as the list view: the detail shape is read-only, so
+        # PUT/PATCH must use the writable fields or edits silently no-op.
+        if self.request.method in ("PUT", "PATCH"):
+            return CategoryWriteSerializer
+        return CategoryDetailSerializer
 
     def get_permissions(self):
         if self.request.method == "GET":

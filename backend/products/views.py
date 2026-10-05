@@ -274,7 +274,10 @@ class ProductImageListCreateView(generics.ListCreateAPIView):
             if image.is_primary:
                 mine.exclude(pk=image.pk).update(is_primary=False)
         return Response(
-            ProductImageListSerializer(image).data, status=status.HTTP_201_CREATED
+            ProductImageListSerializer(
+                image, context={"request": request}
+            ).data,
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -319,7 +322,9 @@ class ProductImageDetailView(generics.RetrieveUpdateDestroyAPIView):
             ProductImage.objects.filter(product=image.product).exclude(
                 pk=image.pk
             ).update(is_primary=False)
-        return Response(ProductImageListSerializer(image).data)
+        return Response(
+            ProductImageListSerializer(image, context={"request": request}).data
+        )
 
     def perform_destroy(self, instance):
         product = instance.product

@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from common.serializers import AbsoluteImageField
+
 from .models import AdminAction, Banner, Coupon, ScheduledTask, SystemConfig
 
 
@@ -49,6 +51,9 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
 
 
 class BannerSerializer(serializers.ModelSerializer):
+    # Absolute URL in responses; multipart uploads still behave normally.
+    image = AbsoluteImageField()
+
     class Meta:
         model = Banner
         fields = [
@@ -60,6 +65,8 @@ class BannerSerializer(serializers.ModelSerializer):
 
 
 class BannerPublicSerializer(serializers.ModelSerializer):
+    image = AbsoluteImageField()
+
     class Meta:
         model = Banner
         fields = ["id", "title", "subtitle", "image", "link_url", "link_text", "type", "position"]

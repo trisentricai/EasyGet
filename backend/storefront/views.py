@@ -48,7 +48,9 @@ class PlatformStorefrontView(APIView):
 
         def produce():
             store = get_object_or_404(Store, is_platform=True, is_active=True)
-            return StorefrontRenderSerializer(store).data
+            return StorefrontRenderSerializer(
+                store, context={"request": request}
+            ).data
 
         return Response(get_or_set("storefront", ["platform"], produce))
 
@@ -65,7 +67,9 @@ class StorefrontRenderView(APIView):
 
         def produce():
             store = get_object_or_404(Store, slug=store_slug, is_active=True)
-            return StorefrontRenderSerializer(store).data
+            return StorefrontRenderSerializer(
+                store, context={"request": request}
+            ).data
 
         return Response(get_or_set("storefront", ["store", store_slug], produce))
 
@@ -89,12 +93,14 @@ class StorefrontThemeView(APIView):
         theme = getattr(store, "storefront_theme", None)
         if theme is None:
             return Response(None)
-        return Response(StorefrontThemeSerializer(theme).data)
+        return Response(StorefrontThemeSerializer(theme, context={"request": request}).data)
 
     def patch(self, request, store_slug):
         store = self.get_store()
         theme, _ = StorefrontTheme.objects.get_or_create(store=store)
-        serializer = StorefrontThemeSerializer(theme, data=request.data, partial=True)
+        serializer = StorefrontThemeSerializer(
+            theme, data=request.data, partial=True, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
@@ -122,7 +128,9 @@ class SectionListCreateView(APIView):
         )
         if not can_manage_store(request.user, store):
             qs = qs.filter(is_active=True)
-        return Response(StoreSectionSerializer(qs, many=True).data)
+        return Response(
+            StoreSectionSerializer(qs, many=True, context={"request": request}).data
+        )
 
     def post(self, request, store_slug):
         store = self.get_store()
@@ -132,7 +140,10 @@ class SectionListCreateView(APIView):
         section = serializer.save(
             store=store, position=0 if max_pos is None else max_pos + 1
         )
-        return Response(StoreSectionSerializer(section).data, status=201)
+        return Response(
+            StoreSectionSerializer(section, context={"request": request}).data,
+            status=201,
+        )
 
 
 class SectionDetailView(APIView):
@@ -151,7 +162,9 @@ class SectionDetailView(APIView):
         serializer = StoreSectionWriteSerializer(section, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(StoreSectionSerializer(section).data)
+        return Response(
+            StoreSectionSerializer(section, context={"request": request}).data
+        )
 
     def delete(self, request, pk):
         section = self.get_object()
@@ -181,7 +194,9 @@ class SectionReorderView(APIView):
             sections[section_id].position = position
             sections[section_id].save(update_fields=["position", "updated_at"])
         return Response(
-            StoreSectionSerializer(store.storefront_sections.all(), many=True).data
+            StoreSectionSerializer(
+                store.storefront_sections.all(), many=True, context={"request": request}
+            ).data
         )
 
 
@@ -215,7 +230,11 @@ class SectionItemsView(APIView):
                 from django.http import Http404
 
                 raise Http404("No StoreSection matches the given query.")
-        return Response(SectionItemSerializer(section.items.all(), many=True).data)
+        return Response(
+            SectionItemSerializer(
+                section.items.all(), many=True, context={"request": request}
+            ).data
+        )
 
     def post(self, request, pk):
         section = self.get_object()
@@ -231,7 +250,9 @@ class SectionItemsView(APIView):
             )
         max_pos = section.items.aggregate(m=Max("position"))["m"]
         item = serializer.save(section=section, position=0 if max_pos is None else max_pos + 1)
-        return Response(SectionItemSerializer(item).data, status=201)
+        return Response(
+            SectionItemSerializer(item, context={"request": request}).data, status=201
+        )
 
 
 class ItemDetailView(APIView):
@@ -258,7 +279,9 @@ class ItemDetailView(APIView):
                 status=400,
             )
         serializer.save()
-        return Response(SectionItemSerializer(item).data)
+        return Response(
+            SectionItemSerializer(item, context={"request": request}).data
+        )
 
     def delete(self, request, pk):
         item = self.get_object()
@@ -288,4 +311,8 @@ class ItemReorderView(APIView):
         for position, item_id in enumerate(order):
             items[item_id].position = position
             items[item_id].save(update_fields=["position"])
-        return Response(SectionItemSerializer(section.items.all(), many=True).data)
+        return Response(
+            SectionItemSerializer(
+                section.items.all(), many=True, context={"request": request}
+            ).data
+        )
