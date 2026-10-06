@@ -494,3 +494,7 @@ Netlify free credits exhausted (deploys blocked). Both SPAs now on Cloudflare Pa
 - CI: `.github/workflows/deploy-cloudflare.yml` (replaces `deploy-netlify.yml`, deleted) — builds + `wrangler@4 pages deploy` per site on frontend pushes. Netlify sites left live in parallel until cutover confirmed.
 - Cloudflare account id `1dcd308fa49a8cab2060836420879b22`. No code changes needed (hash routing → no redirect rules; `preview.html` serves as a file).
 - REQUIRED after cutover: Render `DJANGO_CORS_ALLOWED_ORIGINS` + `DJANGO_CSRF_TRUSTED_ORIGINS` must include the `pages.dev` origins or browsers block API calls.
+
+## 10. Supabase Storage wired for media (2026-10-06)
+
+Bucket `easyget-media` (public) via S3 interop; 6 `SUPABASE_S3_*` env vars live on Render (values in dashboard only, never in git). Verified: upload → Supabase public URL → HTTP 200 → delete. Effects: `STORAGES["default"]` is S3 when the endpoint var is set, so all image URLs are absolute Supabase URLs; `SERVE_MEDIA_EPHEMERAL` auto-disables. Known leftover: API image DELETE removes the DB row but orphans the S3 object (no post_delete cleanup yet — follow-up ticket); pre-cutover `/media/` rows (ids 6, 8) point at files lost to ephemeral disks and need re-upload, not migration.
