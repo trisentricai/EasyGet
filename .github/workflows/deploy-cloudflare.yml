@@ -1,0 +1,49 @@
+name: Deploy frontends to Cloudflare
+
+# Replaces deploy-netlify.yml (Netlify free credits exhausted). Builds both
+# SPAs and ships them to Cloudflare Pages via wrangler on every frontend push.
+on:
+  push:
+    branches: [fix/flutter-web-and-ordering, main]
+    paths:
+      - "customer-web/**"
+      - "admin-web/**"
+      - ".github/workflows/deploy-cloudflare.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: false
+
+env:
+  VITE_API_URL: https://easyget-api.onrender.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            customer-web/package-lock.json
+            admin-web/package-lock.json
+
+      - name: Build customer-web
+        working-directory: customer-web
+        run: npm ci && npm run build
+
+      - name: Build admin-web
+        working-directory: admin-web
+        run: npm ci && npm run build
+
+      - name: Deploy customer to Cloudflare Pages
+        run: npx -y wrangler@4 pages deploy customer-web/dist --project-name easyget-customer --commit-dirty=true
+
+      - name: Deploy admin to Cloudflare Pages
+        run: npx -y wrangler@4 pages deploy admin-web/dist --project-name easyget-admin --commit-dirty=true
