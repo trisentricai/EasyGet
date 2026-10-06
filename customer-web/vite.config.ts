@@ -11,6 +11,7 @@ export default defineConfig({
       input: {
         main: 'index.html',
         preview: 'preview.html',
+        privacy: 'privacy.html',
       },
     },
   },
