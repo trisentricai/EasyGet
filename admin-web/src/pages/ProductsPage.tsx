@@ -132,10 +132,15 @@ export function ProductsPage() {
     if (draft.mrp) body.mrp = draft.mrp;
     // On create add one default variant; on edit, route a price change to the
     // existing variant by id (the API updates in place instead of duplicating).
+    // If the product was created without a price it has no variants yet — send
+    // one without an id and the API creates it.
     if (creating && draft.price) {
       body.variants = [{ name: "1 unit", price: draft.price, is_active: true }];
-    } else if (editing && variantId != null && draft.price) {
-      body.variants = [{ id: variantId, price: draft.price }];
+    } else if (editing && draft.price) {
+      body.variants =
+        variantId != null
+          ? [{ id: variantId, price: draft.price }]
+          : [{ name: "1 unit", price: draft.price, is_active: true }];
     }
     return body;
   }
