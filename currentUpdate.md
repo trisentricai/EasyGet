@@ -480,3 +480,17 @@ Stack (all free tier): **Render** (Django API) + **Netlify x2** (customer/admin 
 - **Verified live:** health 200, products/categories/PDP 200 on live Supabase, `Access-Control-Allow-Origin` echoes both Netlify origins, admin `POST /api/v1/auth/login/` 200 with tokens, both sites serve assets with the baked URL, local/remote payload parity.
 - Deploy-prep commit `767cc9f` (settings STATIC_ROOT/STORAGES/whitenoise/proxy/CSRF + gunicorn/whitenoise/storages requirements + `ORIGIN` in both `api.ts`) is what makes Render boot - it was initially uncommitted and the deploy died on `ImproperlyConfigured: STATIC_ROOT`.
 - No celery worker on Render free (scheduled tasks idle); Render cold starts ~50s; rotate demo creds + enable push protection before real traffic.
+
+## 9. Frontend hosting moved Netlify → Cloudflare Pages (2026-10-06)
+
+Netlify free credits exhausted (deploys blocked). Both SPAs now on Cloudflare Pages (free: unlimited bandwidth, 500 builds/mo), deployed via `wrangler pages deploy` with `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (GitHub secrets; tokens in `$env:TEMP\opencode\`, never in git).
+
+| Piece | URL |
+|---|---|
+| Customer web | `https://easyget-customer.pages.dev` |
+| Admin web | `https://easyget-admin.pages.dev` |
+| NEXT_UI preview | `https://easyget-customer.pages.dev/preview?next_ui=1` (extensionless — `.html` 308-redirects) |
+
+- CI: `.github/workflows/deploy-cloudflare.yml` (replaces `deploy-netlify.yml`, deleted) — builds + `wrangler@4 pages deploy` per site on frontend pushes. Netlify sites left live in parallel until cutover confirmed.
+- Cloudflare account id `1dcd308fa49a8cab2060836420879b22`. No code changes needed (hash routing → no redirect rules; `preview.html` serves as a file).
+- REQUIRED after cutover: Render `DJANGO_CORS_ALLOWED_ORIGINS` + `DJANGO_CSRF_TRUSTED_ORIGINS` must include the `pages.dev` origins or browsers block API calls.
