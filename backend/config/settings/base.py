@@ -194,6 +194,10 @@ REST_FRAMEWORK = {
         "anon": "100/minute",
         "user": "1000/minute",
         "login": "5/minute",
+        # Firebase token exchange gets its own budget: ID tokens are
+        # cryptographically signed (not brute-forceable like passwords), and
+        # sharing the login bucket would let one channel starve the other.
+        "firebase": "30/minute",
         "register": "3/minute",
         "otp": "10/minute",
         "password_reset": "2/hour",
@@ -344,3 +348,9 @@ HEALTH_CHECK = {
 
 # Prometheus metrics
 PROMETHEUS_EXPORT_MIGRATIONS = False
+
+# Firebase Auth (customer login: Google + email/password).
+# The service-account JSON lives ONLY in the FIREBASE_SERVICE_ACCOUNT_JSON env
+# var (Render dashboard) — never in git. Empty locally: Firebase login
+# answers 503 while everything else works, so local dev needs no Firebase.
+FIREBASE_SERVICE_ACCOUNT_JSON = env("FIREBASE_SERVICE_ACCOUNT_JSON", default="")
