@@ -55,6 +55,9 @@ class CategoryListSerializer(serializers.ModelSerializer):
             "is_subcategory",
             "has_children",
             "product_count",
+            # Relative path; clients absolutize with the API origin (see
+            # customer-web img() / admin mediaSrc / Flutter mediaUrl).
+            "icon",
         ]
         read_only_fields = fields
 

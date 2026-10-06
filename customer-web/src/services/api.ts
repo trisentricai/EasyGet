@@ -235,7 +235,37 @@ export type StorefrontPayload = {
   sections: StoreSection[];
 };
 
-export const getPlatformStorefront = () => api<StorefrontPayload>("/storefront/platform/");
+export const getPlatformStorefront = () =>
+  api<StorefrontPayload>("/storefront/platform/").then((payload) => {
+    // Cache the merchant theme for pre-paint application on the next visit
+    // (index.html reads it before first paint — no more default-color flash).
+    try {
+      const theme = payload?.theme;
+      if (theme) {
+        const radius =
+          theme.button_style === "PILL"
+            ? "999px"
+            : theme.button_style === "SQUARE"
+              ? "3px"
+              : "10px";
+        window.localStorage.setItem(
+          "eg-store-theme",
+          JSON.stringify({
+            primary: theme.primary_color,
+            secondary: theme.secondary_color,
+            bg: theme.background_color,
+            font: theme.font_family,
+            radiusBtn: radius,
+          }),
+        );
+      } else {
+        window.localStorage.removeItem("eg-store-theme");
+      }
+    } catch {
+      /* storage blocked — theming still applies live this visit */
+    }
+    return payload;
+  });
 
 /* ---------------- Auth ---------------- */
 
@@ -303,7 +333,14 @@ export async function setDefaultAddress(id: number | string) {
 
 /* ---------------- Products (authed) ---------------- */
 
-export type Category = { id: number; name: string; slug: string; description: string };
+export type Category = {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  /** Category icon path (relative) or absolute URL; null when none uploaded. */
+  icon?: string | null;
+};
 
 export type Product = {
   id: number;

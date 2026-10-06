@@ -18,6 +18,22 @@
           document.documentElement.dataset.theme = t;
         } catch (e) {}
       })();
+      // Merchant theme pre-paint: the storefront fetch lands ~2s after first
+      // paint, which used to flash the default palette. Re-apply the last
+      // known theme synchronously; live data overwrites + re-caches it.
+      (function () {
+        try {
+          var raw = localStorage.getItem("eg-store-theme");
+          if (!raw) return;
+          var th = JSON.parse(raw);
+          var root = document.documentElement.style;
+          if (th.primary) root.setProperty("--primary", th.primary);
+          if (th.secondary) root.setProperty("--secondary", th.secondary);
+          if (th.bg) root.setProperty("--bg", th.bg);
+          if (th.font) root.setProperty("--font", th.font);
+          if (th.radiusBtn) root.setProperty("--radius-btn", th.radiusBtn);
+        } catch (e) {}
+      })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

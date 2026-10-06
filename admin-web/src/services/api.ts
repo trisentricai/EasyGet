@@ -161,6 +161,8 @@ export type Category = {
   sort_order: number;
   product_count: number;
   is_subcategory: boolean;
+  /** Category icon path (relative) or absolute URL; null when none uploaded. */
+  icon: string | null;
 };
 
 export const listCategories = () => api<{ results: Category[] } | Category[]>("/categories/");
@@ -175,6 +177,15 @@ export async function updateCategory(slug: string, body: Partial<Category>) {
 
 export async function deleteCategory(slug: string) {
   return api<void>(`/categories/${slug}/`, { method: "DELETE" });
+}
+
+export async function uploadCategoryIcon(slug: string, file: File | null) {
+  if (file) {
+    const fd = new FormData();
+    fd.append("icon", file);
+    return api<Category>(`/categories/${slug}/`, { method: "PATCH", form: fd });
+  }
+  return api<Category>(`/categories/${slug}/`, { method: "PATCH", body: { icon: null } });
 }
 
 /* ---------------- Products ---------------- */

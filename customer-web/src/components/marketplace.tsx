@@ -81,8 +81,12 @@ function HeroSlide({ section }: { section: StoreSection }) {
   const cta = (cfg.cta_label as string) ?? "Shop now";
   const ctaLink = (cfg.cta_link as string) ?? "browse";
   const link = ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink);
+  // Admin-designed variants (section config hero_layout/hero_overlay).
+  // Pure class hooks — all visuals live in showcase.css.
+  const layout = (cfg.hero_layout as string) === "split" ? "split" : (cfg.hero_layout as string) === "minimal" ? "minimal" : "feature";
+  const overlay = (cfg.hero_overlay as string) === "light" ? "light" : (cfg.hero_overlay as string) === "none" ? "none" : "dark";
   return (
-    <div className="hero hero-slide">
+    <div className={`hero hero-slide hero-${layout} hero-overlay-${overlay}`}>
       {image ? (
         <img
           className={`hero-img ${fxClass(section)}`}

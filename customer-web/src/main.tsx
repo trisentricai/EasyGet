@@ -11,6 +11,7 @@ import "@fontsource/geist-mono/500.css";
 // var(--color-canvas) or similar. Additive — styles.css still owns layout.
 import "./theme/index.css";
 import "./styles.css";
+import "./showcase.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

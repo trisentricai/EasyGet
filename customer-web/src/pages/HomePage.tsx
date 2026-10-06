@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
-import { EmptyState, Monogram, Price, ProductCard, Section, Spinner } from "../components/ui";
+import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/ui";
+import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
 import { fxClass, fxStyle } from "../utils/imageFx";
 import {
   BannerCarousel,
@@ -155,24 +156,10 @@ function BannerSection({ section }: { section: StoreSection }) {
 }
 
 function CategoryGridSection({ section }: { section: StoreSection }) {
-  const columns = section.config?.columns ?? 4;
-  const cats = section.items.filter((i) => i.item_type === "CATEGORY" || i.category_slug);
+  const style = normalizeTileStyle((section.config as Record<string, unknown> | undefined)?.category_style);
   return (
     <Section title={section.title || undefined} subtitle={section.subtitle || undefined}>
-      {cats.length ? (
-        <div className="grid grid-categories" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${Math.round(560 / columns)}px, 1fr))` }}>
-          {cats.map((item) => (
-            <a key={item.id} className="cat-card" href={href(`browse?category=${item.category_slug}`)}>
-              <span className="cat-ico">
-                {item.image ? <img src={img(item.image)!} alt="" loading="lazy" decoding="async" /> : <Monogram text={item.category_name || item.caption || "·"} />}
-              </span>
-              {item.category_name || item.caption}
-            </a>
-          ))}
-        </div>
-      ) : (
-        <p className="muted">No categories configured.</p>
-      )}
+      <CategoryTiles items={section.items} style={style} />
     </Section>
   );
 }

@@ -586,6 +586,9 @@ function SectionDesignModal({
   const [placeholder, setPlaceholder] = useState(String(cfg.placeholder ?? ""));
   const [columns, setColumns] = useState(Number(cfg.columns ?? 4));
   const [size, setSize] = useState<"sm" | "md" | "lg">((cfg.size as "sm" | "md" | "lg") ?? "md");
+  const [categoryStyle, setCategoryStyle] = useState<string>(String(cfg.category_style ?? "cards"));
+  const [heroLayout, setHeroLayout] = useState<string>(String(cfg.hero_layout ?? "feature"));
+  const [heroOverlay, setHeroOverlay] = useState<string>(String(cfg.hero_overlay ?? "dark"));
   const [imgBusy, setImgBusy] = useState(false);
   const [disp, setDisp] = useState<ImageDisplay>(toImageDisplay(section));
   const preview = mediaSrc(section.image);
@@ -610,6 +613,9 @@ function SectionDesignModal({
         size,
         placeholder,
         effects: effectsObj,
+        category_style: categoryStyle,
+        hero_layout: heroLayout,
+        hero_overlay: heroOverlay,
       },
     });
   }
@@ -654,6 +660,37 @@ function SectionDesignModal({
             </select>
           </label>
         </div>
+        {section.section_type === "CATEGORY_GRID" && (
+          <label>
+            Category layout
+            <select className="input" value={categoryStyle} onChange={(e) => setCategoryStyle(e.target.value)}>
+              <option value="avatars">Avatars — circular faces in a rail</option>
+              <option value="cards">Cards — classic grid (default)</option>
+              <option value="cover">Cover — wide banners</option>
+              <option value="chips">Chips — text pills</option>
+            </select>
+          </label>
+        )}
+        {section.section_type === "HERO" && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14 }}>
+            <label>
+              Hero layout
+              <select className="input" value={heroLayout} onChange={(e) => setHeroLayout(e.target.value)}>
+                <option value="feature">Feature — full-bleed editorial</option>
+                <option value="split">Split — compact content block</option>
+                <option value="minimal">Minimal — short strip</option>
+              </select>
+            </label>
+            <label>
+              Overlay tone
+              <select className="input" value={heroOverlay} onChange={(e) => setHeroOverlay(e.target.value)}>
+                <option value="dark">Dark scrim (photo pops)</option>
+                <option value="light">Light scrim (bright art)</option>
+                <option value="none">None (plain image)</option>
+              </select>
+            </label>
+          </div>
+        )}
         {["HERO", "BANNER", "IMAGE_GALLERY"].includes(section.section_type) && (
           <div style={{ gridColumn: "1 / -1" }}>
             <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
