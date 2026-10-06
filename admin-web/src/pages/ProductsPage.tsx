@@ -412,7 +412,6 @@ export function ProductsPage() {
                   min="0"
                   step="0.01"
                   value={draft.price}
-                  disabled={!creating}
                   onChange={(e) => setDraft({ ...draft, price: e.target.value })}
                 />
               </label>
