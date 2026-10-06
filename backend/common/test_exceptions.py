@@ -24,8 +24,10 @@ class ExceptionHandlerTests(TestCase):
         self.assertEqual(res.status_code, 400)
         message = res.data["error"]["message"]
         self.assertNotIn("ErrorDetail", message)
-        self.assertIn("This password is too common.", message)
-        self.assertIn("This password is entirely numeric.", message)
+        self.assertEqual(
+            message,
+            "This password is too common. This password is entirely numeric.",
+        )
         # Structured details stay intact for clients that want fields.
         self.assertEqual(
             list(res.data["error"]["details"].keys()), ["password"]

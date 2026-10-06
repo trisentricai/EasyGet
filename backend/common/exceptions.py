@@ -57,9 +57,11 @@ def custom_exception_handler(exc, context):
     if isinstance(exc, ValidationError):
         error_data["error"]["code"] = "VALIDATION_ERROR"
         error_data["error"]["details"] = exc.detail
-        human = "; ".join(_error_messages(exc.detail))
-        if human:
-            error_data["error"]["message"] = human
+        sentences = [m.rstrip(".") for m in _error_messages(exc.detail)]
+        sentences = [s for s in sentences if s]
+        if sentences:
+            text = ". ".join(sentences)
+            error_data["error"]["message"] = text if text[-1] in ".!?" else text + "."
 
     # Add request ID if available
     request = context.get("request")
