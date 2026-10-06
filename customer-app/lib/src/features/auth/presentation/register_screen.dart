@@ -20,7 +20,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   bool _busy = false;
-  bool _firebase = false;
+  String _role = 'CUSTOMER';
 
   @override
   void dispose() {
@@ -35,27 +35,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      if (_firebase) {
-        // Firebase-hosted account: no OTP step — verify via Firebase's email.
-        final error = await ref
-            .read(authControllerProvider.notifier)
-            .signUpWithFirebaseEmail(
-              email: _email.text.trim(),
-              password: _password.text,
-            );
-        if (!mounted) return;
-        if (error != null) {
-          showSnack(context, error, error: true);
-        } else if (ref.read(authControllerProvider).maybeWhen(data: (u) => u, orElse: () => null) != null) {
-          context.go('/home');
-        }
-        return;
-      }
       await ref.read(authRepositoryProvider).register(
             email: _email.text.trim(),
             password: _password.text,
             firstName: _name.text.trim(),
             phone: _phone.text.trim(),
+            role: _role,
           );
       if (!mounted) return;
       showSnack(context, 'Account created — enter the code we emailed you.');
@@ -162,9 +147,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               height: 22,
                               child: CircularProgressIndicator(strokeWidth: 2.4),
                             )
-                          : Text(_firebase
-                              ? 'Create account instantly'
-                              : 'Create account'),
+                          : const Text('Create account'),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -206,14 +189,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       label: const Text('Continue with Google'),
                     ),
-                    TextButton(
-                      onPressed: _busy
+                    const SizedBox(height: 6),
+                    Text(
+                      'I am joining as',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                            value: 'CUSTOMER',
+                            label: Text('Customer')),
+                        ButtonSegment(
+                            value: 'MERCHANT',
+                            label: Text('Merchant')),
+                        ButtonSegment(
+                            value: 'DELIVERY_AGENT',
+                            label: Text('Delivery')),
+                      ],
+                      selected: {_role},
+                      onSelectionChanged: _busy
                           ? null
-                          : () =>
-                              setState(() => _firebase = !_firebase),
-                      child: Text(_firebase
-                          ? 'Use classic signup instead'
-                          : 'Use Firebase signup instead'),
+                          : (selection) =>
+                              setState(() => _role = selection.first),
                     ),
                   ],
                 ),

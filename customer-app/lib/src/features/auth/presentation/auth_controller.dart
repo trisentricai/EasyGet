@@ -40,40 +40,6 @@ class AuthController extends AsyncNotifier<AppUser?> {
     }
   }
 
-  Future<String?> signInWithFirebaseEmail({
-    required String email,
-    required String password,
-  }) async {
-    state = const AsyncLoading();
-    try {
-      final user = await ref
-          .read(authRepositoryProvider)
-          .firebaseEmailSignIn(email: email, password: password);
-      state = AsyncData(user);
-      return null;
-    } catch (e) {
-      state = const AsyncData(null);
-      return _clean(e);
-    }
-  }
-
-  Future<String?> signUpWithFirebaseEmail({
-    required String email,
-    required String password,
-  }) async {
-    state = const AsyncLoading();
-    try {
-      final user = await ref
-          .read(authRepositoryProvider)
-          .firebaseEmailSignUp(email: email, password: password);
-      state = AsyncData(user);
-      return null;
-    } catch (e) {
-      state = const AsyncData(null);
-      return _clean(e);
-    }
-  }
-
   Future<String?> signOut() async {
     try {
       await ref.read(authRepositoryProvider).logout();

@@ -69,8 +69,10 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: AppConfig.apiBase,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
+      // Free-tier hosting sleeps when idle: first contact can take ~50s
+      // while Render cold-starts. Generous timeouts beat a false offline.
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 60),
       headers: {'Content-Type': 'application/json'},
     ),
   );

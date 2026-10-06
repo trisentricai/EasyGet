@@ -21,8 +21,7 @@ dependencies:
   cached_network_image: ^3.4.1
   # Currency / date formatting
   intl: ^0.20.2
-  firebase_core: ^4.15.0
-  firebase_auth: ^6.7.0
+  # Google sign-in (ID token goes straight to our /auth/google/ — no Firebase)
   google_sign_in: ^7.2.0
 
 dev_dependencies:

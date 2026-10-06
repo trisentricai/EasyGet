@@ -18,7 +18,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _busy = false;
-  bool _firebaseEmail = false;
 
   @override
   void dispose() {
@@ -30,18 +29,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
-    final String? error;
-    if (_firebaseEmail) {
-      error = await ref.read(authControllerProvider.notifier).signInWithFirebaseEmail(
-            email: _email.text.trim(),
-            password: _password.text,
-          );
-    } else {
-      error = await ref.read(authControllerProvider.notifier).signIn(
-            email: _email.text.trim(),
-            password: _password.text,
-          );
-    }
+    final error = await ref.read(authControllerProvider.notifier).signIn(
+          email: _email.text.trim(),
+          password: _password.text,
+        );
     if (!mounted) return;
     setState(() => _busy = false);
     if (error != null) {
@@ -204,15 +195,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       label: const Text('Continue with Google'),
-                    ),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => setState(
-                              () => _firebaseEmail = !_firebaseEmail),
-                      child: Text(_firebaseEmail
-                          ? 'Use password instead'
-                          : 'Use Firebase sign-in instead'),
                     ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
