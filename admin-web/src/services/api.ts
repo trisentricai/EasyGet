@@ -188,6 +188,30 @@ export async function uploadCategoryIcon(slug: string, file: File | null) {
   return api<Category>(`/categories/${slug}/`, { method: "PATCH", body: { icon: null } });
 }
 
+/* ---------------- Users (staff only) ---------------- */
+
+export type ManagedUser = {
+  id: number;
+  email: string;
+  role: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  is_email_verified: boolean;
+  is_active?: boolean;
+};
+
+export const listUsers = () =>
+  api<{ results: ManagedUser[] } | ManagedUser[]>("/admin/users/");
+
+export async function createUser(body: Record<string, unknown>) {
+  return api<ManagedUser>("/admin/users/", { method: "POST", body });
+}
+
+export async function updateUser(id: number, body: Record<string, unknown>) {
+  return api<ManagedUser>(`/admin/users/${id}/`, { method: "PATCH", body });
+}
+
 /* ---------------- Products ---------------- */
 
 export type Product = {

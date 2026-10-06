@@ -275,6 +275,7 @@ export async function register(body: {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  role?: string;
 }) {
   return api<{ message: string; user: User }>("/auth/register/", { method: "POST", body });
 }

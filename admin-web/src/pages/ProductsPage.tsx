@@ -32,9 +32,15 @@ type Draft = {
   description: string;
   brand: string;
   mrp: string;
-  price: string;
   is_active: boolean;
   is_featured: boolean;
+};
+
+type VariantRow = {
+  id: number | null;
+  name: string;
+  price: string;
+  is_active: boolean;
 };
 
 const emptyDraft: Draft = {
@@ -43,10 +49,14 @@ const emptyDraft: Draft = {
   description: "",
   brand: "",
   mrp: "",
-  price: "",
   is_active: true,
   is_featured: false,
 };
+
+/** Quick-add names, grouped the way grocery catalogs think: weight, volume, count. */
+const VARIANT_PRESETS = ["250g", "500g", "1kg", "150ml", "300ml", "500ml", "1L", "Pack of 2"];
+
+const blankVariant = (name = "1 unit"): VariantRow => ({ id: null, name, price: "", is_active: true });
 
 function toArray<T>(res: { results: T[] } | T[]): T[] {
   return Array.isArray(res) ? res : res.results;
@@ -63,7 +73,8 @@ export function ProductsPage() {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<Product | null>(null);
   const [images, setImages] = useState<ProductImage[]>([]);
-  const [variantId, setVariantId] = useState<number | null>(null);
+  const [variants, setVariants] = useState<VariantRow[]>([blankVariant()]);
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [imgBusy, setImgBusy] = useState(false);
   const [editImage, setEditImage] = useState<ProductImage | null>(null);
   const [editDraft, setEditDraft] = useState<ImageDisplay>(DEFAULT_IMAGE_DISPLAY);
@@ -95,29 +106,36 @@ export function ProductsPage() {
   function openCreate() {
     setDraft({ ...emptyDraft, category: categories[0]?.id ?? "" });
     setImages([]);
-    setVariantId(null);
+    setVariants([blankVariant()]);
+    setStagedFiles([]);
     setCreating(true);
   }
 
   function openEdit(p: Product) {
     setEditing(p);
     setImages([]);
+    setVariants([]);
     setDraft({
       name: p.name,
       category: p.category?.id ?? "",
       description: "",
       brand: p.brand ?? "",
       mrp: p.mrp ?? "",
-      price: p.base_price ?? "",
       is_active: p.is_active,
       is_featured: p.is_featured,
     });
     getProduct(p.slug)
       .then((detail) => {
         setImages(detail.images ?? []);
-        setVariantId(detail.variants?.[0]?.id ?? null);
+        const rows = (detail.variants ?? []).map((v) => ({
+          id: v.id as number,
+          name: v.name,
+          price: v.price ?? "",
+          is_active: (v as { is_active?: boolean }).is_active ?? true,
+        }));
+        setVariants(rows.length ? rows : [blankVariant()]);
       })
-      .catch((e) => push(errText(e, "Couldn't load images"), "err"));
+      .catch((e) => push(errText(e, "Couldn't load details"), "err"));
   }
 
   function buildBody() {
@@ -130,18 +148,17 @@ export function ProductsPage() {
     if (draft.description) body.description = draft.description;
     if (draft.brand) body.brand = draft.brand;
     if (draft.mrp) body.mrp = draft.mrp;
-    // On create add one default variant; on edit, route a price change to the
-    // existing variant by id (the API updates in place instead of duplicating).
-    // If the product was created without a price it has no variants yet — send
-    // one without an id and the API creates it.
-    if (creating && draft.price) {
-      body.variants = [{ name: "1 unit", price: draft.price, is_active: true }];
-    } else if (editing && draft.price) {
-      body.variants =
-        variantId != null
-          ? [{ id: variantId, price: draft.price }]
-          : [{ name: "1 unit", price: draft.price, is_active: true }];
-    }
+    // Variants round-trip by id (update in place); rows without an id are
+    // created. Empty-price rows are skipped, never sent.
+    const priced = variants
+      .filter((v) => v.price !== "")
+      .map((v) => ({
+        ...(v.id != null ? { id: v.id } : {}),
+        name: v.name.trim() || "1 unit",
+        price: v.price,
+        is_active: v.is_active,
+      }));
+    if (priced.length) body.variants = priced;
     return body;
   }
 
@@ -153,8 +170,22 @@ export function ProductsPage() {
         await updateProduct(editing.slug, buildBody());
         push(`“${draft.name}” updated`);
       } else {
-        await createProduct(buildBody());
-        push(`“${draft.name}” created`);
+        const created = await createProduct(buildBody());
+        let uploaded = 0;
+        let failed = 0;
+        for (const file of stagedFiles) {
+          try {
+            await uploadProductImage(created.slug, file);
+            uploaded += 1;
+          } catch {
+            failed += 1;
+          }
+        }
+        push(
+          `“${draft.name}” created` +
+            (uploaded ? ` with ${uploaded} image${uploaded > 1 ? "s" : ""}` : "") +
+            (failed ? ` (${failed} image${failed > 1 ? "s" : ""} failed to upload)` : ""),
+        );
       }
       setCreating(false);
       setEditing(null);
@@ -358,8 +389,8 @@ export function ProductsPage() {
           title={editing ? `Edit “${editing.name}”` : "New product"}
           subtitle={
             creating
-              ? "A default “1 unit” variant is created with your selling price."
-              : "Price/variant editing refines stock items automatically on the storefront."
+              ? "Add variants, then attach images — everything uploads on Save."
+              : "Variants update in place by id; images save instantly below."
           }
           onClose={() => {
             setCreating(false);
@@ -404,17 +435,77 @@ export function ProductsPage() {
                   onChange={(e) => setDraft({ ...draft, mrp: e.target.value })}
                 />
               </label>
-              <label>
-                Selling price (₹)
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={draft.price}
-                  onChange={(e) => setDraft({ ...draft, price: e.target.value })}
-                />
-              </label>
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+                Variants — packs &amp; sizes (e.g. 250g, 500ml, 1L)
+              </div>
+              {variants.map((v, i) => (
+                <div
+                  key={v.id ?? `new-${i}`}
+                  style={{ display: "grid", gridTemplateColumns: "1fr 130px auto auto", gap: 8, marginBottom: 8, alignItems: "center" }}
+                >
+                  <input
+                    className="input"
+                    value={v.name}
+                    onChange={(e) =>
+                      setVariants((list) => list.map((row, j) => (j === i ? { ...row, name: e.target.value } : row)))
+                    }
+                    placeholder="1 unit"
+                    aria-label="Variant name"
+                  />
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={v.price}
+                    onChange={(e) =>
+                      setVariants((list) => list.map((row, j) => (j === i ? { ...row, price: e.target.value } : row)))
+                    }
+                    placeholder="₹ price"
+                    aria-label="Variant price"
+                  />
+                  <label className="muted" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={v.is_active}
+                      onChange={(e) =>
+                        setVariants((list) => list.map((row, j) => (j === i ? { ...row, is_active: e.target.checked } : row)))
+                      }
+                    />
+                    Live
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => setVariants((list) => list.filter((_, j) => j !== i))}
+                    title="Remove row"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => setVariants((list) => [...list, blankVariant()])}
+                >
+                  + Add variant
+                </button>
+                {VARIANT_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    title={`Add ${preset} variant`}
+                    onClick={() => setVariants((list) => [...list, blankVariant(preset)])}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
             </div>
             <label>
               Brand
@@ -458,9 +549,45 @@ export function ProductsPage() {
               Images
             </div>
             {!editing ? (
-              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                Save the product first, then edit it to add images.
-              </p>
+              <>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <label className="btn btn-sm btn-ghost" style={{ cursor: "pointer" }}>
+                    + Attach images
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        e.target.value = "";
+                        if (files.length) setStagedFiles((list) => [...list, ...files]);
+                      }}
+                    />
+                  </label>
+                </div>
+                {stagedFiles.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+                    {stagedFiles.map((f, i) => (
+                      <span key={`${f.name}-${i}`} className="badge">
+                        {f.name}
+                        <button
+                          type="button"
+                          className="link"
+                          style={{ marginLeft: 6 }}
+                          onClick={() => setStagedFiles((list) => list.filter((_, j) => j !== i))}
+                          title="Remove file"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
+                  Attached files upload automatically when you save the product.
+                </p>
+              </>
             ) : (
               <>
                 <div className="prod-gallery">

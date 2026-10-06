@@ -8,17 +8,19 @@ import { OrdersPage } from "./pages/OrdersPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
+import { UsersPage } from "./pages/UsersPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { StorefrontPage } from "./pages/StorefrontPage";
 import { Spinner } from "./components/ui";
 
-const NAV: Array<{ route: string; icon: string; label: string }> = [
+const NAV: Array<{ route: string; icon: string; label: string; adminOnly?: boolean }> = [
   { route: "dashboard", icon: "📊", label: "Dashboard" },
   { route: "orders", icon: "📦", label: "Orders" },
   { route: "categories", icon: "🧩", label: "Categories" },
   { route: "products", icon: "🛍️", label: "Products" },
   { route: "reviews", icon: "⭐", label: "Reviews" },
   { route: "inventory", icon: "📦", label: "Inventory" },
+  { route: "users", icon: "👥", label: "Users", adminOnly: true },
   { route: "storefront", icon: "🎨", label: "Storefront designer" },
 ];
 
@@ -29,6 +31,7 @@ const TITLES: Record<string, string> = {
   products: "Products",
   reviews: "Reviews & moderation",
   inventory: "Inventory",
+  users: "Users",
   storefront: "Storefront designer",
 };
 
@@ -54,6 +57,8 @@ export default function App() {
       {route === "products" && <ProductsPage />}
         {route === "reviews" && <ReviewsPage />}
       {route === "inventory" && <InventoryPage />}
+      {route === "users" && user.role === "ADMIN" && <UsersPage />}
+      {route === "users" && user.role !== "ADMIN" && <DashboardPage />}
       {route === "storefront" && user.role === "ADMIN" && <StorefrontPage />}
       {route === "storefront" && user.role !== "ADMIN" && <DashboardPage />}
       {!TITLES[route] && <DashboardPage />}
@@ -94,7 +99,7 @@ function Shell({
           </div>
         </div>
         {NAV.filter(
-          (item) => item.route !== "storefront" || role === "ADMIN",
+          (item) => (item.route !== "storefront" && !item.adminOnly) || role === "ADMIN",
         ).map((item) => (
           <button
             key={item.route}
