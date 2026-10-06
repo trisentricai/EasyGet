@@ -68,8 +68,17 @@ export function fieldErrors(e: unknown): string {
 
 function errorMessage(payload: unknown): string {
   if (payload && typeof payload === "object") {
-    const err = (payload as { error?: { message?: string } }).error;
-    if (err?.message) return err.message;
+    const err = (payload as { error?: { message?: string; details?: unknown } }).error;
+    if (err?.message) {
+      // Backstop: if a server ever leaks a Python repr again, render the
+      // structured details instead of the raw string.
+      if (err.message.includes("ErrorDetail(")) {
+        const flat = flattenDetails((err as { details?: unknown }).details);
+        if (flat) return flat;
+      } else {
+        return err.message;
+      }
+    }
     const detail = (payload as { detail?: unknown }).detail;
     if (typeof detail === "string" && detail) return detail;
     if (detail && typeof detail === "object") {
@@ -83,6 +92,18 @@ function errorMessage(payload: unknown): string {
     }
   }
   return "Request failed";
+}
+
+/** Flatten a DRF error-detail tree ({field: [msgs]}, possibly nested) to one readable string. */
+function flattenDetails(detail: unknown): string | null {
+  const out: string[] = [];
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) node.forEach(walk);
+    else if (node && typeof node === "object") Object.values(node).forEach(walk);
+    else if (typeof node === "string" && node.trim()) out.push(node.trim());
+  };
+  walk(detail);
+  return out.length ? out.join("; ") : null;
 }
 
 async function refreshTokens(): Promise<boolean> {
