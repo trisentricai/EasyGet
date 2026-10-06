@@ -31,6 +31,7 @@ node_modules/
 dist/
 build/
 staticfiles/
+.wrangler/
 customer-web/screenshots/shots/
 
 # --- Python caches ---
