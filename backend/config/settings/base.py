@@ -358,8 +358,8 @@ HEALTH_CHECK = {
 # Prometheus metrics
 PROMETHEUS_EXPORT_MIGRATIONS = False
 
-# Firebase Auth (customer login: Google + email/password).
-# The service-account JSON lives ONLY in the FIREBASE_SERVICE_ACCOUNT_JSON env
-# var (Render dashboard) — never in git. Empty locally: Firebase login
-# answers 503 while everything else works, so local dev needs no Firebase.
-FIREBASE_SERVICE_ACCOUNT_JSON = env("FIREBASE_SERVICE_ACCOUNT_JSON", default="")
+# Google sign-in WITHOUT Firebase (GIS button on web, google_sign_in on app).
+# Comma-separated OAuth client IDs whose ID tokens we accept (web client +
+# Android client from google-services.json). Empty locally: /auth/google/
+# answers 503 while everything else works.
+GOOGLE_OAUTH_CLIENT_IDS = env("GOOGLE_OAUTH_CLIENT_IDS", default="")

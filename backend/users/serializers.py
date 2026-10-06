@@ -20,10 +20,17 @@ OTP_INVALID_MESSAGE = "Invalid or expired OTP code."
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=10, max_length=128)
+    # Self-service signup roles. Staff roles (ADMIN/STORE_MANAGER) are never
+    # self-assignable — those are created by an admin (see admin user API).
+    role = serializers.ChoiceField(
+        choices=[User.Role.CUSTOMER, User.Role.MERCHANT, User.Role.DELIVERY_AGENT],
+        default=User.Role.CUSTOMER,
+        required=False,
+    )
 
     class Meta:
         model = User
-        fields = ("id", "email", "password", "first_name", "last_name", "phone")
+        fields = ("id", "email", "password", "first_name", "last_name", "phone", "role")
         read_only_fields = ("id",)
         extra_kwargs = {"password": {"write_only": True}}
 
@@ -140,6 +147,51 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ("id", "email", "role", "first_name", "last_name", "phone", "is_email_verified")
         read_only_fields = ("id", "email", "role", "is_email_verified")
+
+
+class AdminUserCreateSerializer(serializers.ModelSerializer):
+    """Staff-only user creation (admin Users page). Unlike self-service
+    register: any role allowed (admin vouches), no OTP email is sent, and the
+    account starts verified."""
+
+    password = serializers.CharField(write_only=True, min_length=10, max_length=128)
+    role = serializers.ChoiceField(choices=User.Role.choices)
+
+    class Meta:
+        model = User
+        fields = ("id", "email", "password", "first_name", "last_name", "phone", "role")
+        read_only_fields = ("id",)
+        extra_kwargs = {"password": {"write_only": True}}
+
+    def validate(self, attrs):
+        user = User(
+            email=attrs.get("email", ""),
+            first_name=attrs.get("first_name", ""),
+            last_name=attrs.get("last_name", ""),
+            phone=attrs.get("phone", ""),
+        )
+        try:
+            django_validate_password(attrs.get("password"), user=user)
+        except DjangoValidationError as errors:
+            raise serializers.ValidationError({"password": list(errors.messages)})
+        return attrs
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        return User.objects.create_user(
+            password=password, is_email_verified=True, **validated_data
+        )
+
+
+class AdminUserUpdateSerializer(serializers.ModelSerializer):
+    """Staff-only role/status changes. Email and password are immutable here."""
+
+    role = serializers.ChoiceField(choices=User.Role.choices, required=False)
+    is_active = serializers.BooleanField(required=False)
+
+    class Meta:
+        model = User
+        fields = ("role", "is_active")
 
 
 class AddressSerializer(serializers.ModelSerializer):
