@@ -1,10 +1,19 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'src/core/theme/app_theme.dart';
 import 'src/routing/app_router.dart';
 
-void main() {
+Future<void> main() async {
+  // Firebase (Google + email auth) reads google-services.json on Android.
+  // A missing config only affects Firebase paths — classic login is untouched.
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    // No Firebase config (or init failure): Firebase login stays disabled.
+  }
   runApp(const ProviderScope(child: EasyGetApp()));
 }
 

@@ -18,6 +18,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _busy = false;
+  bool _firebaseEmail = false;
 
   @override
   void dispose() {
@@ -29,15 +30,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
-    final error = await ref.read(authControllerProvider.notifier).signIn(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
+    final String? error;
+    if (_firebaseEmail) {
+      error = await ref.read(authControllerProvider.notifier).signInWithFirebaseEmail(
+            email: _email.text.trim(),
+            password: _password.text,
+          );
+    } else {
+      error = await ref.read(authControllerProvider.notifier).signIn(
+            email: _email.text.trim(),
+            password: _password.text,
+          );
+    }
     if (!mounted) return;
     setState(() => _busy = false);
     if (error != null) {
       showSnack(context, error, error: true);
     } else {
+      context.go('/home');
+    }
+  }
+
+  Future<void> _google() async {
+    setState(() => _busy = true);
+    final error =
+        await ref.read(authControllerProvider.notifier).signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (error != null) {
+      showSnack(context, error, error: true);
+      return;
+    }
+    // Null error is ambiguous (success or user-cancelled): only navigate
+    // when a session actually exists.
+    if (ref.read(authControllerProvider).maybeWhen(data: (u) => u, orElse: () => null) != null) {
       context.go('/home');
     }
   }
@@ -140,6 +166,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : const Text('Sign in'),
                     ),
                     const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _google,
+                      icon: Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                        child: Text(
+                          'G',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      label: const Text('Continue with Google'),
+                    ),
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(
+                              () => _firebaseEmail = !_firebaseEmail),
+                      child: Text(_firebaseEmail
+                          ? 'Use password instead'
+                          : 'Use Firebase sign-in instead'),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

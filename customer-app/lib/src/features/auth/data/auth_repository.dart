@@ -1,7 +1,32 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/token_store.dart';
+
+/// Firebase SDK errors mapped to display text (mirrors web firebaseErrorText).
+String _friendlyFirebaseError(Object e) {
+  if (e is FirebaseAuthException) {
+    switch (e.code) {
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Invalid email or password.';
+      case 'email-already-in-use':
+        return 'Email already registered. Sign in instead.';
+      case 'weak-password':
+        return 'Password must be at least 6 characters.';
+      case 'invalid-email':
+        return 'Enter a valid email address.';
+      case 'network-request-failed':
+        return 'Check your connection and try again.';
+      case 'too-many-requests':
+        return 'Too many attempts. Try again in a few minutes.';
+    }
+  }
+  return 'Sign-in failed. Please try again.';
+}
 
 class AppUser {
   AppUser({
@@ -92,6 +117,100 @@ class AuthRepository {
       }
     } finally {
       await _tokens.clear();
+      try {
+        await FirebaseAuth.instance.signOut();
+      } catch (_) {}
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
+    }
+  }
+
+  /// Exchange a Firebase ID token for our access+refresh pair.
+  /// Same response contract as password login; same token storage.
+  Future<AppUser> loginWithFirebase(String idToken) async {
+    final data = await _api.post<Map<String, dynamic>>(
+      '/auth/firebase/',
+      body: {'id_token': idToken},
+      decode: (j) => j as Map<String, dynamic>,
+    );
+    await _tokens.save(
+      access: data['access'] as String,
+      refresh: data['refresh'] as String,
+    );
+    return AppUser.fromJson(data['user'] as Map<String, dynamic>);
+  }
+
+  static bool _googleReady = false;
+
+  /// Google sign-in. Returns null when the user cancels the flow.
+  Future<AppUser?> signInWithGoogle() async {
+    if (!_googleReady) {
+      await GoogleSignIn.instance.initialize();
+      _googleReady = true;
+    }
+    final GoogleSignInAccount account;
+    try {
+      account = await GoogleSignIn.instance.authenticate();
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        return null;
+      }
+      throw Exception('Google sign-in failed. Please try again.');
+    }
+    final googleIdToken = account.authentication.idToken;
+    if (googleIdToken == null || googleIdToken.isEmpty) {
+      throw Exception('Google did not return an ID token.');
+    }
+    final credential = GoogleAuthProvider.credential(idToken: googleIdToken);
+    try {
+      await FirebaseAuth.instance.signInWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_friendlyFirebaseError(e));
+    }
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (idToken == null || idToken.isEmpty) {
+      throw Exception('Could not complete Firebase sign-in.');
+    }
+    return loginWithFirebase(idToken);
+  }
+
+  Future<AppUser> firebaseEmailSignIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final idToken = await cred.user?.getIdToken();
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Could not complete Firebase sign-in.');
+      }
+      return loginWithFirebase(idToken);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_friendlyFirebaseError(e));
+    }
+  }
+
+  Future<AppUser> firebaseEmailSignUp({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final idToken = await cred.user?.getIdToken();
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Could not complete Firebase sign-in.');
+      }
+      return loginWithFirebase(idToken);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_friendlyFirebaseError(e));
     }
   }
 
