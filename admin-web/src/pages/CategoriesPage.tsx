@@ -79,7 +79,10 @@ export function CategoriesPage() {
     setImgBusy(true);
     try {
       const updated = await uploadCategoryIcon(editing.slug, file);
-      setEditing(updated);
+      // Merge only the icon: the PATCH response is the write-serializer
+      // shape (no slug/id). Replacing `editing` with it would drop the slug
+      // and the next Save would 404 on `/categories/undefined/`.
+      setEditing((prev) => (prev ? { ...prev, icon: updated.icon } : prev));
       await queryClient.invalidateQueries({ queryKey: ["admin", "categories"] });
       push(file ? "Category image updated" : "Category image removed");
     } catch (e) {
