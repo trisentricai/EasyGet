@@ -1,0 +1,14 @@
+# Cloudflare Pages headers for the customer storefront.
+#
+# WHY THIS EXISTS: the app shell (index.html) references hashed asset URLs,
+# so a cached shell = a frozen UI (old components keep rendering no matter
+# what we deploy). The shell must always revalidate; hashed assets underneath
+# are content-addressed and safe to cache immutably.
+/
+  Cache-Control: no-store, must-revalidate
+/preview.html
+  Cache-Control: no-store, must-revalidate
+/privacy.html
+  Cache-Control: no-store, must-revalidate
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
