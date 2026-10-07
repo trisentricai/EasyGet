@@ -103,7 +103,7 @@ export function AuthPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await register({
+      await register({
         email,
         password,
         first_name: firstName || undefined,
@@ -111,9 +111,14 @@ export function AuthPage() {
         phone: phone || undefined,
         role,
       });
-      toast.push(res.message, "info");
-      setInfo(res.message);
-      setMode("otp");
+      // No OTP gate: accounts work immediately. Sign straight in; if that
+      // ever fails, fall back to the classic verify/login path.
+      try {
+        finishLogin(await login(email, password));
+      } catch {
+        setInfo("Account created — sign in to continue.");
+        setMode("login");
+      }
     } catch (err) {
       setError(fieldErrors(err));
     } finally {
@@ -197,7 +202,7 @@ export function AuthPage() {
         {mode === "register" && (
           <form onSubmit={submitRegister}>
             <h1>Create your account</h1>
-            <p className="sub">We'll email you a 6-digit code to verify your address.</p>
+            <p className="sub">You're signed in right away — no codes, no waiting.</p>
             <div className="form-grid">
               <div className="field">
                 <label>First name</label>

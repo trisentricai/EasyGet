@@ -11,7 +11,6 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Address, OTPCode, User
-from .services import send_otp_email
 
 # One message for every verify failure (unknown email, no OTP, expired, wrong
 # code) so responses never reveal whether an account exists.
@@ -51,10 +50,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        # No OTP gate: accounts are usable immediately. Email verification
+        # happens through Google sign-in or not at all (owner decision);
+        # the OTP endpoints remain for manual/resend flows.
+        validated_data["is_email_verified"] = True
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, **validated_data)
-        otp = OTPCode.issue(user)
-        send_otp_email(user, otp.code)
         return user
 
 

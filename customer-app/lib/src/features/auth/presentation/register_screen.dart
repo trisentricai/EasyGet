@@ -43,8 +43,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             role: _role,
           );
       if (!mounted) return;
-      showSnack(context, 'Account created — enter the code we emailed you.');
-      context.push('/verify', extra: _email.text.trim());
+      // No OTP gate: sign straight in. Falls back to manual login if needed.
+      final error = await ref.read(authControllerProvider.notifier).signIn(
+            email: _email.text.trim(),
+            password: _password.text,
+          );
+      if (!mounted) return;
+      if (error != null) {
+        showSnack(context, 'Account created — sign in to continue.');
+        context.push('/verify', extra: _email.text.trim());
+      } else {
+        context.go('/home');
+      }
     } catch (e) {
       if (mounted) showSnack(context, e.toString(), error: true);
     } finally {

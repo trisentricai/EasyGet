@@ -30,7 +30,7 @@ class RegisterView(CreateAPIView):
         user = serializer.save()
         return Response(
             {
-                "message": "Account created. Verify your email with the OTP that was emailed to you.",
+                "message": "Account created. You can sign in now.",
                 "user": UserSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
