@@ -121,9 +121,14 @@ class AuthRepository {
 
   /// Google sign-in. Returns null when the user cancels the flow.
   Future<AppUser?> signInWithGoogle() async {
-    if (!_googleReady) {
-      await GoogleSignIn.instance.initialize();
-      _googleReady = true;
+    try {
+      if (!_googleReady) {
+        await GoogleSignIn.instance.initialize();
+        _googleReady = true;
+      }
+    } catch (_) {
+      // e.g. Chrome/web builds without a web client ID configured.
+      throw Exception('Google sign-in is not available here. Use email login.');
     }
     final GoogleSignInAccount account;
     try {
