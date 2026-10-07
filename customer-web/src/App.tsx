@@ -18,6 +18,8 @@ import { AccountPage } from "./pages/AccountPage";
 import { WishlistPage } from "./pages/WishlistPage";
 import { Icon } from "./components/icons";
 import { Spinner, usePopOnChange } from "./components/ui";
+import { Ticker } from "./components/ticker";
+import { CategoriesPage } from "./pages/CategoriesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -149,6 +151,7 @@ function Shell() {
     if (personal && (!ready || !user)) return <Spinner />;
     if (route.name === "login") return <AuthPage />;
     if (route.name === "home") return <HomePage />;
+    if (route.name === "categories") return <CategoriesPage />;
     if (route.name === "browse") return <BrowsePage key={route.query.get("category") ?? ""} initialCategory={route.query.get("category") ?? undefined} />;
     if (route.name === "product") return <ProductPage key={route.params[0]} slug={route.params[0] ?? ""} />;
     if (route.name === "search") return <SearchPage key={route.query.get("q") ?? ""} initialQuery={route.query.get("q") ?? undefined} />;
@@ -229,18 +232,7 @@ function Shell() {
 
       {categories.length > 0 && <CategoryStrip categories={categories} activeRoute={activeRoute} activeCategory={route.query.get("category") ?? undefined} />}
 
-      <div className="offer-strip" aria-hidden="true">
-        <div className="offer-track">
-          <span>Free delivery over ₹499</span><i>✦</i>
-          <span>7-day easy returns</span><i>✦</i>
-          <span>Cash on delivery available</span><i>✦</i>
-          <span>Everyday low prices</span><i>✦</i>
-          <span>Free delivery over ₹499</span><i>✦</i>
-          <span>7-day easy returns</span><i>✦</i>
-          <span>Cash on delivery available</span><i>✦</i>
-          <span>Everyday low prices</span><i>✦</i>
-        </div>
-      </div>
+      <Ticker />
 
       {page}
 

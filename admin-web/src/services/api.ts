@@ -366,7 +366,7 @@ export type StoreSection = {
     | "RICH_TEXT";
   title: string;
   subtitle: string;
-  config: { columns?: number; size?: "sm" | "md" | "lg"; effects?: Record<string, unknown>; placeholder?: string } & Record<string, unknown>;
+  config: { columns?: number; size?: "sm" | "md" | "lg"; effects?: Record<string, unknown>; placeholder?: string; category_style?: string; hero_layout?: string; hero_overlay?: string } & Record<string, unknown>;
       position: number;
       is_active: boolean;
       image: string | null;
@@ -407,6 +407,60 @@ export const updateSection = (id: number, body: Record<string, unknown> | FormDa
 
 export const deleteSection = (id: number) =>
   api<void>(`/storefront/sections/${id}/`, { method: "DELETE" });
+
+/* ---------------- Announcement ticker (SystemConfig key "ticker") ---------------- */
+
+export type TickerConfig = {
+  items: string[];
+  speed: number;
+  color: string;
+  bg: string;
+  symbol: string;
+  fontSize: number;
+  radius: number;
+};
+
+type SystemConfigRow = {
+  id: number;
+  key: string;
+  value: string;
+  config_type: string;
+  is_public: boolean;
+};
+
+async function listConfigs(): Promise<SystemConfigRow[]> {
+  const res = await api<{ results: SystemConfigRow[] } | SystemConfigRow[]>("/admin/config/");
+  return Array.isArray(res) ? res : res.results;
+}
+
+/** Read the ticker config (null when never configured — the app falls back). */
+export async function getTickerConfig(): Promise<{ id: number; config: TickerConfig } | null> {
+  const rows = await listConfigs();
+  const row = rows.find((r) => r.key === "ticker");
+  if (!row) return null;
+  try {
+    return { id: row.id, config: JSON.parse(row.value) as TickerConfig };
+  } catch {
+    return { id: row.id, config: null as unknown as TickerConfig };
+  }
+}
+
+/** Create-or-update the ticker config (always JSON, always public). */
+export async function saveTickerConfig(id: number | null, config: TickerConfig): Promise<number> {
+  const body = {
+    key: "ticker",
+    value: JSON.stringify(config),
+    config_type: "JSON",
+    is_public: true,
+    description: "Announcement bar: items + style, rendered from the platform storefront payload.",
+  };
+  if (id === null) {
+    const created = await api<SystemConfigRow>("/admin/config/", { method: "POST", body });
+    return created.id;
+  }
+  await api<SystemConfigRow>(`/admin/config/${id}/`, { method: "PATCH", body });
+  return id;
+}
 
 export const reorderSections = (slug: string, order: number[]) =>
   api<StoreSection[]>(`/storefront/${slug}/sections/reorder/`, {

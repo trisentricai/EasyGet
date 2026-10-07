@@ -233,6 +233,16 @@ export type StorefrontPayload = {
   store: { name: string; slug: string; city: string; description: string };
   theme: Theme | null;
   sections: StoreSection[];
+  /** Announcement bar, merchant-edited (falls back when unconfigured). */
+  ticker?: {
+    items: string[];
+    speed: number;
+    color: string;
+    bg: string;
+    symbol: string;
+    fontSize: number;
+    radius: number;
+  } | null;
 };
 
 export const getPlatformStorefront = () =>

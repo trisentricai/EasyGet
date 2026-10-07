@@ -6,6 +6,7 @@ from products.models import Product
 from stores.models import Store
 
 from .models import SectionItem, StoreSection, StorefrontTheme
+from .ticker import get_ticker_config
 
 
 class StorefrontThemeSerializer(serializers.ModelSerializer):
@@ -206,6 +207,7 @@ class StorefrontRenderSerializer(serializers.Serializer):
     store = serializers.SerializerMethodField()
     theme = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
+    ticker = serializers.SerializerMethodField()
 
     def get_store(self, store):
         return {
@@ -228,3 +230,12 @@ class StorefrontRenderSerializer(serializers.Serializer):
             "items", "items__product", "items__category"
         )
         return StoreSectionSerializer(qs, many=True, context=self.context).data
+
+    def get_ticker(self, store):
+        """Announcement-bar content + style, edited in admin (no code).
+
+        Lives in SystemConfig (key "ticker", JSON, public) so merchants edit
+        copy and styling without deploys. Anything missing, private, or
+        malformed falls back to DEFAULT_TICKER — the strip always renders.
+        """
+        return get_ticker_config()

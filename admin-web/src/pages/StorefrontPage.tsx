@@ -13,6 +13,8 @@ import {
   mediaSrc,
   reorderItems,
   reorderSections,
+  saveTickerConfig,
+  getTickerConfig,
   setStoreSlug,
   toImageDisplay,
   updateItem,
@@ -24,6 +26,7 @@ import {
   type SectionItem,
   type StoreSection,
   type Theme,
+  type TickerConfig,
 } from "../services/api";
 import ImageDisplayEditor from "../components/ImageDisplayEditor";
 import { useToast } from "../context/ToastContext";
@@ -62,7 +65,7 @@ export function StorefrontPage() {
   const [editSection, setEditSection] = useState<StoreSection | null>(null);
   const [deleting, setDeleting] = useState<StoreSection | null>(null);
   const [addItemFor, setAddItemFor] = useState<StoreSection | null>(null);
-  const [tab, setTab] = useState<"sections" | "theme">("sections");
+  const [tab, setTab] = useState<"sections" | "theme" | "ticker">("sections");
   const justAddedRef = useRef<number | null>(null);
 
   const resolvedInitial = useRef(false);
@@ -352,6 +355,15 @@ export function StorefrontPage() {
         >
           🎨 Store theme
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "ticker"}
+          className={`effect-pill ${tab === "ticker" ? "on" : ""}`}
+          onClick={() => setTab("ticker")}
+        >
+          Announcement bar
+        </button>
       </div>
 
       {tab === "sections" ? (
@@ -471,6 +483,14 @@ export function StorefrontPage() {
             </Card>
           ))}
         </div>
+      ) : tab === "ticker" ? (
+        <Card>
+          <h3 style={{ marginTop: 0 }}>Announcement bar</h3>
+          <p className="muted" style={{ marginBottom: 14 }}>
+            The scrolling strip under the header. Text and style go live instantly.
+          </p>
+          <TickerEditor />
+        </Card>
       ) : (
         <Card>
           <h3 style={{ marginTop: 0 }}>🎨 Store theme</h3>
@@ -892,5 +912,219 @@ function AddItemModal({
         </button>
       </div>
     </Modal>
+  );
+}
+
+const TICKER_SYMBOLS = ["✦", "•", "◆", "★", "●", "→"];
+
+function TickerEditor() {
+  const { push } = useToast();
+  const [rowId, setRowId] = useState<number | null>(null);
+  const [items, setItems] = useState<string[]>([]);
+  const [newItem, setNewItem] = useState("");
+  const [speed, setSpeed] = useState(26);
+  const [color, setColor] = useState("#b91c1c");
+  const [bg, setBg] = useState("#fef2f2");
+  const [symbol, setSymbol] = useState("✦");
+  const [fontSize, setFontSize] = useState(12);
+  const [radius, setRadius] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getTickerConfig()
+      .then((row) => {
+        if (row) {
+          setRowId(row.id);
+          const c = row.config ?? {};
+          if (Array.isArray(c.items)) setItems(c.items.filter((i): i is string => typeof i === "string"));
+          if (typeof c.speed === "number") setSpeed(c.speed);
+          if (typeof c.color === "string") setColor(c.color);
+          if (typeof c.bg === "string") setBg(c.bg);
+          if (typeof c.symbol === "string") setSymbol(c.symbol);
+          if (typeof c.fontSize === "number") setFontSize(c.fontSize);
+          if (typeof c.radius === "number") setRadius(c.radius);
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  async function save() {
+    const clean = items.map((i) => i.trim()).filter(Boolean);
+    if (!clean.length) {
+      push("Add at least one message.", "err");
+      return;
+    }
+    setBusy(true);
+    try {
+      const id = await saveTickerConfig(rowId, {
+        items: clean,
+        speed,
+        color,
+        bg,
+        symbol,
+        fontSize,
+        radius,
+      });
+      setRowId(id);
+      push("Announcement bar published");
+    } catch (e) {
+      push(errText(e, "Save failed"), "err");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!loaded) return <Spinner />;
+
+  return (
+    <div>
+      <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+        Messages
+      </div>
+      {items.map((text, i) => (
+        <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input
+            className="input"
+            value={text}
+            onChange={(e) =>
+              setItems((list) => list.map((t, j) => (j === i ? e.target.value : t)))
+            }
+            placeholder="e.g. Free delivery over ₹499"
+            style={{ flex: 1 }}
+          />
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={() => setItems((list) => list.filter((_, j) => j !== i))}
+            title="Remove message"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+        <input
+          className="input"
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          placeholder="New message…"
+          style={{ flex: 1 }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && newItem.trim()) {
+              setItems((list) => [...list, newItem.trim()]);
+              setNewItem("");
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost"
+          disabled={!newItem.trim()}
+          onClick={() => {
+            setItems((list) => [...list, newItem.trim()]);
+            setNewItem("");
+          }}
+        >
+          + Add
+        </button>
+      </div>
+
+      <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+        Style
+      </div>
+      <div className="form-grid">
+        <label>
+          Speed (seconds per loop)
+          <input
+            className="input"
+            type="number"
+            min={8}
+            max={120}
+            value={speed}
+            onChange={(e) => setSpeed(Number(e.target.value) || 26)}
+          />
+        </label>
+        <label>
+          Symbol between messages
+          <select className="input" value={symbol} onChange={(e) => setSymbol(e.target.value)}>
+            {TICKER_SYMBOLS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Text size
+          <select
+            className="input"
+            value={String(fontSize)}
+            onChange={(e) => setFontSize(Number(e.target.value))}
+          >
+            <option value="11">Small</option>
+            <option value="12">Medium</option>
+            <option value="14">Large</option>
+          </select>
+        </label>
+        <label>
+          Shape
+          <select
+            className="input"
+            value={String(radius)}
+            onChange={(e) => setRadius(Number(e.target.value))}
+          >
+            <option value="0">Flat edges</option>
+            <option value="8">Rounded</option>
+            <option value="999">Pill</option>
+          </select>
+        </label>
+        <label>
+          Text colour
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            style={{ width: "100%", height: 40, border: "none", background: "transparent", cursor: "pointer" }}
+          />
+        </label>
+        <label>
+          Background
+          <input
+            type="color"
+            value={bg}
+            onChange={(e) => setBg(e.target.value)}
+            style={{ width: "100%", height: 40, border: "none", background: "transparent", cursor: "pointer" }}
+          />
+        </label>
+      </div>
+
+      <div className="muted" style={{ fontWeight: 700, margin: "16px 0 8px" }}>
+        Preview
+      </div>
+      <div
+        aria-hidden="true"
+        style={{
+          background: bg,
+          color,
+          borderRadius: radius >= 999 ? 999 : radius,
+          fontSize,
+          fontWeight: 700,
+          padding: "8px 16px",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {(items.length ? items : ["Your messages appear here"]).slice(0, 3).join(` ${symbol} `)}
+      </div>
+
+      <div className="modal-actions">
+        <button className="btn btn-primary" onClick={save} disabled={busy}>
+          {busy ? "Publishing…" : "Publish announcement bar"}
+        </button>
+      </div>
+    </div>
   );
 }

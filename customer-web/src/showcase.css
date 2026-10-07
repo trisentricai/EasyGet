@@ -7,6 +7,35 @@
  * old scalloped-awning look.
  * ========================================================================== */
 
+/* ---------- Neutral first-paint defaults (anti-flash) ----------------------
+ * Merchant brand colors arrive ~2s after first paint (slower on cold
+ * starts). These near-merchant defaults keep that first paint calm instead
+ * of flashing marketplace blue; the live theme overwrites them on arrival
+ * (and the cached theme pre-paints them on repeat visits). All still
+ * merchant-overridable at runtime. */
+:root {
+  --primary: #16a34a;
+  --secondary: #eab308;
+  --bg: #f4f6f3;
+}
+
+/* ---------- Browse: synchronous sticky rails (MNC pattern) ----------------
+ * Filter rail scrolls independently (never clips, never jumps); the sortbar
+ * sticks under the header so sort stays put while the grid scrolls. */
+@media (min-width: 901px) {
+  .filter-side {
+    max-height: calc(100vh - var(--nav-h) - 72px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .sortbar {
+    position: sticky;
+    top: var(--nav-h);
+    z-index: 20;
+    background: var(--bg);
+  }
+}
+
 /* ---------- Category cards: big avatar, clear name ---------------------- */
 .cat-card {
   gap: 14px;
