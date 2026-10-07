@@ -53,6 +53,13 @@
   font-size: 30px;
 }
 
+/* ---------- Category top strip: removed by merchant choice ----------------
+ * The horizontal category nav under the header stays mounted (its scroll
+ * logic is harmless) but hidden — delete this rule to bring it back. */
+.catstrip {
+  display: none;
+}
+
 /* ---------- Category avatars rail: match the card presence --------------- */
 .cat-avatars {
   display: flex;

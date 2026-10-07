@@ -7,7 +7,6 @@ import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles"
 import { fxClass, fxStyle } from "../utils/imageFx";
 import {
   BannerCarousel,
-  CategoryRail,
   DealsRail,
   RecentlyViewedRail,
   RecommendedRail,
@@ -61,7 +60,6 @@ export function HomePage() {
         />
       )}
       <DealsRail />
-      <CategoryRail />
       <RecommendedRail />
       <RecentlyViewedRail />
     </div>
