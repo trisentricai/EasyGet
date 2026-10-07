@@ -70,8 +70,10 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     BaseOptions(
       baseUrl: AppConfig.apiBase,
       // Free-tier hosting sleeps when idle: first contact can take ~50s
-      // while Render cold-starts. Generous timeouts beat a false offline.
-      connectTimeout: const Duration(seconds: 30),
+      // while Render cold-starts. The connect timeout MUST clear that with
+      // margin, or the first sign-in after idle always dies (and used to do
+      // so silently). Generous timeouts beat a false offline.
+      connectTimeout: const Duration(seconds: 90),
       receiveTimeout: const Duration(seconds: 60),
       headers: {'Content-Type': 'application/json'},
     ),

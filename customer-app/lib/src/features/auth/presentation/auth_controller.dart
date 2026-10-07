@@ -19,7 +19,7 @@ class AuthController extends AsyncNotifier<AppUser?> {
       return null;
     } catch (e) {
       state = AsyncData(null);
-      return e.toString();
+      return _clean(e);
     }
   }
 
