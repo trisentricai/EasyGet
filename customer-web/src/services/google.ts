@@ -77,6 +77,7 @@ function ensureGsiScript(): Promise<void> {
 export async function renderGoogleButton(
   element: HTMLElement,
   onToken: (idToken: string) => void,
+  width = 320,
 ): Promise<void> {
   const clientId = googleClientId();
   if (!clientId) throw new Error("Google login is not configured.");
@@ -95,7 +96,7 @@ export async function renderGoogleButton(
     size: "large",
     text: "continue_with",
     shape: "pill",
-    width: 320,
+    width,
   });
 }
 

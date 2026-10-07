@@ -29,7 +29,12 @@ function GoogleSignInButton({ disabled }: { disabled: boolean }) {
       return;
     }
     let live = true;
-    renderGoogleButton(boxRef.current, (token) => {
+    const slot = boxRef.current;
+    // Fit the fixed-width GIS button to narrow cards (prevents overflow).
+    const width = slot ? Math.max(200, Math.min(320, slot.clientWidth || 320)) : 320;
+    renderGoogleButton(
+      slot!,
+      (token) => {
       if (!live) return;
       loginWithGoogle(token)
         .then((res) => {
@@ -40,7 +45,9 @@ function GoogleSignInButton({ disabled }: { disabled: boolean }) {
         .catch((err) => {
           toast.push(errText(err, "Google sign-in failed."), "err");
         });
-    }).catch(() => {
+      },
+      width,
+    ).catch(() => {
       if (live) setFailed(true);
     });
     return () => {
