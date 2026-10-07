@@ -17,9 +17,9 @@ concurrency:
 
 env:
   VITE_API_URL: https://easyget-api.onrender.com
-  # Google web OAuth client (public identifier, safe to bake). Powers the
-  # GIS "Continue with Google" button; button hides when empty.
-  VITE_GOOGLE_CLIENT_ID: 86489065513-jkvv0k49c2erpu76m41krur4t7ffbk8e.apps.googleusercontent.com
+  # Google web OAuth client (public identifier, safe to bake). Must be the
+  # client carrying the Authorized JavaScript origins (currently the 715… one).
+  VITE_GOOGLE_CLIENT_ID: 71530535214-rl0b86rgd7rdckh3rno418tfofkeo25c.apps.googleusercontent.com
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
