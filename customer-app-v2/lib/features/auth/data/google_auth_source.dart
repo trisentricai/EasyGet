@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -51,6 +52,9 @@ class RealGoogleAuthSource implements GoogleAuthSource {
           e.code == GoogleSignInExceptionCode.interrupted) {
         return null;
       }
+      // Keep the raw framework code visible so on-device failures (e.g. an
+      // absent Android OAuth client for this signing cert) are diagnosable.
+      debugPrint('[google] sign-in failed: ${e.code}');
       throw ApiException('Google sign-in failed. Please try again.');
     }
 
