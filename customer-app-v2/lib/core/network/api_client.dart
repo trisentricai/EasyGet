@@ -1,8 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_config.dart';
+import '../storage/token_store.dart';
 import 'api_exception.dart';
+import 'auth_interceptor.dart';
+import 'session_lost.dart';
 
 /// Shared Dio client: timeouts tuned for Render free-tier cold starts
 /// (connect 90s / receive 60s, DESIGN §14), and every failure converted to
@@ -85,3 +89,20 @@ class ApiClient {
     }
   }
 }
+
+/// Composition root for the shared HTTP client: contract timeouts + bearer /
+/// single-flight-refresh interceptor. Session loss is broadcast on
+/// [sessionLostProvider] so the auth layer can drop to guest without this file
+/// depending on the auth feature.
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final tokens = ref.watch(tokenStoreProvider);
+  final dio = ApiClient.createDio();
+  dio.interceptors.add(
+    AuthInterceptor(
+      dio: dio,
+      tokens: tokens,
+      onSessionLost: () async => ref.read(sessionLostProvider).fire(),
+    ),
+  );
+  return ApiClient(dio);
+});
