@@ -1,4 +1,7 @@
-const BASE = "http://127.0.0.1:8000/api/v1";
+// Backend origin — overridden at build time on deployed environments
+// (Netlify sets VITE_API_URL=https://<render-service>.onrender.com).
+const ORIGIN = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const BASE = `${ORIGIN}/api/v1`;
 
 export type Tokens = { access: string; refresh: string };
 
@@ -65,12 +68,42 @@ export function fieldErrors(e: unknown): string {
 
 function errorMessage(payload: unknown): string {
   if (payload && typeof payload === "object") {
-    const err = (payload as { error?: { message?: string } }).error;
-    if (err?.message) return err.message;
-    const detail = (payload as { detail?: string }).detail;
-    if (detail) return detail;
+    const err = (payload as { error?: { message?: string; details?: unknown } }).error;
+    if (err?.message) {
+      // Backstop: if a server ever leaks a Python repr again, render the
+      // structured details instead of the raw string.
+      if (err.message.includes("ErrorDetail(")) {
+        const flat = flattenDetails((err as { details?: unknown }).details);
+        if (flat) return flat;
+      } else {
+        return err.message;
+      }
+    }
+    const detail = (payload as { detail?: unknown }).detail;
+    if (typeof detail === "string" && detail) return detail;
+    if (detail && typeof detail === "object") {
+      // DRF JWT token errors nest the reason under `messages` — never leak
+      // the raw ErrorDetail repr to the UI.
+      const msgs = (detail as { messages?: { message?: string }[] }).messages;
+      const reason = msgs?.[0]?.message;
+      return reason
+        ? `Your session has expired (${reason.toLowerCase()}). Please sign in again.`
+        : "Your session has expired. Please sign in again.";
+    }
   }
   return "Request failed";
+}
+
+/** Flatten a DRF error-detail tree ({field: [msgs]}, possibly nested) to one readable string. */
+function flattenDetails(detail: unknown): string | null {
+  const out: string[] = [];
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) node.forEach(walk);
+    else if (node && typeof node === "object") Object.values(node).forEach(walk);
+    else if (typeof node === "string" && node.trim()) out.push(node.trim());
+  };
+  walk(detail);
+  return out.length ? out.join("; ") : null;
 }
 
 async function refreshTokens(): Promise<boolean> {
@@ -110,9 +143,14 @@ export async function api<T = unknown>(
 
   let res = await doFetch();
   if (res.status === 401 && (await refreshTokens())) res = await doFetch();
-  if (res.status === 401 && on401) {
+  if (res.status === 401 && getTokens()) {
+    // Credentials are dead or unusable: purge the session, then retry the
+    // request anonymously. Public (browsing) endpoints must keep working
+    // with a stale token in localStorage; genuinely protected endpoints
+    // will 401 again below and surface their error as usual.
     setTokens(null);
-    on401();
+    on401?.();
+    res = await doFetch();
   }
   if (res.status === 204) return undefined as T;
 
@@ -156,6 +194,18 @@ export type SectionItem = {
   position: number;
 };
 
+/** Display knobs every rendered image carries (focal point, scale, hover).
+ *  All optional — absent fields fall back to neutral defaults. */
+export type ImageEffect = "none" | "zoom" | "pan" | "grayscale";
+
+export type ImageDisplay = {
+  align_x?: number;
+  align_y?: number;
+  zoom?: number;
+  effect?: ImageEffect;
+  transition_ms?: number;
+};
+
 export type StoreSection = {
   id: number;
   section_type:
@@ -177,15 +227,55 @@ export type StoreSection = {
   position: number;
   is_active: boolean;
   items: SectionItem[];
-};
+} & ImageDisplay;
 
 export type StorefrontPayload = {
   store: { name: string; slug: string; city: string; description: string };
   theme: Theme | null;
   sections: StoreSection[];
+  /** Announcement bar, merchant-edited (falls back when unconfigured). */
+  ticker?: {
+    items: string[];
+    speed: number;
+    color: string;
+    bg: string;
+    symbol: string;
+    fontSize: number;
+    radius: number;
+  } | null;
 };
 
-export const getStorefront = (slug: string) => api<StorefrontPayload>(`/storefront/${slug}/`);
+export const getPlatformStorefront = () =>
+  api<StorefrontPayload>("/storefront/platform/").then((payload) => {
+    // Cache the merchant theme for pre-paint application on the next visit
+    // (index.html reads it before first paint — no more default-color flash).
+    try {
+      const theme = payload?.theme;
+      if (theme) {
+        const radius =
+          theme.button_style === "PILL"
+            ? "999px"
+            : theme.button_style === "SQUARE"
+              ? "3px"
+              : "10px";
+        window.localStorage.setItem(
+          "eg-store-theme",
+          JSON.stringify({
+            primary: theme.primary_color,
+            secondary: theme.secondary_color,
+            bg: theme.background_color,
+            font: theme.font_family,
+            radiusBtn: radius,
+          }),
+        );
+      } else {
+        window.localStorage.removeItem("eg-store-theme");
+      }
+    } catch {
+      /* storage blocked — theming still applies live this visit */
+    }
+    return payload;
+  });
 
 /* ---------------- Auth ---------------- */
 
@@ -195,6 +285,7 @@ export async function register(body: {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  role?: string;
 }) {
   return api<{ message: string; user: User }>("/auth/register/", { method: "POST", body });
 }
@@ -253,7 +344,14 @@ export async function setDefaultAddress(id: number | string) {
 
 /* ---------------- Products (authed) ---------------- */
 
-export type Category = { id: number; name: string; slug: string; description: string };
+export type Category = {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  /** Category icon path (relative) or absolute URL; null when none uploaded. */
+  icon?: string | null;
+};
 
 export type Product = {
   id: number;
@@ -266,12 +364,24 @@ export type Product = {
   discount_percent: number;
   is_featured: boolean;
   primary_image: string | null;
+  primary_image_display?: ImageDisplay | null;
+  rating_avg: number | null;
+  rating_count: number;
 };
+
+export type ProductImageItem = {
+  id: number;
+  image: string;
+  caption: string;
+  is_primary: boolean;
+  sort_order: number;
+} & ImageDisplay;
 
 export type ProductDetail = Product & {
   description: string;
+  offers: Offer[];
   variants: { id: number; name: string; sku: string; price: string; discount_percent: number; is_active: boolean }[];
-  images: { id: number; image: string; caption: string; is_primary: boolean; sort_order: number }[];
+  images: ProductImageItem[];
 };
 
 export type Paged<T> = {
@@ -310,6 +420,88 @@ export async function listAllProducts(
 
 export const getProduct = (slug: string) => api<ProductDetail>(`/products/${slug}/`);
 
+/* ---------------- Offers (active coupons shown on the PDP) ---------------- */
+
+export type Offer = {
+  code: string;
+  name: string;
+  description: string;
+  discount_type: "PERCENTAGE" | "FIXED" | "FREE_DELIVERY";
+  discount_value: string;
+  max_discount: string | null;
+};
+
+/** One-line Flipkart-style offer text, e.g. "Flat ₹50 off (SAVE50)". */
+export function offerLine(o: Offer): string {
+  const cap = (s: string) => (s.length > 46 ? `${s.slice(0, 46)}…` : s);
+  let head: string;
+  if (o.discount_type === "PERCENTAGE") {
+    const pct = Number(o.discount_value);
+    head = `${pct}% off${o.max_discount ? ` up to ₹${Number(o.max_discount).toLocaleString("en-IN")}` : ""}`;
+  } else if (o.discount_type === "FIXED") {
+    head = `Flat ₹${Number(o.discount_value).toLocaleString("en-IN")} off`;
+  } else {
+    head = "Free delivery";
+  }
+  const body = cap(o.description || "");
+  return body ? `${head} · ${body}` : head;
+}
+
+/* ---------------- Wishlist (server-backed heart) ---------------- */
+
+export type WishlistAction = { added: boolean; slug: string; count: number };
+
+export const listWishlist = (page = 1) =>
+  api<Paged<Product>>(`/products/wishlist/?page=${page}`);
+
+export const addToWishlist = (slug: string) =>
+  api<WishlistAction>(`/products/wishlist/${slug}/`, { method: "POST" });
+
+export const removeFromWishlist = (slug: string) =>
+  api<WishlistAction>(`/products/wishlist/${slug}/`, { method: "DELETE" });
+
+/* ---------------- Pincode (live delivery ETA) ---------------- */
+
+export type PincodeResult = {
+  valid: boolean;
+  reason?: string;
+  pincode: string;
+  city?: string | null;
+  state?: string | null;
+  eta_days?: number;
+  delivery_fee?: string;
+  free_delivery_over?: string;
+  source?: "api" | "fallback";
+};
+
+/** Throws ApiError(404) for undeliverable pins; payload carries `reason`. */
+export const checkPincode = (pin: string) =>
+  api<PincodeResult>(`/pincode/${pin}/`);
+
+export type Brand = { name: string };
+
+export const listBrands = () => api<Brand[] | { results: Brand[] }>("/products/brands/");
+
+/* ---------------- Reviews (ratings & reviews) ---------------- */
+
+export type Review = {
+  id: number;
+  rating: number;
+  title: string;
+  body: string;
+  reviewer_name: string;
+  is_verified_purchase: boolean;
+  created_at: string;
+};
+
+export const listReviews = (slug: string, page = 1) =>
+  api<Paged<Review>>(`/products/${slug}/reviews/?page=${page}`);
+
+export const postReview = (
+  slug: string,
+  data: { rating: number; title?: string; body?: string },
+) => api<Review>(`/products/${slug}/reviews/`, { method: "POST", body: data });
+
 export function listCategories() {
   return api<{ results?: Category[] } | Category[]>("/categories/");
 }
@@ -328,9 +520,9 @@ const searchProducts = (body: Record<string, unknown>) =>
   api<SearchResponse>("/search/", { method: "POST", body });
 
 /**
- * Search with graceful degradation: the backend /search/ endpoint relies on
- * PostgreSQL full-text search (it 500s on the local SQLite dev DB), so on
- * failure fall back to the /products/ list filtered client-side.
+ * Search with graceful degradation: if the backend /search/ endpoint is
+ * unavailable, fall back to the /products/ list filtered client-side with the
+ * same tokenized matching contract ("black board" matches "Blackboard").
  */
 export async function searchWithFallback(body: {
   q?: string;
@@ -342,14 +534,22 @@ export async function searchWithFallback(body: {
     const params: Record<string, string> = {};
     if (body.sort && body.sort !== "relevance") params.sort = body.sort;
     const all = await listAllProducts(params);
-    const q = (body.q ?? "").trim().toLowerCase();
-    const matched = q
-      ? all.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.brand.toLowerCase().includes(q) ||
-            (p.category?.name.toLowerCase().includes(q) ?? false),
-        )
+    const tokens = (body.q ?? "")
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+    const matched = tokens.length
+      ? all.filter((p) => {
+          const haystack = [
+            p.name,
+            p.brand,
+            p.category?.name ?? "",
+          ]
+            .join(" ")
+            .toLowerCase();
+          return tokens.some((t) => haystack.includes(t));
+        })
       : all;
     return {
       results: matched.slice(0, 40),
@@ -379,6 +579,9 @@ export type CartItem = {
   variant: CartVariant;
   quantity: number;
   line_total: string;
+  /** Seller split key: the variant's tenant (null = platform line). */
+  tenant_id: number | null;
+  seller_name: string;
 };
 
 export type Cart = {
@@ -438,14 +641,15 @@ export type OrderDetail = Order & {
 
 export type OrderCreateInput = {
   cart_id: string;
-  /** The backend requires the store the order is placed against. */
-  store: number;
+  /** Optional: omit to let the backend split the cart one order per seller. */
+  store?: number;
   delivery_address: Record<string, unknown>;
   delivery_instructions?: string;
 };
 
+/** Split mode returns `{orders}`; the legacy path echoes a single order. */
 export const createOrder = (body: OrderCreateInput) =>
-  api<OrderDetail>("/orders/", { method: "POST", body });
+  api<{ orders?: Order[] } & Partial<OrderDetail>>("/orders/", { method: "POST", body });
 
 export const listOrders = () => api<{ results?: Order[] } | Order[]>("/orders/");
 
@@ -472,5 +676,5 @@ export function asArray<T>(data: { results?: T[] } | T[] | undefined | null): T[
 export function img(path: string | null | undefined): string | null {
   if (!path) return null;
   if (path.startsWith("http") || path.startsWith("data:")) return path;
-  return `http://127.0.0.1:8000${path.startsWith("/") ? "" : "/media/"}${path}`;
+  return `${ORIGIN}${path.startsWith("/") ? "" : "/media/"}${path}`;
 }

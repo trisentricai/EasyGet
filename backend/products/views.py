@@ -1,21 +1,53 @@
 from django.db import transaction
-from django.db.models import Min, Q
-from rest_framework import status
+from django.db.models import (
+    Avg,
+    Count,
+    ExpressionWrapper,
+    F,
+    FloatField,
+    Max,
+    Min,
+    OuterRef,
+    Q,
+    Subquery,
+)
+from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from tenants.permissions import IsTenantObjectMember, IsTenantWriter
 from tenants.services import resolve_tenant_for_create, user_tenant_ids
 
-from .models import Product
+from .models import Product, ProductImage, ProductReview, WishlistItem
 from .serializers import (
     ProductDetailSerializer,
+    ProductImageListSerializer,
+    ProductImageWriteSerializer,
     ProductListSerializer,
     ProductWriteSerializer,
+    ReviewCreateSerializer,
+    ReviewSerializer,
 )
+
+
+def with_rating_stats(qs):
+    """Subquery-based rating aggregate — immune to join-row duplication
+    from the stock/store visibility joins (an Avg over a multi-join would
+    be skewed by duplicated rows)."""
+    stats = (
+        ProductReview.objects.filter(product=OuterRef("pk"), is_approved=True)
+        .values("product")
+        .annotate(avg=Avg("rating"), n=Count("id"))
+        .values("avg", "n")[:1]
+    )
+    return qs.annotate(
+        review_rating_avg=Subquery(stats.values("avg")),
+        review_rating_count=Subquery(stats.values("n")),
+    )
 
 
 class ProductPagination(PageNumberPagination):
@@ -23,7 +55,30 @@ class ProductPagination(PageNumberPagination):
 
     page_size = 20
     page_size_query_param = "page_size"
-    max_page_size = 100
+    max_page_size = 20
+
+
+class ReviewPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 20
+
+
+class ProductBrandListView(generics.ListAPIView):
+    """GET /api/v1/products/brands/ — distinct non-empty brands (for filters).
+    Public: guests browsing the catalog need the brand facet too."""
+
+    permission_classes = [AllowAny]
+
+    def list(self, request, *args, **kwargs):
+        brands = (
+            Product.objects.exclude(brand__exact="")
+            .exclude(brand__isnull=True)
+            .order_by("brand")
+            .values_list("brand", flat=True)
+            .distinct()
+        )
+        return Response([{"name": b} for b in brands if (b or "").strip()])
 
 
 class ProductViewSet(ModelViewSet):
@@ -45,8 +100,11 @@ class ProductViewSet(ModelViewSet):
     pagination_class = ProductPagination
 
     def get_permissions(self):
+        # GET is public (marketplace-style guest browsing); the queryset
+        # below still hides unstocked/inactive merchant catalogs from
+        # non-staff. All writes stay authenticated.
         if self.request.method in {"GET", "HEAD", "OPTIONS"}:
-            return [IsAuthenticated()]
+            return [AllowAny()]
         if self.request.method == "POST":
             return [IsAuthenticated(), IsTenantWriter()]
         return [IsAuthenticated(), IsTenantObjectMember()]
@@ -59,7 +117,7 @@ class ProductViewSet(ModelViewSet):
         return ProductWriteSerializer
 
     def get_queryset(self):
-        qs = (
+        qs = with_rating_stats(
             Product.objects.select_related("category")
             # Images feed `primary_image` via the prefetched cache; variants
             # are covered by the annotation, so prefetch only images.
@@ -86,18 +144,58 @@ class ProductViewSet(ModelViewSet):
         if max_price:
             qs = qs.filter(min_variant_price__lte=max_price)
 
+        brand = (params.get("brand") or "").strip()
+        if brand:
+            qs = qs.filter(brand__iexact=brand)
+
+        min_discount = params.get("min_discount")
+        if min_discount:
+            try:
+                threshold = float(min_discount)
+            except (TypeError, ValueError):
+                threshold = 0
+            # Guard first: NULL/zero MRP would divide by zero on Postgres.
+            qs = qs.filter(mrp__gt=0, min_variant_price__isnull=False).annotate(
+                discount_pct=ExpressionWrapper(
+                    (F("mrp") - F("min_variant_price")) * 100.0 / F("mrp"),
+                    output_field=FloatField(),
+                )
+            ).filter(discount_pct__gte=threshold)
+
+        # Visibility (applies BEFORE sorting so sorted lists can't leak
+        # inactive/unstocked merchant catalogs to regular customers).
         user = self.request.user
-        if user.is_staff:
-            return qs
-        tenant_ids = user_tenant_ids(user)
-        if tenant_ids:
-            return qs.filter(
-                Q(tenant_id__in=tenant_ids)
-                | Q(is_active=True, variants__stock_items__store__is_active=True)
-            ).distinct()
-        return qs.filter(
-            is_active=True, variants__stock_items__store__is_active=True
-        ).distinct()
+        if not user.is_staff:
+            tenant_ids = user_tenant_ids(user)
+            if tenant_ids:
+                qs = qs.filter(
+                    Q(tenant_id__in=tenant_ids)
+                    | Q(is_active=True, variants__stock_items__store__is_active=True)
+                ).distinct()
+            else:
+                qs = qs.filter(
+                    is_active=True, variants__stock_items__store__is_active=True
+                ).distinct()
+
+        sort = params.get("sort")
+        if sort == "price_asc":
+            return qs.order_by(F("min_variant_price").asc(nulls_last=True), "-id")
+        if sort == "price_desc":
+            return qs.order_by(F("min_variant_price").desc(nulls_last=True), "-id")
+        if sort == "newest":
+            return qs.order_by("-created_at", "-id")
+        if sort == "rating":
+            # Subquery annotation: NULLs (no reviews) sort last, then more
+            # reviews wins — Flipkart's "Avg. Customer Review" ordering.
+            return qs.order_by(
+                F("review_rating_avg").desc(nulls_last=True),
+                F("review_rating_count").desc(nulls_last=True),
+                "-id",
+            )
+
+        # Explicit stable ordering: required for correct pagination
+        # (silences UnorderedObjectListWarning; id breaks updated_at ties).
+        return qs.order_by("-updated_at", "-id")
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -121,3 +219,239 @@ class ProductViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class ProductImageListCreateView(generics.ListCreateAPIView):
+    """GET (public) / POST /api/v1/products/<slug>/images/ — gallery uploads.
+
+    Multipart file in `image` (compressed to WebP 800px on save). New images
+    append to the end; the first upload becomes primary, and posting
+    `is_primary=true` demotes the rest. Writes require tenant membership on
+    the product (staff may manage platform products)."""
+
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    pagination_class = None
+
+    def get_permissions(self):
+        if self.request.method in {"GET", "HEAD", "OPTIONS"}:
+            return [AllowAny()]
+        # IsTenantObjectMember is enforced per-product in _get_product().
+        return [IsAuthenticated(), IsTenantWriter(), IsTenantObjectMember()]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return ProductImageWriteSerializer
+        return ProductImageListSerializer
+
+    def _get_product(self):
+        product = generics.get_object_or_404(
+            Product.objects.select_related("tenant"), slug=self.kwargs["slug"]
+        )
+        self.check_object_permissions(self.request, product)
+        return product
+
+    def get_queryset(self):
+        return ProductImage.objects.filter(
+            product__slug=self.kwargs["slug"]
+        ).order_by("sort_order", "id")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if "image" not in serializer.validated_data:
+            raise ValidationError({"image": "Attach an image file."})
+        product = self._get_product()
+        with transaction.atomic():
+            mine = ProductImage.objects.filter(product=product)
+            is_first = not mine.exists()
+            next_sort = (mine.aggregate(m=Max("sort_order"))["m"] or 0) + 1
+            wants_primary = serializer.validated_data.get("is_primary", False)
+            image = serializer.save(
+                product=product,
+                sort_order=next_sort,
+                is_primary=is_first or wants_primary,
+            )
+            if image.is_primary:
+                mine.exclude(pk=image.pk).update(is_primary=False)
+        return Response(
+            ProductImageListSerializer(
+                image, context={"request": request}
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProductImageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET / PATCH / DELETE /api/v1/products/images/<id>/ — gallery management.
+
+    PATCH can replace the file (multipart) and/or update caption, is_primary
+    (demotes the rest) and sort_order. Deleting the primary promotes the
+    next image by sort order."""
+
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    queryset = ProductImage.objects.all()
+
+    def get_permissions(self):
+        if self.request.method in {"GET", "HEAD", "OPTIONS"}:
+            return [AllowAny()]
+        # IsTenantObjectMember is enforced against the owning product in
+        # get_object() (ProductImage itself carries no tenant).
+        return [IsAuthenticated(), IsTenantObjectMember()]
+
+    def get_serializer_class(self):
+        if self.request.method in {"PATCH", "PUT"}:
+            return ProductImageWriteSerializer
+        return ProductImageListSerializer
+
+    def get_object(self):
+        image = generics.get_object_or_404(
+            ProductImage.objects.select_related("product"), pk=self.kwargs["pk"]
+        )
+        # Tenant checks belong to the owning product (ProductImage has no
+        # tenant attribute of its own).
+        self.check_object_permissions(self.request, image.product)
+        return image
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        image = serializer.save()
+        if image.is_primary:
+            ProductImage.objects.filter(product=image.product).exclude(
+                pk=image.pk
+            ).update(is_primary=False)
+        return Response(
+            ProductImageListSerializer(image, context={"request": request}).data
+        )
+
+    def perform_destroy(self, instance):
+        product = instance.product
+        was_primary = instance.is_primary
+        instance.delete()
+        if was_primary:
+            nxt = (
+                ProductImage.objects.filter(product=product)
+                .order_by("sort_order", "id")
+                .first()
+            )
+            if nxt:
+                nxt.is_primary = True
+                nxt.save(update_fields=["is_primary"])
+
+
+class ProductReviewListCreateView(generics.ListCreateAPIView):
+    """GET/POST /api/v1/products/<slug>/reviews/ — Flipkart rules:
+    approved reviews only, one per shopper per product, verified-purchase
+    badge derived from delivered orders server-side. Reading reviews is
+    public; posting one requires an account."""
+
+    pagination_class = ReviewPagination
+
+    def get_permissions(self):
+        if self.request.method in {"GET", "HEAD", "OPTIONS"}:
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return ReviewCreateSerializer
+        return ReviewSerializer
+
+    def _get_product(self):
+        return generics.get_object_or_404(
+            Product.objects.only("id", "slug", "is_active"), slug=self.kwargs["slug"]
+        )
+
+    def get_queryset(self):
+        product = self._get_product()
+        return (
+            ProductReview.objects.filter(product=product, is_approved=True)
+            .select_related("user")
+            .order_by("-created_at", "-id")
+        )
+
+    def create(self, request, *args, **kwargs):
+        product = self._get_product()
+        if not product.is_active and not request.user.is_staff:
+            return Response(
+                {"detail": "Product not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if ProductReview.objects.filter(
+            product=product, user=request.user
+        ).exists():
+            return Response(
+                {"detail": "You have already reviewed this product. Edit your existing review instead."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        review = serializer.save(
+            product=product,
+            user=request.user,
+            is_verified_purchase=self._is_verified_purchase(request.user, product),
+        )
+        return Response(
+            ReviewSerializer(review).data, status=status.HTTP_201_CREATED
+        )
+
+    def _is_verified_purchase(self, user, product) -> bool:
+        from orders.models import Order
+
+        return Order.objects.filter(
+            user=user,
+            status=Order.Status.DELIVERED,
+            items__variant__product=product,
+        ).exists()
+
+
+class WishlistView(generics.ListAPIView):
+    """GET /products/wishlist/ - the signed-in shopper's saved products."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProductListSerializer
+    pagination_class = ProductPagination
+
+    def get_queryset(self):
+        return with_rating_stats(
+            Product.objects.filter(wishlist_items__user=self.request.user)
+            .annotate(min_variant_price=Min("variants__price"))
+        ).order_by("-wishlist_items__created_at", "-id")
+
+
+class WishlistToggleView(generics.GenericAPIView):
+    """POST /products/wishlist/<slug>/ = add (idempotent),
+    DELETE /products/wishlist/<slug>/ = remove (idempotent)."""
+
+    permission_classes = [IsAuthenticated]
+    queryset = Product.objects.all()
+    serializer_class = ProductListSerializer
+    lookup_field = "slug"
+
+    def post(self, request, slug):
+        try:
+            product = self.get_object()
+        except Product.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        item, created = WishlistItem.objects.get_or_create(
+            user=request.user, product=product
+        )
+        return Response(
+            {"added": created, "slug": product.slug, "count": WishlistItem.objects.filter(user=request.user).count()},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def delete(self, request, slug):
+        try:
+            product = self.get_object()
+        except Product.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        WishlistItem.objects.filter(user=request.user, product=product).delete()
+        return Response(
+            {"added": False, "slug": product.slug, "count": WishlistItem.objects.filter(user=request.user).count()},
+            status=status.HTTP_200_OK,
+        )

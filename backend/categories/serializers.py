@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from common.serializers import AbsoluteImageField
+
 from .models import Category
 
 
@@ -27,6 +29,9 @@ class CategoryDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    # Public payload — absolute so any client can render it directly.
+    icon = AbsoluteImageField(required=False, allow_null=True)
+
     def get_children(self, obj):
         kids = obj.children.filter(is_active=True)
         if not kids.exists():
@@ -50,6 +55,9 @@ class CategoryListSerializer(serializers.ModelSerializer):
             "is_subcategory",
             "has_children",
             "product_count",
+            # Relative path; clients absolutize with the API origin (see
+            # customer-web img() / admin mediaSrc / Flutter mediaUrl).
+            "icon",
         ]
         read_only_fields = fields
 

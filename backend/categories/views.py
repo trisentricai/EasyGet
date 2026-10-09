@@ -1,5 +1,5 @@
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from users.permissions import IsAdminOnly, role_required
@@ -14,14 +14,24 @@ from .serializers import (
 
 class CategoryListView(generics.ListCreateAPIView):
     """GET /api/v1/categories/ — active categories (admin sees all, incl. inactive).
-    POST /api/v1/categories/ — admin only."""
+    POST /api/v1/categories/ — admin only.
+
+    The public (anonymous) listing is cached in Redis for 1h; the
+    categories.post_save signal invalidates it on every edit."""
 
     queryset = Category.objects.all()
     serializer_class = CategoryListSerializer
 
+    def get_serializer_class(self):
+        # Reads stay on the flat list shape; writes go through the writable
+        # fields (a fully read-only serializer would 201 an empty row).
+        if self.request.method == "POST":
+            return CategoryWriteSerializer
+        return CategoryListSerializer
+
     def get_permissions(self):
         if self.request.method == "GET":
-            return [IsAuthenticated()]
+            return [AllowAny()]
         return [IsAdminOnly()]
 
     def get_queryset(self):
@@ -29,6 +39,20 @@ class CategoryListView(generics.ListCreateAPIView):
         if not self.request.user.is_staff:
             qs = qs.filter(is_active=True)
         return qs
+
+    def list(self, request, *args, **kwargs):
+        if request.user.is_staff:
+            return super().list(request, *args, **kwargs)
+        from common.cache import get_or_set
+
+        payload = get_or_set(
+            "categories",
+            ["active-list"],
+            lambda: super(CategoryListView, self)
+            .list(request, *args, **kwargs)
+            .data,
+        )
+        return Response(payload)
 
 
 class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -38,9 +62,16 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = "slug"
     serializer_class = CategoryDetailSerializer
 
+    def get_serializer_class(self):
+        # Same split as the list view: the detail shape is read-only, so
+        # PUT/PATCH must use the writable fields or edits silently no-op.
+        if self.request.method in ("PUT", "PATCH"):
+            return CategoryWriteSerializer
+        return CategoryDetailSerializer
+
     def get_permissions(self):
         if self.request.method == "GET":
-            return [IsAuthenticated()]
+            return [AllowAny()]
         return [IsAdminOnly()]
 
     def get_queryset(self):

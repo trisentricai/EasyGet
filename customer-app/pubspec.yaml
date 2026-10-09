@@ -21,6 +21,8 @@ dependencies:
   cached_network_image: ^3.4.1
   # Currency / date formatting
   intl: ^0.20.2
+  # Google sign-in (ID token goes straight to our /auth/google/ — no Firebase)
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:

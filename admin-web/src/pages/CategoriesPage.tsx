@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createCategory,
   deleteCategory,
   errText,
   listCategories,
+  mediaSrc,
   updateCategory,
+  uploadCategoryIcon,
   type Category,
 } from "../services/api";
 import { useToast } from "../context/ToastContext";
@@ -16,22 +19,29 @@ const emptyDraft: Draft = { name: "", description: "", is_active: true };
 
 export function CategoriesPage() {
   const { push } = useToast();
-  const [categories, setCategories] = useState<Category[] | null>(null);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Category | null>(null);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<Category | null>(null);
+  const [imgBusy, setImgBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    const res = await listCategories();
-    setCategories(Array.isArray(res) ? res : res.results);
-  }, []);
+  const categoriesQuery = useQuery({
+    queryKey: ["admin", "categories"],
+    queryFn: async () => {
+      const res = await listCategories();
+      return Array.isArray(res) ? res : res.results;
+    },
+  });
+
+  const categories = categoriesQuery.data ?? null;
 
   useEffect(() => {
-    load().catch((e) => push(errText(e, "Failed to load categories"), "err"));
-  }, [load, push]);
+    if (categoriesQuery.error)
+      push(errText(categoriesQuery.error, "Failed to load categories"), "err");
+  }, [categoriesQuery.error, push]);
 
   function openCreate() {
     setDraft(emptyDraft);
@@ -56,11 +66,29 @@ export function CategoriesPage() {
       }
       setCreating(false);
       setEditing(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "categories"] });
     } catch (e) {
       push(errText(e, "Save failed"), "err");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function uploadIcon(file: File | null) {
+    if (!editing || imgBusy) return;
+    setImgBusy(true);
+    try {
+      const updated = await uploadCategoryIcon(editing.slug, file);
+      // Merge only the icon: the PATCH response is the write-serializer
+      // shape (no slug/id). Replacing `editing` with it would drop the slug
+      // and the next Save would 404 on `/categories/undefined/`.
+      setEditing((prev) => (prev ? { ...prev, icon: updated.icon } : prev));
+      await queryClient.invalidateQueries({ queryKey: ["admin", "categories"] });
+      push(file ? "Category image updated" : "Category image removed");
+    } catch (e) {
+      push(errText(e, "Image upload failed"), "err");
+    } finally {
+      setImgBusy(false);
     }
   }
 
@@ -71,7 +99,7 @@ export function CategoriesPage() {
       await deleteCategory(deleting.slug);
       push(`“${deleting.name}” deleted`);
       setDeleting(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "categories"] });
     } catch (e) {
       push(errText(e, "Delete failed (category may have products)"), "err");
       setDeleting(null);
@@ -109,6 +137,7 @@ export function CategoriesPage() {
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 56 }}>Image</th>
                   <th>Name</th>
                   <th>Slug</th>
                   <th>Products</th>
@@ -117,8 +146,23 @@ export function CategoriesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => (
+                {filtered.map((c) => {
+                  const icon = mediaSrc(c.icon);
+                  return (
                   <tr key={c.id}>
+                    <td>
+                      {icon ? (
+                        <img
+                          src={icon}
+                          alt=""
+                          width={32}
+                          height={32}
+                          style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", display: "block" }}
+                        />
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                     <td style={{ fontWeight: 700 }}>{c.name}</td>
                     <td className="muted">{c.slug}</td>
                     <td>{c.product_count}</td>
@@ -138,7 +182,8 @@ export function CategoriesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -182,6 +227,48 @@ export function CategoriesPage() {
               />
               Active (visible to customers)
             </label>
+            {editing && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div className="muted" style={{ fontWeight: 700, marginBottom: 8 }}>
+                  Category image (avatar + cover)
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {mediaSrc(editing.icon) ? (
+                    <img
+                      src={mediaSrc(editing.icon)!}
+                      alt=""
+                      width={56}
+                      height={56}
+                      style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <span className="muted">No image yet</span>
+                  )}
+                  <label className="btn btn-sm btn-ghost" style={{ cursor: "pointer" }}>
+                    {imgBusy ? "Uploading…" : mediaSrc(editing.icon) ? "Replace image" : "Upload image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      disabled={imgBusy}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        e.target.value = "";
+                        if (file) void uploadIcon(file);
+                      }}
+                    />
+                  </label>
+                  {mediaSrc(editing.icon) && !imgBusy && (
+                    <button type="button" className="btn btn-sm btn-danger" onClick={() => void uploadIcon(null)}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p className="muted" style={{ margin: "8px 0 0", fontSize: 12.5 }}>
+                  Shown as the avatar circle and cover art wherever this category appears.
+                </p>
+              </div>
+            )}
           </div>
           <div className="modal-actions">
             <button

@@ -1,0 +1,254 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  asArray,
+  img,
+  listCategories,
+  listProductsPaged,
+  type Product,
+  type StoreSection,
+} from "../services/api";
+import { href } from "../hooks/useHashRoute";
+import { fxClass, fxStyle } from "../utils/imageFx";
+import { Icon } from "./icons";
+import { ProductCard, Section } from "./ui";
+import {
+  getRecentViews,
+  toProductCard,
+  topCategory,
+} from "../utils/history";
+
+/** Auto-rotating hero carousel built from the store's HERO/BANNER sections. */
+export function BannerCarousel({ sections }: { sections: StoreSection[] }) {
+  const slides = useMemo(
+    () => sections.filter((s) => s.is_active && (s.image || s.title)),
+    [sections],
+  );
+  const count = slides.length;
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (count < 2) return;
+    const t = window.setInterval(() => setIdx((i) => (i + 1) % count), 4500);
+    return () => window.clearInterval(t);
+  }, [count]);
+
+  if (count === 0) return null;
+
+  return (
+    <div className="carousel">
+      <div className="carousel-track">
+        {slides.map((s, i) => (
+          <div key={s.id} className={`carousel-slide ${i === idx ? "on" : ""}`}>
+            <HeroSlide section={s} />
+          </div>
+        ))}
+      </div>
+      {count > 1 && (
+        <>
+          <button
+            className="carousel-arrow prev"
+            aria-label="Previous banner"
+            onClick={() => setIdx((i) => (i - 1 + count) % count)}
+          >
+            <Icon name="chevronLeft" size={18} />
+          </button>
+          <button
+            className="carousel-arrow next"
+            aria-label="Next banner"
+            onClick={() => setIdx((i) => (i + 1) % count)}
+          >
+            <Icon name="chevronRight" size={18} />
+          </button>
+          <div className="carousel-dots">
+            {slides.map((s, i) => (
+              <button
+                key={s.id}
+                className={`carousel-dot ${i === idx ? "on" : ""}`}
+                aria-label={`Go to slide ${i + 1}`}
+                onClick={() => setIdx(i)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function HeroSlide({ section }: { section: StoreSection }) {
+  const cfg = section.config ?? {};
+  const image = img(section.image) ?? img((cfg.hero_image as string) ?? null);
+  const cta = (cfg.cta_label as string) ?? "Shop now";
+  const ctaLink = (cfg.cta_link as string) ?? "browse";
+  const link = ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink);
+  // Admin-designed variants (section config hero_layout/hero_overlay).
+  // Pure class hooks — all visuals live in showcase.css.
+  const layout = (cfg.hero_layout as string) === "split" ? "split" : (cfg.hero_layout as string) === "minimal" ? "minimal" : "feature";
+  const overlay = (cfg.hero_overlay as string) === "light" ? "light" : (cfg.hero_overlay as string) === "none" ? "none" : "dark";
+  return (
+    <div className={`hero hero-slide hero-${layout} hero-overlay-${overlay}`}>
+      {image ? (
+        <img
+          className={`hero-img ${fxClass(section)}`}
+          style={fxStyle(section)}
+          src={image}
+          alt=""
+          decoding="async"
+        />
+      ) : null}
+      <div className="hero-content">
+        {section.subtitle ? <p>{section.subtitle}</p> : null}
+        <h1>{section.title}</h1>
+        <div className="hero-actions">
+          <a className="btn btn-secondary" href={link}>{cta}</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Seconds left until local midnight (deal countdown). */
+function useMidnightCountdown(): string {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const end = new Date();
+  end.setHours(24, 0, 0, 0);
+  const s = Math.max(0, Math.floor((end.getTime() - now) / 1000));
+  const hh = String(Math.floor(s / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+function Rail({ children }: { children: React.ReactNode }) {
+  return <div className="rail">{children}</div>;
+}
+
+/** Top-discount products across the catalog ("Deals of the Day"). */
+export function DealsRail() {
+  const [deals, setDeals] = useState<Product[] | null>(null);
+  const countdown = useMidnightCountdown();
+
+  useEffect(() => {
+    let cancelled = false;
+    listProductsPaged({ page_size: "60" })
+      .then((d) => {
+        if (cancelled) return;
+        setDeals(
+          [...d.results]
+            .filter((p) => (p.discount_percent ?? 0) > 0)
+            .sort((a, b) => (b.discount_percent ?? 0) - (a.discount_percent ?? 0))
+            .slice(0, 12),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setDeals([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!deals || deals.length === 0) return null;
+  return (
+    <Section
+      title="Deals of the Day"
+      subtitle={`Ends in ${countdown}`}
+      action={<a className="link" href={href("browse")}>See all</a>}
+    >
+      <Rail>
+        {deals.map((p) => (
+          <div className="rail-item" key={p.id}>
+            <ProductCard product={p} />
+          </div>
+        ))}
+      </Rail>
+    </Section>
+  );
+}
+
+/** All categories as tappable cards. */
+export function CategoryRail() {
+  const [cats, setCats] = useState<{ name: string; slug: string }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    listCategories()
+      .then((d) => {
+        if (!cancelled) setCats(asArray(d));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (!cats.length) return null;
+  return (
+    <Section title="Shop by Category">
+      <Rail>
+        {cats.map((c) => (
+          <a className="cat-chip" key={c.slug} href={href(`browse?category=${c.slug}`)}>
+            {c.name}
+          </a>
+        ))}
+      </Rail>
+    </Section>
+  );
+}
+
+/** Products the shopper recently opened on this device. */
+export function RecentlyViewedRail() {
+  const items = useMemo(() => getRecentViews(), []);
+  if (!items.length) return null;
+  return (
+    <Section title="Recently Viewed" subtitle="Pick up where you left off">
+      <Rail>
+        {items.map((v) => (
+          <div className="rail-item" key={v.slug}>
+            <ProductCard product={toProductCard(v)} />
+          </div>
+        ))}
+      </Rail>
+    </Section>
+  );
+}
+
+/** Products from the shopper's most-viewed category. */
+export function RecommendedRail() {
+  const top = useMemo(() => topCategory(), []);
+  const [items, setItems] = useState<Product[] | null>(null);
+
+  useEffect(() => {
+    if (!top) return;
+    let cancelled = false;
+    listProductsPaged({ category: top.slug, page_size: "12" })
+      .then((d) => {
+        if (!cancelled) setItems(d.results);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [top?.slug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!top || !items || items.length === 0) return null;
+  return (
+    <Section
+      title={`More in ${top.name}`}
+      subtitle="Based on what you've been browsing"
+      action={<a className="link" href={href(`browse?category=${top.slug}`)}>See all</a>}
+    >
+      <Rail>
+        {items.map((p) => (
+          <div className="rail-item" key={p.id}>
+            <ProductCard product={p} />
+          </div>
+        ))}
+      </Rail>
+    </Section>
+  );
+}

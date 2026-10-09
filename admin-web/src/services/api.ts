@@ -1,4 +1,7 @@
-const BASE = "http://127.0.0.1:8000/api/v1";
+// Backend origin — overridden at build time on deployed environments
+// (Netlify sets VITE_API_URL=https://<render-service>.onrender.com).
+const ORIGIN = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const BASE = `${ORIGIN}/api/v1`;
 
 export type Tokens = { access: string; refresh: string };
 
@@ -158,6 +161,8 @@ export type Category = {
   sort_order: number;
   product_count: number;
   is_subcategory: boolean;
+  /** Category icon path (relative) or absolute URL; null when none uploaded. */
+  icon: string | null;
 };
 
 export const listCategories = () => api<{ results: Category[] } | Category[]>("/categories/");
@@ -174,6 +179,39 @@ export async function deleteCategory(slug: string) {
   return api<void>(`/categories/${slug}/`, { method: "DELETE" });
 }
 
+export async function uploadCategoryIcon(slug: string, file: File | null) {
+  if (file) {
+    const fd = new FormData();
+    fd.append("icon", file);
+    return api<Category>(`/categories/${slug}/`, { method: "PATCH", form: fd });
+  }
+  return api<Category>(`/categories/${slug}/`, { method: "PATCH", body: { icon: null } });
+}
+
+/* ---------------- Users (staff only) ---------------- */
+
+export type ManagedUser = {
+  id: number;
+  email: string;
+  role: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  is_email_verified: boolean;
+  is_active?: boolean;
+};
+
+export const listUsers = () =>
+  api<{ results: ManagedUser[] } | ManagedUser[]>("/admin/users/");
+
+export async function createUser(body: Record<string, unknown>) {
+  return api<ManagedUser>("/admin/users/", { method: "POST", body });
+}
+
+export async function updateUser(id: number, body: Record<string, unknown>) {
+  return api<ManagedUser>(`/admin/users/${id}/`, { method: "PATCH", body });
+}
+
 /* ---------------- Products ---------------- */
 
 export type Product = {
@@ -188,6 +226,49 @@ export type Product = {
   is_active: boolean;
 };
 
+/** Display knobs every rendered image carries (focal point, scale, hover). */
+export type ImageEffect = "none" | "zoom" | "pan" | "grayscale";
+
+export type ImageDisplay = {
+  align_x: number;
+  align_y: number;
+  zoom: number;
+  effect: ImageEffect;
+  transition_ms: number;
+};
+
+export const DEFAULT_IMAGE_DISPLAY: ImageDisplay = {
+  align_x: 50,
+  align_y: 50,
+  zoom: 1,
+  effect: "none",
+  transition_ms: 400,
+};
+
+export const EFFECT_LABELS: Record<ImageEffect, string> = {
+  none: "None (static)",
+  zoom: "Zoom on hover",
+  pan: "Pan on hover",
+  grayscale: "Grayscale → color",
+};
+
+export function toImageDisplay(v: Partial<ImageDisplay> | null | undefined): ImageDisplay {
+  return { ...DEFAULT_IMAGE_DISPLAY, ...(v ?? {}) };
+}
+
+export type ProductImage = {
+  id: number;
+  image: string | null;
+  caption: string;
+  is_primary: boolean;
+  sort_order: number;
+} & ImageDisplay;
+
+export type ProductDetail = Product & {
+  images: ProductImage[];
+  variants: Array<{ id: number; name: string; price: string }>;
+};
+
 export function listProducts(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
   return api<{ count: number; next: string | null; results: Product[] } | Product[]>(
@@ -195,16 +276,16 @@ export function listProducts(params: Record<string, string> = {}) {
   );
 }
 
-/** Fetch every page (page_size=100, capped) — for internal tools like the
+/** Fetch every page (20/page — the server's max) — for internal tools like the
  *  products table and the storefront item picker that need the full catalog. */
 export async function listAllProducts(
   params: Record<string, string> = {},
-  maxPages = 10,
+  maxPages = 50,
 ): Promise<Product[]> {
   const out: Product[] = [];
   let page = 1;
   for (;;) {
-    const res = await listProducts({ ...params, page: String(page), page_size: "100" });
+    const res = await listProducts({ ...params, page: String(page), page_size: "20" });
     const items = Array.isArray(res) ? res : res.results;
     out.push(...items);
     const hasNext = !Array.isArray(res) && res.next;
@@ -224,6 +305,39 @@ export async function updateProduct(slug: string, body: Record<string, unknown>)
 
 export async function deleteProduct(slug: string) {
   return api<void>(`/products/${slug}/`, { method: "DELETE" });
+}
+
+export async function getProduct(slug: string) {
+  return api<ProductDetail>(`/products/${slug}/`);
+}
+
+export async function uploadProductImage(slug: string, file: File) {
+  const fd = new FormData();
+  fd.append("image", file);
+  return api<ProductImage>(`/products/${slug}/images/`, { method: "POST", form: fd });
+}
+
+export async function setPrimaryProductImage(id: number) {
+  return api<ProductImage>(`/products/images/${id}/`, {
+    method: "PATCH",
+    body: { is_primary: true },
+  });
+}
+
+/** Edit caption / align / zoom / effect (partial — send only what changed). */
+export async function updateProductImage(id: number, body: Record<string, unknown>) {
+  return api<ProductImage>(`/products/images/${id}/`, { method: "PATCH", body });
+}
+
+export async function deleteProductImage(id: number) {
+  return api<void>(`/products/images/${id}/`, { method: "DELETE" });
+}
+
+/** Resolve a stored media value (URL, /media/... or bare relative path). */
+export function mediaSrc(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (value.startsWith("http") || value.startsWith("data:")) return value;
+  return `${ORIGIN}${value.startsWith("/") ? "" : "/media/"}${value}`;
 }
 
 /* ---------------- Storefront ---------------- */
@@ -252,11 +366,12 @@ export type StoreSection = {
     | "RICH_TEXT";
   title: string;
   subtitle: string;
-  config: { columns?: number; size?: "sm" | "md" | "lg"; effects?: Record<string, unknown>; placeholder?: string } & Record<string, unknown>;
-  position: number;
-  is_active: boolean;
-  items: SectionItem[];
-};
+  config: { columns?: number; size?: "sm" | "md" | "lg"; effects?: Record<string, unknown>; placeholder?: string; category_style?: string; hero_layout?: string; hero_overlay?: string } & Record<string, unknown>;
+      position: number;
+      is_active: boolean;
+      image: string | null;
+      items: SectionItem[];
+    } & ImageDisplay;
 
 export type Theme = {
   primary_color: string;
@@ -268,7 +383,7 @@ export type Theme = {
 };
 
 export function getStoreSlug(): string {
-  return localStorage.getItem("eg-store") || "rahuls-store";
+  return localStorage.getItem("eg-store") || "easyget";
 }
 
 export function setStoreSlug(slug: string) {
@@ -285,11 +400,67 @@ export const getSections = (slug: string) => api<StoreSection[]>(`/storefront/${
 export const createSection = (slug: string, body: Record<string, unknown>) =>
   api<StoreSection>(`/storefront/${slug}/sections/`, { method: "POST", body });
 
-export const updateSection = (id: number, body: Record<string, unknown>) =>
-  api<StoreSection>(`/storefront/sections/${id}/`, { method: "PATCH", body });
+export const updateSection = (id: number, body: Record<string, unknown> | FormData) =>
+  body instanceof FormData
+    ? api<StoreSection>(`/storefront/sections/${id}/`, { method: "PATCH", form: body })
+    : api<StoreSection>(`/storefront/sections/${id}/`, { method: "PATCH", body });
 
 export const deleteSection = (id: number) =>
   api<void>(`/storefront/sections/${id}/`, { method: "DELETE" });
+
+/* ---------------- Announcement ticker (SystemConfig key "ticker") ---------------- */
+
+export type TickerConfig = {
+  items: string[];
+  speed: number;
+  color: string;
+  bg: string;
+  symbol: string;
+  fontSize: number;
+  radius: number;
+};
+
+type SystemConfigRow = {
+  id: number;
+  key: string;
+  value: string;
+  config_type: string;
+  is_public: boolean;
+};
+
+async function listConfigs(): Promise<SystemConfigRow[]> {
+  const res = await api<{ results: SystemConfigRow[] } | SystemConfigRow[]>("/admin/config/");
+  return Array.isArray(res) ? res : res.results;
+}
+
+/** Read the ticker config (null when never configured — the app falls back). */
+export async function getTickerConfig(): Promise<{ id: number; config: TickerConfig } | null> {
+  const rows = await listConfigs();
+  const row = rows.find((r) => r.key === "ticker");
+  if (!row) return null;
+  try {
+    return { id: row.id, config: JSON.parse(row.value) as TickerConfig };
+  } catch {
+    return { id: row.id, config: null as unknown as TickerConfig };
+  }
+}
+
+/** Create-or-update the ticker config (always JSON, always public). */
+export async function saveTickerConfig(id: number | null, config: TickerConfig): Promise<number> {
+  const body = {
+    key: "ticker",
+    value: JSON.stringify(config),
+    config_type: "JSON",
+    is_public: true,
+    description: "Announcement bar: items + style, rendered from the platform storefront payload.",
+  };
+  if (id === null) {
+    const created = await api<SystemConfigRow>("/admin/config/", { method: "POST", body });
+    return created.id;
+  }
+  await api<SystemConfigRow>(`/admin/config/${id}/`, { method: "PATCH", body });
+  return id;
+}
 
 export const reorderSections = (slug: string, order: number[]) =>
   api<StoreSection[]>(`/storefront/${slug}/sections/reorder/`, {
@@ -316,7 +487,7 @@ export const updateTheme = (slug: string, body: Partial<Theme>) =>
   api<Theme>(`/storefront/${slug}/theme/`, { method: "PATCH", body });
 
 export const listStores = () =>
-  api<{ results: { id: number; name: string; slug: string; is_active: boolean }[] } | { id: number; name: string; slug: string; is_active: boolean }[]>("/stores/");
+  api<{ results: { id: number; name: string; slug: string; is_active: boolean; is_platform?: boolean }[] } | { id: number; name: string; slug: string; is_active: boolean; is_platform?: boolean }[]>("/stores/");
 
 /* ---------------- Orders (fulfilment queue) ---------------- */
 
@@ -436,3 +607,31 @@ export const advanceDelivery = (id: string, status: string, note = "") =>
     method: "POST",
     body: { status, note },
   });
+
+
+/* ---------------- Review moderation ---------------- */
+
+export type AdminReview = {
+  id: number;
+  product_name: string;
+  product_slug: string;
+  rating: number;
+  title: string;
+  body: string;
+  reviewer_name: string;
+  user_email: string;
+  is_verified_purchase: boolean;
+  is_approved: boolean;
+  created_at: string;
+};
+
+export function listReviews(approved?: boolean) {
+  const qs = approved === undefined ? "" : `?approved=${approved}`;
+  return api<AdminReview[]>(`/admin/reviews/${qs}`);
+}
+
+export const updateReview = (id: number, body: Partial<Pick<AdminReview, "is_approved">>) =>
+  api<AdminReview>(`/admin/reviews/${id}/`, { method: "PATCH", body });
+
+export const deleteReview = (id: number) =>
+  api<void>(`/admin/reviews/${id}/`, { method: "DELETE" });

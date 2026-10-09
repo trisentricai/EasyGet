@@ -22,6 +22,17 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+/** Wipe every `eg-*` key (tokens, cached user) + sessionStorage. */
+function purgeLocalUserData(): void {
+  const doomed: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("eg-")) doomed.push(key);
+  }
+  for (const key of doomed) localStorage.removeItem(key);
+  sessionStorage.clear();
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [ready, setReady] = useState(false);
@@ -47,8 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      setTokens(null);
-      localStorage.removeItem("eg-user");
+      purgeLocalUserData();
       setUser(null);
     });
   }, []);
@@ -65,8 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (tokens?.refresh) {
       apiLogout(tokens.refresh).catch(() => undefined);
     }
-    setTokens(null);
-    localStorage.removeItem("eg-user");
+    purgeLocalUserData();
     setUser(null);
   }, []);
 

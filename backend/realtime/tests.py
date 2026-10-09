@@ -88,6 +88,95 @@ class ChatMessageTests(TestCase):
         self.assertEqual(msg2.reply_to, msg1)
 
 
+class ChatApiSecurityTests(TestCase):
+    """HTTP-level guards: no posting into rooms you don't belong to, no
+    editing/deleting other participants' messages, no membership management."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+
+        self.client = APIClient()
+        self.user1 = User.objects.create_user(email="sec1@test.com", password="pass")
+        self.user2 = User.objects.create_user(email="sec2@test.com", password="pass")
+        self.outsider = User.objects.create_user(
+            email="sec3@test.com", password="pass"
+        )
+        self.room = ChatRoom.objects.create(name="Secure Room")
+        self.room.participants.add(self.user1, self.user2)
+
+    def test_cannot_post_message_into_foreign_room(self):
+        self.client.force_authenticate(user=self.outsider)
+        res = self.client.post(
+            "/api/v1/realtime/messages/",
+            {"room": str(self.room.id), "content": "intruder"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(self.room.messages.filter(content="intruder").exists())
+
+    def test_participant_cannot_edit_others_message(self):
+        msg = ChatMessage.objects.create(
+            room=self.room, sender=self.user1, content="original"
+        )
+        self.client.force_authenticate(user=self.user2)
+        res = self.client.patch(
+            f"/api/v1/realtime/messages/{msg.id}/",
+            {"content": "tampered"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 403)
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, "original")
+
+    def test_participant_cannot_delete_others_message(self):
+        msg = ChatMessage.objects.create(
+            room=self.room, sender=self.user1, content="keep me"
+        )
+        self.client.force_authenticate(user=self.user2)
+        res = self.client.delete(f"/api/v1/realtime/messages/{msg.id}/")
+        self.assertEqual(res.status_code, 403)
+        self.assertTrue(ChatMessage.objects.filter(pk=msg.pk).exists())
+
+    def test_author_can_edit_own_message(self):
+        msg = ChatMessage.objects.create(
+            room=self.room, sender=self.user1, content="mine"
+        )
+        self.client.force_authenticate(user=self.user1)
+        res = self.client.patch(
+            f"/api/v1/realtime/messages/{msg.id}/",
+            {"content": "mine edited"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, "mine edited")
+
+    def test_create_room_ignores_supplied_participants(self):
+        self.client.force_authenticate(user=self.user1)
+        res = self.client.post(
+            "/api/v1/realtime/rooms/",
+            {
+                "name": "Sneaky",
+                "type": "SUPPORT",
+                "participants": [self.user2.id, self.outsider.id],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        room = ChatRoom.objects.get(pk=res.data["id"])
+        self.assertEqual(list(room.participants.all()), [self.user1])
+
+    def test_non_staff_cannot_add_participant(self):
+        self.client.force_authenticate(user=self.user1)
+        res = self.client.post(
+            f"/api/v1/realtime/rooms/{self.room.id}/add_participant/",
+            {"user_id": self.outsider.id},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(self.room.participants.filter(pk=self.outsider.pk).exists())
+
+
 class InventorySubscriptionTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(email="sub@test.com", password="pass")

@@ -3,11 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EasyGet Shop</title>
+    <meta name="google-site-verification" content="jiT_pgTTT-PaX7M317UP-yHrGVSo6VGYjBbDdfgkONc" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232874f0'/%3E%3Ctext x='16' y='21.5' font-family='Arial, sans-serif' font-size='13' font-weight='800' fill='%23fff' text-anchor='middle'%3EEG%3C/text%3E%3C/svg%3E"
+    />
+    <title>EASYGET</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("eg-theme");
+          if (t !== "dark" && t !== "light") {
+            t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          }
+          document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+      // Merchant theme pre-paint: the storefront fetch lands ~2s after first
+      // paint, which used to flash the default palette. Re-apply the last
+      // known theme synchronously; live data overwrites + re-caches it.
+      (function () {
+        try {
+          var raw = localStorage.getItem("eg-store-theme");
+          if (!raw) return;
+          var th = JSON.parse(raw);
+          var root = document.documentElement.style;
+          if (th.primary) root.setProperty("--primary", th.primary);
+          if (th.secondary) root.setProperty("--secondary", th.secondary);
+          if (th.bg) root.setProperty("--bg", th.bg);
+          if (th.font) root.setProperty("--font", th.font);
+          if (th.radiusBtn) root.setProperty("--radius-btn", th.radiusBtn);
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- DESIGN.md §1 type stack — three families, rigid roles (§7).
+         Cormorant Garamond = display/hero/headings only. Inter = everything
+         else. Geist Mono (via fontsource, imported in main.tsx) = prices,
+         ETAs, order IDs. Loaded together so all faces render in one
+         round-trip and nothing flashes unstyled. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Schibsted+Grotesk:ital,wght@0,400..700;1,400..700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400..800&display=swap"
       rel="stylesheet"
     />
   </head>

@@ -1,0 +1,25 @@
+/* Collapsed icon rail — desktop/tablet only.
+ *
+ * When the sidebar collapses to its 68px rail, labels must leave layout
+ * entirely (display:none). Otherwise their nowrap min-content blows the 68px
+ * grid track out over the content and they render as clipped mid-word
+ * slivers. Tooltips (title=) still name each destination on hover.
+ *
+ * Scoped to min-width:641px so the <=640px horizontal chip bar (which
+ * intentionally shows labels) is never affected. Kept in this file — not in
+ * styles.css — so the fix ships independently of any in-progress work there.
+ */
+@media (min-width: 641px) {
+  .shell.sidebar-collapsed .brand-name,
+  .shell.sidebar-collapsed .nav-item span:not(.ico) {
+    display: none;
+  }
+
+  .shell.sidebar-collapsed .brand,
+  .shell.sidebar-collapsed .nav-item {
+    justify-content: center;
+    gap: 0;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}

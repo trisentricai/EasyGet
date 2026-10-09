@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/states.dart';
 import '../data/auth_repository.dart';
+import 'auth_controller.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -19,6 +20,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   bool _busy = false;
+  String _role = 'CUSTOMER';
 
   @override
   void dispose() {
@@ -38,14 +40,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             password: _password.text,
             firstName: _name.text.trim(),
             phone: _phone.text.trim(),
+            role: _role,
           );
       if (!mounted) return;
-      showSnack(context, 'Account created — enter the code we emailed you.');
-      context.push('/verify', extra: _email.text.trim());
+      // No OTP gate: sign straight in. Falls back to manual login if needed.
+      final error = await ref.read(authControllerProvider.notifier).signIn(
+            email: _email.text.trim(),
+            password: _password.text,
+          );
+      if (!mounted) return;
+      if (error != null) {
+        showSnack(context, 'Account created — sign in to continue.');
+        context.push('/verify', extra: _email.text.trim());
+      } else {
+        context.go('/home');
+      }
     } catch (e) {
       if (mounted) showSnack(context, e.toString(), error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _google() async {
+    setState(() => _busy = true);
+    final error =
+        await ref.read(authControllerProvider.notifier).signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (error != null) {
+      showSnack(context, error, error: true);
+      return;
+    }
+    if (ref.read(authControllerProvider).maybeWhen(data: (u) => u, orElse: () => null) != null) {
+      context.go('/home');
     }
   }
 
@@ -130,6 +158,72 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2.4),
                             )
                           : const Text('Create account'),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _google,
+                      icon: Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                        child: Text(
+                          'G',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      label: const Text('Continue with Google'),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'I am joining as',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                            value: 'CUSTOMER',
+                            label: Text('Customer')),
+                        ButtonSegment(
+                            value: 'MERCHANT',
+                            label: Text('Merchant')),
+                        ButtonSegment(
+                            value: 'DELIVERY_AGENT',
+                            label: Text('Delivery')),
+                      ],
+                      selected: {_role},
+                      onSelectionChanged: _busy
+                          ? null
+                          : (selection) =>
+                              setState(() => _role = selection.first),
                     ),
                   ],
                 ),

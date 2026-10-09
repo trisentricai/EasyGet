@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { navigate } from "../hooks/useHashRoute";
@@ -11,8 +11,57 @@ import {
   verifyOtp,
   type LoginResponse,
 } from "../services/api";
+import { isGoogleConfigured, loginWithGoogle, renderGoogleButton } from "../services/google";
 
 type Mode = "login" | "register" | "otp";
+
+type RoleChoice = "CUSTOMER" | "MERCHANT" | "DELIVERY_AGENT";
+
+function GoogleSignInButton({ disabled }: { disabled: boolean }) {
+  const { signIn } = useAuth();
+  const toast = useToast();
+  const [failed, setFailed] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isGoogleConfigured() || !boxRef.current) {
+      setFailed(true);
+      return;
+    }
+    let live = true;
+    const slot = boxRef.current;
+    // Fit the fixed-width GIS button to narrow cards (prevents overflow).
+    const width = slot ? Math.max(200, Math.min(320, slot.clientWidth || 320)) : 320;
+    renderGoogleButton(
+      slot!,
+      (token) => {
+      if (!live) return;
+      loginWithGoogle(token)
+        .then((res) => {
+          signIn({ access: res.access, refresh: res.refresh }, res.user);
+          toast.push(`Welcome, ${res.user.first_name || res.user.email}`);
+          navigate("home", { replace: true });
+        })
+        .catch((err) => {
+          toast.push(errText(err, "Google sign-in failed."), "err");
+        });
+      },
+      width,
+    ).catch(() => {
+      if (live) setFailed(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, [signIn, toast]);
+
+  if (failed) return null;
+  return (
+    <div style={{ opacity: disabled ? 0.6 : 1, pointerEvents: disabled ? "none" : "auto" }}>
+      <div ref={boxRef} style={{ display: "flex", justifyContent: "center" }} />
+    </div>
+  );
+}
 
 export function AuthPage() {
   const [mode, setMode] = useState<Mode>("login");
@@ -28,6 +77,7 @@ export function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [role, setRole] = useState<RoleChoice>("CUSTOMER");
 
   const finishLogin = (res: LoginResponse) => {
     signIn({ access: res.access, refresh: res.refresh }, res.user);
@@ -53,16 +103,22 @@ export function AuthPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await register({
+      await register({
         email,
         password,
         first_name: firstName || undefined,
         last_name: lastName || undefined,
         phone: phone || undefined,
+        role,
       });
-      toast.push(res.message, "info");
-      setInfo(res.message);
-      setMode("otp");
+      // No OTP gate: accounts work immediately. Sign straight in; if that
+      // ever fails, fall back to the classic verify/login path.
+      try {
+        finishLogin(await login(email, password));
+      } catch {
+        setInfo("Account created — sign in to continue.");
+        setMode("login");
+      }
     } catch (err) {
       setError(fieldErrors(err));
     } finally {
@@ -134,13 +190,19 @@ export function AuthPage() {
               New here?{" "}
               <span className="link" onClick={() => setMode("register")}>Create an account</span>
             </p>
+            {isGoogleConfigured() && (
+              <>
+                <p className="auth-alt">or continue with</p>
+                <GoogleSignInButton disabled={busy} />
+              </>
+            )}
           </form>
         )}
 
         {mode === "register" && (
           <form onSubmit={submitRegister}>
             <h1>Create your account</h1>
-            <p className="sub">We'll email you a 6-digit code to verify your address.</p>
+            <p className="sub">You're signed in right away — no codes, no waiting.</p>
             <div className="form-grid">
               <div className="field">
                 <label>First name</label>
@@ -149,6 +211,14 @@ export function AuthPage() {
               <div className="field">
                 <label>Last name</label>
                 <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Sharma" />
+              </div>
+              <div className="field full">
+                <label>I am joining as</label>
+                <select value={role} onChange={(e) => setRole(e.target.value as RoleChoice)}>
+                  <option value="CUSTOMER">Customer — shop and order</option>
+                  <option value="MERCHANT">Merchant — sell on EasyGet</option>
+                  <option value="DELIVERY_AGENT">Delivery partner — fulfill orders</option>
+                </select>
               </div>
               <div className="field full">
                 <label>Email</label>
@@ -160,7 +230,7 @@ export function AuthPage() {
               </div>
               <div className="field full">
                 <label>Password</label>
-                <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
+                <input type="password" required minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 10 characters" />
               </div>
             </div>
             <button className="btn btn-block" disabled={busy} type="submit">
@@ -169,6 +239,12 @@ export function AuthPage() {
             <p className="auth-alt">
               Already registered? <span className="link" onClick={() => setMode("login")}>Sign in</span>
             </p>
+            {isGoogleConfigured() && (
+              <>
+                <p className="auth-alt">or continue with</p>
+                <GoogleSignInButton disabled={busy} />
+              </>
+            )}
           </form>
         )}
 

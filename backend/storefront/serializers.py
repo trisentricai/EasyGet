@@ -1,10 +1,12 @@
 from rest_framework import serializers
 
 from categories.models import Category
+from common.serializers import AbsoluteImageField
 from products.models import Product
 from stores.models import Store
 
 from .models import SectionItem, StoreSection, StorefrontTheme
+from .ticker import get_ticker_config
 
 
 class StorefrontThemeSerializer(serializers.ModelSerializer):
@@ -15,6 +17,8 @@ class StorefrontThemeSerializer(serializers.ModelSerializer):
             "secondary_color",
             "background_color",
             "font_family",
+            # Absolute URLs: the theme is consumed by web + Flutter clients
+            # that have no idea where the API host is.
             "logo",
             "hero_image",
             "button_style",
@@ -22,6 +26,9 @@ class StorefrontThemeSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["updated_at"]
+
+    logo = AbsoluteImageField(required=False, allow_null=True)
+    hero_image = AbsoluteImageField(required=False, allow_null=True)
 
     def validate_effects(self, value):
         if not isinstance(value, dict):
@@ -54,6 +61,9 @@ class SectionItemSerializer(serializers.ModelSerializer):
             "config",
             "position",
         ]
+
+    # Rendered by clients that don't know the API origin — always absolute.
+    image = AbsoluteImageField(required=False, allow_null=True)
 
     def get_product_price(self, obj):
         if obj.product_id and obj.product.base_price is not None:
@@ -105,6 +115,11 @@ class StoreSectionSerializer(serializers.ModelSerializer):
             "title",
             "subtitle",
             "image",
+            "align_x",
+            "align_y",
+            "zoom",
+            "effect",
+            "transition_ms",
             "config",
             "position",
             "is_active",
@@ -112,6 +127,11 @@ class StoreSectionSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["position", "updated_at"]
+
+    # Read AND write serializer (uploads come through here as multipart);
+    # AbsoluteImageField only changes the representation, so the admin
+    # designer gets back a clickable URL right after an upload.
+    image = AbsoluteImageField(required=False, allow_null=True)
 
     def validate_config(self, value):
         if not isinstance(value, dict):
@@ -135,6 +155,14 @@ class StoreSectionWriteSerializer(serializers.ModelSerializer):
     """Write-side section serializer: no nested items (they have their own
     endpoints); position is assigned by the view on create."""
 
+    align_x = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    align_y = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    zoom = serializers.FloatField(min_value=1.0, max_value=3.0, required=False)
+    effect = serializers.ChoiceField(
+        choices=StoreSection.ImageEffect.choices, required=False
+    )
+    transition_ms = serializers.IntegerField(min_value=0, max_value=2000, required=False)
+
     class Meta:
         model = StoreSection
         fields = [
@@ -142,9 +170,16 @@ class StoreSectionWriteSerializer(serializers.ModelSerializer):
             "title",
             "subtitle",
             "image",
+            "align_x",
+            "align_y",
+            "zoom",
+            "effect",
+            "transition_ms",
             "config",
             "is_active",
         ]
+
+    image = AbsoluteImageField(required=False, allow_null=True)
 
     def validate_config(self, value):
         if not isinstance(value, dict):
@@ -172,6 +207,7 @@ class StorefrontRenderSerializer(serializers.Serializer):
     store = serializers.SerializerMethodField()
     theme = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
+    ticker = serializers.SerializerMethodField()
 
     def get_store(self, store):
         return {
@@ -183,10 +219,23 @@ class StorefrontRenderSerializer(serializers.Serializer):
 
     def get_theme(self, store):
         theme = getattr(store, "storefront_theme", None)
-        return StorefrontThemeSerializer(theme).data if theme else None
+        if not theme:
+            return None
+        # Method-field-built serializers don't inherit context — pass the
+        # request through so nested images come out absolute too.
+        return StorefrontThemeSerializer(theme, context=self.context).data
 
     def get_sections(self, store):
         qs = store.storefront_sections.filter(is_active=True).prefetch_related(
             "items", "items__product", "items__category"
         )
-        return StoreSectionSerializer(qs, many=True).data
+        return StoreSectionSerializer(qs, many=True, context=self.context).data
+
+    def get_ticker(self, store):
+        """Announcement-bar content + style, edited in admin (no code).
+
+        Lives in SystemConfig (key "ticker", JSON, public) so merchants edit
+        copy and styling without deploys. Anything missing, private, or
+        malformed falls back to DEFAULT_TICKER — the strip always renders.
+        """
+        return get_ticker_config()

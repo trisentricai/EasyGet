@@ -48,8 +48,12 @@ class SearchRequestSerializer(serializers.Serializer):
     max_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     is_featured = serializers.BooleanField(required=False)
     sort = serializers.ChoiceField(
-        choices=["relevance", "price_asc", "price_desc", "newest", "popular"],
+        choices=[
+            "relevance", "price_asc", "price_desc", "newest", "popular",
+            "rating",
+        ],
         default="relevance",
     )
     page = serializers.IntegerField(min_value=1, default=1)
-    page_size = serializers.IntegerField(min_value=1, max_value=100, default=20)
+    # Server-side pagination ceiling: 20/page max, everywhere.
+    page_size = serializers.IntegerField(min_value=1, max_value=20, default=20)

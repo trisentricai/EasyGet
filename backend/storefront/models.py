@@ -1,5 +1,6 @@
 from django.db import models
 
+from products.models import ImageDisplayFields
 from stores.models import Store
 
 
@@ -18,14 +19,16 @@ class StorefrontTheme(models.Model):
     store = models.OneToOneField(
         Store, on_delete=models.CASCADE, related_name="storefront_theme"
     )
-    primary_color = models.CharField(max_length=9, default="#1A73E8")
-    secondary_color = models.CharField(max_length=9, default="#FFB300")
+    primary_color = models.CharField(max_length=9, default="#2874F0")
+    secondary_color = models.CharField(max_length=9, default="#FB641B")
     background_color = models.CharField(max_length=9, default="#FFFFFF")
-    font_family = models.CharField(max_length=100, default="system-ui")
+    font_family = models.CharField(
+        max_length=100, default="Inter, system-ui, sans-serif"
+    )
     logo = models.ImageField(upload_to="storefront/logos/", null=True, blank=True)
     hero_image = models.ImageField(upload_to="storefront/heroes/", null=True, blank=True)
     button_style = models.CharField(
-        max_length=20, choices=ButtonStyle.choices, default=ButtonStyle.ROUNDED
+        max_length=20, choices=ButtonStyle.choices, default=ButtonStyle.SQUARE
     )
     effects = models.JSONField(
         default=dict,
@@ -38,7 +41,7 @@ class StorefrontTheme(models.Model):
         return f"Theme for {self.store.name}"
 
 
-class StoreSection(models.Model):
+class StoreSection(ImageDisplayFields):
     """One ordered row of the storefront page (hero, banner, grids, text...).
 
     The page layout is simply the sections of a store ordered by `position` —
