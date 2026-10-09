@@ -92,7 +92,9 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<String?> register({
+  /// Returns the [ApiException] on failure so screens can map DRF field
+  /// errors; `null` means the account was created and auto-signed-in.
+  Future<ApiException?> register({
     required String email,
     required String password,
     required String name,
@@ -112,11 +114,11 @@ class AuthController extends Notifier<AuthState> {
       return null;
     } on ApiException catch (e) {
       _emit(AuthGuest(error: e.message));
-      return e.message;
+      return e;
     } catch (e) {
       final message = _clean(e);
       _emit(AuthGuest(error: message));
-      return message;
+      return ApiException(message);
     }
   }
 
