@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import 'auth_controller.dart';
@@ -28,7 +29,11 @@ class _BootScreenState extends ConsumerState<BootScreen> {
     super.initState();
     _scheduleHint();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(authControllerProvider.notifier).boot();
+      if (!mounted) return;
+      // Wake the sleeping free-tier backend while the splash shows, so login
+      // after splash isn't delayed by the Render cold start.
+      ref.read(apiClientProvider).warmUp();
+      ref.read(authControllerProvider.notifier).boot();
     });
   }
 

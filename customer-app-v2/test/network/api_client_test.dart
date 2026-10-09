@@ -97,4 +97,36 @@ void main() {
       ),
     );
   });
+
+  test('warmUp hits the public banners endpoint and never throws', () async {
+    String? hitPath;
+    Duration? connect;
+    final client = ApiClient(
+      _dioWith((options) async {
+        hitPath = options.path;
+        connect = options.connectTimeout;
+        return _json('[]');
+      }),
+    );
+
+    await client.warmUp();
+
+    expect(hitPath, '/banners/');
+    // Short, splash-only timeouts - never blocks the app for the full 90s.
+    expect(connect, const Duration(seconds: 15));
+  });
+
+  test('warmUp swallows failures on an unreachable backend', () async {
+    final client = ApiClient(
+      _dioWith(
+        (options) async => throw DioException.connectionError(
+          requestOptions: options,
+          reason: 'sleeping server',
+        ),
+      ),
+    );
+
+    // Completes without throwing despite the backend being down.
+    await client.warmUp();
+  });
 }

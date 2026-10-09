@@ -15,6 +15,15 @@ class AppConfig {
     defaultValue: 'easyget',
   );
 
+  /// Google sign-in on Android/iOS needs the OAuth client that the backend
+  /// accepts (`serverClientId`). Same value as customer-web's
+  /// `VITE_GOOGLE_CLIENT_ID`. Public by design - embedded in the app binary.
+  /// Passed at build time: --dart-define=GOOGLE_CLIENT_ID=...web..apps.googleusercontent.com
+  static const googleClientId = String.fromEnvironment(
+    'GOOGLE_CLIENT_ID',
+    defaultValue: '',
+  );
+
   /// Absolute URL for backend-served media paths (/media/...).
   /// Returns null when there is nothing to show.
   static String? mediaUrl(String? path) {

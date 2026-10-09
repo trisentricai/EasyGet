@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
 
 /// Wraps the platform Google sign-in flow so the screen can be driven by a
@@ -18,12 +19,25 @@ class RealGoogleAuthSource implements GoogleAuthSource {
 
   @override
   Future<String?> fetchIdToken() async {
+    final webClientId = AppConfig.googleClientId;
+    if (webClientId.isEmpty) {
+      // Backend refuses tokens for unknown audiences; a build without the
+      // web/Android OAuth client ID can never mint a verifiable token.
+      throw ApiException(
+        'Google sign-in is not configured in this build yet. '
+        'Use email login instead.',
+      );
+    }
+
     try {
       if (!_ready) {
-        await GoogleSignIn.instance.initialize();
+        await GoogleSignIn.instance.initialize(serverClientId: webClientId);
         _ready = true;
       }
     } catch (_) {
+      _ready = false;
+      // No Google Play Services (AOSP emulators) or proxy'd environments land
+      // here; keep the button honest instead of hanging.
       throw ApiException(
         'Google sign-in is not available here. Use email login.',
       );

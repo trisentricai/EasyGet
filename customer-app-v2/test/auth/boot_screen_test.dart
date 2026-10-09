@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
+import 'package:easyget/core/network/api_client.dart';
 import 'package:easyget/core/network/api_exception.dart';
 import 'package:easyget/core/router/app_router.dart';
 import 'package:easyget/core/storage/token_store.dart';
@@ -53,6 +55,13 @@ class _FakeRepo implements AuthRepository {
   Future<void> mergeGuestCart() async {}
 }
 
+class _NoopApiClient extends ApiClient {
+  _NoopApiClient() : super(Dio());
+
+  @override
+  Future<void> warmUp() async {}
+}
+
 Future<ProviderContainer> _pumpBoot(
   WidgetTester tester, {
   required _FakeRepo repo,
@@ -61,6 +70,8 @@ Future<ProviderContainer> _pumpBoot(
     overrides: [
       authRepositoryProvider.overrideWithValue(repo),
       tokenStoreProvider.overrideWithValue(repo.store),
+      // Warm-up pings the real backend; no-op it so no dio timers linger.
+      apiClientProvider.overrideWithValue(_NoopApiClient()),
     ],
   );
   addTearDown(container.dispose);

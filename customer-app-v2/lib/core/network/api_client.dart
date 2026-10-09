@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_config.dart';
 import '../storage/token_store.dart';
+import 'api_endpoints.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
 import 'session_lost.dart';
@@ -72,6 +73,23 @@ class ApiClient {
       await _dio.delete<dynamic>(path);
     } on DioException catch (e) {
       throw ApiException.fromDio(e);
+    }
+  }
+
+  /// Best-effort wake-up for a sleeping Render free-tier server. Fired during
+  /// the splash so the user's first action (login) doesn't eat the whole cold
+  /// start (DESIGN §14). Short timeouts, never throws, never blocks.
+  Future<void> warmUp() async {
+    try {
+      await _dio.get<dynamic>(
+        ApiEndpoints.banners,
+        options: Options(
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
+    } catch (_) {
+      // Ignore: warm-up is a nicety, not a contract.
     }
   }
 
