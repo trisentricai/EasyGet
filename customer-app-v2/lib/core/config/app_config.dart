@@ -18,10 +18,11 @@ class AppConfig {
   /// Google sign-in on Android/iOS needs the OAuth client that the backend
   /// accepts (`serverClientId`). Same value as customer-web's
   /// `VITE_GOOGLE_CLIENT_ID`. Public by design - embedded in the app binary.
-  /// Passed at build time: --dart-define=GOOGLE_CLIENT_ID=...web..apps.googleusercontent.com
+  /// Override at build time: --dart-define=GOOGLE_CLIENT_ID=...
   static const googleClientId = String.fromEnvironment(
     'GOOGLE_CLIENT_ID',
-    defaultValue: '',
+    defaultValue:
+        '71530535214-rl0b86rgd7rdckh3rno418tfofkeo25c.apps.googleusercontent.com',
   );
 
   /// Absolute URL for backend-served media paths (/media/...).
