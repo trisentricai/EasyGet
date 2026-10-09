@@ -43,6 +43,12 @@ class _FakeRepo implements AuthRepository {
   }
 
   @override
+  Future<AppUser> loginWithGoogle(String idToken) async {
+    if (loginError != null) throw loginError!;
+    return loginResult!;
+  }
+
+  @override
   Future<void> logout() async {
     loggedOut = true;
     await store.clear();

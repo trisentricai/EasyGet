@@ -23,6 +23,9 @@ abstract class AuthRepository {
 
   Future<void> logout();
 
+  /// Exchange a Google ID token for our access+refresh pair.
+  Future<AppUser> loginWithGoogle(String idToken);
+
   /// Best-effort: folds a guest cart into the signed-in cart. Never throws.
   Future<void> mergeGuestCart();
 }
@@ -88,6 +91,21 @@ class HttpAuthRepository implements AuthRepository {
     // local tokens is the whole job here. Server-side blacklist is a backend
     // ticket if/when required.
     await _tokens.clear();
+  }
+
+  @override
+  Future<AppUser> loginWithGoogle(String idToken) async {
+    final data = await _api.post<Map<String, dynamic>>(
+      ApiEndpoints.googleAuth,
+      body: {'id_token': idToken},
+      decode: (json) => (json as Map).cast<String, dynamic>(),
+    );
+    await _tokens.save(
+      access: data['access'] as String,
+      refresh: data['refresh'] as String,
+    );
+    await mergeGuestCart();
+    return AppUser.fromJson((data['user'] as Map).cast<String, dynamic>());
   }
 
   @override

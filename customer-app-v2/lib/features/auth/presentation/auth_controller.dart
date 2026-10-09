@@ -77,6 +77,21 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  Future<String?> signInWithGoogle(String idToken) async {
+    try {
+      final user = await _repo.loginWithGoogle(idToken);
+      _emit(AuthSignedIn(user));
+      return null;
+    } on ApiException catch (e) {
+      _emit(AuthGuest(error: e.message));
+      return e.message;
+    } catch (e) {
+      final message = _clean(e);
+      _emit(AuthGuest(error: message));
+      return message;
+    }
+  }
+
   Future<String?> register({
     required String email,
     required String password,
