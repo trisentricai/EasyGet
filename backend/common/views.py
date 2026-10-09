@@ -53,6 +53,34 @@ def _store_state():
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+def banners(request):
+    """Public active banners (contract: GET /api/v1/banners/)."""
+    from django.db.models import Q
+    from django.utils import timezone
+
+    from admin_panel.models import Banner
+    from admin_panel.serializers import BannerPublicSerializer
+    from common.pagination import Max20PagePagination
+
+    now = timezone.now()
+    active = (
+        Banner.objects.filter(
+            # NULL start_date means "live immediately" (start_date is optional).
+            Q(start_date__isnull=True) | Q(start_date__lte=now),
+            is_active=True,
+        )
+        .exclude(end_date__lt=now)
+        .order_by("position")
+    )
+    paginator = Max20PagePagination()
+    page = paginator.paginate_queryset(active, request)
+    return paginator.get_paginated_response(
+        BannerPublicSerializer(page, many=True).data
+    )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
 def pincode(request, pin):
     """Validate an Indian pincode and return delivery ETA/fee.
 

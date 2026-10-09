@@ -153,3 +153,56 @@ class PincodeStoreStateTests(TestCase):
         )
         # The migration's platform store (Karnataka) is older; it must not win.
         self.assertEqual(_store_state(), "Tamil Nadu")
+
+
+class BannerPublicEndpointTests(TestCase):
+    """Public GET /api/v1/banners/ (contract) returns active banners."""
+
+    def test_public_list_returns_active_banners(self):
+        from admin_panel.models import Banner
+
+        Banner.objects.create(
+            title="Summer Sale",
+            subtitle="Up to 40% off",
+            image="banners/summer.png",
+            link_url="https://easyget.app/sale",
+            link_text="Shop now",
+            type=Banner.BannerType.CAROUSEL,
+            position=1,
+            is_active=True,
+        )
+        res = self.client.get("/api/v1/banners/")
+        self.assertEqual(res.status_code, 200, res.data)
+        body = res.json()
+        self.assertIn("results", body)
+        self.assertEqual(len(body["results"]), 1)
+        item = body["results"][0]
+        self.assertEqual(item["title"], "Summer Sale")
+        self.assertEqual(item["type"], "CAROUSEL")
+        self.assertTrue(item["image"].endswith("/media/banners/summer.png"))
+
+    def test_public_list_excludes_inactive_and_expired(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from admin_panel.models import Banner
+
+        Banner.objects.create(title="Inactive", image="banners/i.png", is_active=False, position=1)
+        Banner.objects.create(
+            title="Expired",
+            image="banners/e.png",
+            start_date=timezone.now() - timedelta(days=10),
+            end_date=timezone.now() - timedelta(days=5),
+            position=2,
+        )
+        Banner.objects.create(
+            title="Live",
+            image="banners/l.png",
+            start_date=timezone.now() - timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=10),
+            position=3,
+        )
+        res = self.client.get("/api/v1/banners/")
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual([b["title"] for b in res.json()["results"]], ["Live"])
