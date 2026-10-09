@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'core/router/app_router.dart';
+import 'core/theme/app_theme.dart';
 
 void main() {
-  runApp(const EasyGetApp());
+  runApp(const ProviderScope(child: EasyGetApp()));
 }
 
-class EasyGetApp extends StatelessWidget {
+class EasyGetApp extends ConsumerWidget {
   const EasyGetApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: const Scaffold(
-        body: Center(child: Text('EASYGET')),
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
+      title: 'EasyGet',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }

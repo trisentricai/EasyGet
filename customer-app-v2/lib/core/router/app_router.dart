@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
+import '../../features/auth/presentation/boot_screen.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/register_screen.dart';
 
 const Set<String> _publicRoutes = {'/login', '/register'};
 
@@ -57,9 +60,9 @@ Widget _placeholder(String route) => Scaffold(
     );
 
 final _routes = <RouteBase>[
-  GoRoute(path: '/', builder: (_, _) => _placeholder('/')),
-  GoRoute(path: '/login', builder: (_, _) => _placeholder('/login')),
-  GoRoute(path: '/register', builder: (_, _) => _placeholder('/register')),
+  GoRoute(path: '/', builder: (_, _) => const BootScreen()),
+  GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+  GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
   GoRoute(path: '/home', builder: (_, _) => _placeholder('/home')),
   GoRoute(path: '/browse', builder: (_, _) => _placeholder('/browse')),
   GoRoute(path: '/search', builder: (_, _) => _placeholder('/search')),
@@ -80,6 +83,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: listenable,
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
+      // A cold/unreachable backend keeps the splash so the retry banner stays
+      // reachable; a genuine signed-out state still routes to /login.
+      if (auth is AuthGuest &&
+          auth.coldStartHint &&
+          state.matchedLocation == '/') {
+        return null;
+      }
       return redirectFor(
         state.matchedLocation,
         booted: auth is! AuthBooting,
