@@ -53,6 +53,22 @@ void main() {
 
       expect(find.byIcon(Icons.grid_view_outlined), findsOneWidget);
     });
+
+    testWidgets('grid card shows the scrim name and taps through',
+        (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_host(CategoryGridCard(
+        category: const Category(
+            id: 3, name: 'Dairy', slug: 'dairy', productCount: 12),
+        onTap: () => taps++,
+      )));
+
+      expect(find.byKey(const Key('category-grid-dairy')), findsOneWidget);
+      expect(find.text('Dairy'), findsOneWidget);
+      expect(find.text('12'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('category-grid-dairy')));
+      expect(taps, 1);
+    });
   });
 
   group('SectionHeader', () {    testWidgets('title left, ghost See all right, never centered',

@@ -238,17 +238,26 @@ class _EmptyMode extends ConsumerWidget {
           if (cats.isNotEmpty) ...[
             const _RowLabel(label: 'Browse categories'),
             const SizedBox(height: AppSpace.sm),
-            // Full vertical browser: big image rows, top to bottom, every
-            // category (never a cramped chip strip).
-            for (var i = 0; i < cats.length; i++) ...[
-              CategoryListTile(
+            // Trendy 2-column image grid (deliberately different from the
+            // home track and the old row list): photo, scrim name, count.
+            GridView.builder(
+              key: const Key('search-category-grid'),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: AppSpace.md,
+                crossAxisSpacing: AppSpace.md,
+                childAspectRatio: 1.5,
+              ),
+              itemCount: cats.length,
+              itemBuilder: (_, i) => CategoryGridCard(
                 category: cats[i],
                 onTap: () =>
                     context.go('/browse?category=${cats[i].slug}'),
               ),
-              if (i != cats.length - 1)
-                const SizedBox(height: AppSpace.sm),
-            ],
+            ),
             const SizedBox(height: AppSpace.xl),
           ],
           if (views.isNotEmpty) ...[
@@ -451,16 +460,18 @@ class _ResultsFooter extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     Widget body;
     if (state.loadingMore) {
-      body = Row(
+      // Column, not row: the spinner sits on the true center line instead
+      // of hanging left of its label.
+      body = Column(
         key: const Key('search-loading-more'),
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(
-            width: 20,
-            height: 20,
+            width: 22,
+            height: 22,
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
-          const SizedBox(width: AppSpace.sm),
+          const SizedBox(height: AppSpace.xs),
           Text('Loading more…',
               style:
                   AppTypography.body(scheme.onSurfaceVariant)),

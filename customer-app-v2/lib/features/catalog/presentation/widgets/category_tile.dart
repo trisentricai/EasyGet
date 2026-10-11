@@ -52,71 +52,7 @@ class CategoryTile extends StatelessWidget {
   }
 }
 
-/// Big list row: 72px image left, name (+ optional count) middle, chevron
-/// right. Used by the Search category browser.
-class CategoryListTile extends StatelessWidget {
-  const CategoryListTile({
-    super.key,
-    required this.category,
-    this.onTap,
-  });
-
-  final Category category;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      key: Key('category-tile-${category.slug}'),
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(AppSpace.md),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(AppRadii.card),
-          border:
-              Border.all(color: Theme.of(context).freshColors.faint),
-        ),
-        child: Row(
-          children: [
-            _Avatar(image: category.image, size: 72),
-            const SizedBox(width: AppSpace.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    category.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.productName(scheme.onSurface,
-                        size: 15),
-                  ),
-                  if (category.productCount > 0) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      '${category.productCount} products',
-                      style: AppTypography.tabularSmall(
-                          scheme.onSurfaceVariant),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right,
-                color: scheme.onSurfaceVariant),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.image, required this.size});
+class _Avatar extends StatelessWidget {  const _Avatar({required this.image, required this.size});
 
   final String? image;
   final double size;
@@ -145,6 +81,104 @@ class _Avatar extends StatelessWidget {
                 size: size * 0.4,
               ),
             ),
+    );
+  }
+}
+
+/// Big 2-column image card: photo (or sunken fallback) with the name over a
+/// scrim and an optional count pill. The Search browser's trendy face —
+/// deliberately different from the home track and the address rows.
+class CategoryGridCard extends StatelessWidget {
+  const CategoryGridCard({
+    super.key,
+    required this.category,
+    this.onTap,
+  });
+
+  final Category category;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).freshColors;
+    final url = AppConfig.mediaUrl(category.image);
+    return InkWell(
+      key: Key('category-grid-${category.slug}'),
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      onTap: onTap,
+      child: Container(
+        height: 132,
+        decoration: BoxDecoration(
+          color: colors.sunken,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (url != null)
+              CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                errorWidget: (_, _, _) => Icon(
+                  Icons.grid_view_outlined,
+                  color: colors.faint,
+                  size: 32,
+                ),
+              )
+            else
+              Icon(Icons.grid_view_outlined,
+                  color: colors.faint, size: 32),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpace.md, AppSpace.xl, AppSpace.md, AppSpace.sm),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      scheme.scrim.withValues(alpha: 0),
+                      scheme.scrim.withValues(alpha: 0.72),
+                    ],
+                  ),
+                ),
+                child: Text(
+                  category.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.productName(scheme.surface,
+                      size: 14),
+                ),
+              ),
+            ),
+            if (category.productCount > 0)
+              Positioned(
+                top: AppSpace.sm,
+                right: AppSpace.sm,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.sm, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: scheme.surface.withValues(alpha: 0.9),
+                    borderRadius:
+                        BorderRadius.circular(AppRadii.pill),
+                  ),
+                  child: Text(
+                    '${category.productCount}',
+                    style: AppTypography.tabularSmall(
+                        scheme.onSurface,
+                        size: 11),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

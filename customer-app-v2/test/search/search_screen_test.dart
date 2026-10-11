@@ -176,6 +176,15 @@ void main() {
   testWidgets('category shortcut goes to browse', (tester) async {
     await _pumpSearch(tester, searchRepo: _FakeSearchRepo());
 
+    // Trendy 2-column image grid (not chips, not rows).
+    final grid = tester.widget<GridView>(
+        find.byKey(const Key('search-category-grid')));
+    expect(
+        (grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount)
+            .crossAxisCount,
+        2);
+    expect(find.byKey(const Key('category-grid-cat-1')), findsOneWidget);
+
     await tester.tap(find.text('Cat 2'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('browse-page')), findsOneWidget);
