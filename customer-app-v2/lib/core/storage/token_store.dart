@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../features/auth/data/app_user.dart';
 
 /// JWT + guest-cart persistence.
 ///
@@ -22,6 +26,12 @@ abstract class TokenStore {
   /// Stable device-generated analytics session id.
   Future<String?> readSessionId();
   Future<void> saveSessionId(String id);
+
+  /// Cached signed-in profile for instant boot (no network on the critical
+  /// path). Refreshed in the background after every fast boot.
+  Future<AppUser?> readUser();
+  Future<void> saveUser(AppUser user);
+  Future<void> clearUser();
 }
 
 class InMemoryTokenStore implements TokenStore {
@@ -29,6 +39,7 @@ class InMemoryTokenStore implements TokenStore {
   static const _refreshKey = 'eg_refresh';
   static const _guestKey = 'eg_guest';
   static const _sessionKey = 'eg_session';
+  static const _userKey = 'eg_user';
 
   final _map = <String, String>{};
 
@@ -51,6 +62,7 @@ class InMemoryTokenStore implements TokenStore {
   Future<void> clear() async {
     _map.remove(_accessKey);
     _map.remove(_refreshKey);
+    _map.remove(_userKey);
   }
 
   @override
@@ -67,6 +79,25 @@ class InMemoryTokenStore implements TokenStore {
 
   @override
   Future<void> saveSessionId(String id) async => _map[_sessionKey] = id;
+
+  @override
+  Future<AppUser?> readUser() async {
+    final raw = _map[_userKey];
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return AppUser.fromJson(
+          (jsonDecode(raw) as Map).cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveUser(AppUser user) async =>
+      _map[_userKey] = jsonEncode(user.toJson());
+
+  @override
+  Future<void> clearUser() async => _map.remove(_userKey);
 }
 
 class SecureTokenStore implements TokenStore {
@@ -77,6 +108,7 @@ class SecureTokenStore implements TokenStore {
   static const _refreshKey = 'eg_refresh';
   static const _guestKey = 'eg_guest';
   static const _sessionKey = 'eg_session';
+  static const _userKey = 'eg_user';
 
   final FlutterSecureStorage _storage;
 
@@ -100,6 +132,7 @@ class SecureTokenStore implements TokenStore {
   Future<void> clear() async {
     await _storage.delete(key: _accessKey);
     await _storage.delete(key: _refreshKey);
+    await _storage.delete(key: _userKey);
   }
 
   @override
@@ -118,6 +151,25 @@ class SecureTokenStore implements TokenStore {
   @override
   Future<void> saveSessionId(String id) =>
       _storage.write(key: _sessionKey, value: id);
+
+  @override
+  Future<AppUser?> readUser() async {
+    final raw = await _storage.read(key: _userKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return AppUser.fromJson(
+          (jsonDecode(raw) as Map).cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveUser(AppUser user) =>
+      _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+  @override
+  Future<void> clearUser() => _storage.delete(key: _userKey);
 }
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());

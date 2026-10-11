@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _user = AppUser(id: 1, email: 'a@b.c', role: 'CUSTOMER');
+final _freshUser =
+    AppUser(id: 1, email: 'a@b.c', role: 'CUSTOMER', firstName: 'Asha');
 
 class _FakeRepo implements AuthRepository {
   _FakeRepo(this.store);
@@ -17,6 +19,7 @@ class _FakeRepo implements AuthRepository {
   Object? loginError;
   AppUser? meResult;
   Object? meError;
+  Future<AppUser> Function()? meHook;
   int meCalls = 0;
   bool loggedOut = false;
 
@@ -38,6 +41,7 @@ class _FakeRepo implements AuthRepository {
   @override
   Future<AppUser> me() async {
     meCalls++;
+    if (meHook != null) return meHook!();
     if (meError != null) throw meError!;
     return meResult!;
   }
@@ -151,5 +155,96 @@ void main() {
     expect(container.read(authControllerProvider), isA<AuthGuest>());
     expect(repo.loggedOut, isTrue);
     expect(await store.readAccess(), isNull);
+  });
+
+  test('boot with a cached profile signs in without waiting on me()',
+      () async {
+    final store = InMemoryTokenStore();
+    await store.save(access: 'A', refresh: 'R');
+    await store.saveUser(_user);
+    var releaseMe = false;
+    final repo = _FakeRepo(store)
+      ..meHook = () async {
+        while (!releaseMe) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        return _freshUser;
+      };
+    final container = _container(store, repo);
+    addTearDown(container.dispose);
+
+    // boot() returns with the network still hanging: zero blocking.
+    await container.read(authControllerProvider.notifier).boot();
+
+    final state = container.read(authControllerProvider);
+    expect(state, isA<AuthSignedIn>());
+    expect((state as AuthSignedIn).user.firstName, isEmpty);
+
+    // Background refresh lands when the server answers, and re-caches.
+    releaseMe = true;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    final refreshed = container.read(authControllerProvider);
+    expect(refreshed, isA<AuthSignedIn>());
+    expect((refreshed as AuthSignedIn).user.firstName, 'Asha');
+    expect((await store.readUser())?.firstName, 'Asha');
+  });
+
+  test('background 401 drops a fast-booted session to guest', () async {
+    final store = InMemoryTokenStore();
+    await store.save(access: 'A', refresh: 'R');
+    await store.saveUser(_user);
+    final repo = _FakeRepo(store)
+      ..meError = ApiException('Unauthorized.', statusCode: 401);
+    final container = _container(store, repo);
+    addTearDown(container.dispose);
+
+    await container.read(authControllerProvider.notifier).boot();
+    expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(container.read(authControllerProvider), isA<AuthGuest>());
+    expect(repo.loggedOut, isTrue);
+  });
+
+  test('background cold-start failure keeps the cached session', () async {
+    final store = InMemoryTokenStore();
+    await store.save(access: 'A', refresh: 'R');
+    await store.saveUser(_user);
+    final repo = _FakeRepo(store)
+      ..meError = ApiException(ApiException.coldStartMessage);
+    final container = _container(store, repo);
+    addTearDown(container.dispose);
+
+    await container.read(authControllerProvider.notifier).boot();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+    expect(repo.loggedOut, isFalse);
+  });
+
+  test('signIn caches the profile for the next fast boot', () async {
+    final store = InMemoryTokenStore();
+    final repo = _FakeRepo(store)..loginResult = _user;
+    final container = _container(store, repo);
+    addTearDown(container.dispose);
+
+    await container
+        .read(authControllerProvider.notifier)
+        .signIn(email: 'a@b.c', password: 'secret');
+
+    expect((await store.readUser())?.email, 'a@b.c');
+  });
+
+  test('signOut clears the cached profile', () async {
+    final store = InMemoryTokenStore();
+    await store.save(access: 'A', refresh: 'R');
+    await store.saveUser(_user);
+    final repo = _FakeRepo(store);
+    final container = _container(store, repo);
+    addTearDown(container.dispose);
+
+    await container.read(authControllerProvider.notifier).signOut();
+
+    expect(await store.readUser(), isNull);
   });
 }

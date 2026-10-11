@@ -32,4 +32,14 @@ class AppUser {
         phone: json['phone']?.toString() ?? '',
         isVerified: json['is_email_verified'] == true,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'email': email,
+        'role': role,
+        'first_name': firstName,
+        'last_name': lastName,
+        'phone': phone,
+        'is_email_verified': isVerified,
+      };
 }
