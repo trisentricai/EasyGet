@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/session_lost.dart';
 import '../../../core/storage/token_store.dart';
+import '../../engagement/data/analytics_repository.dart';
 import '../data/auth_repository.dart';
 import 'auth_state.dart';
 
@@ -31,6 +34,7 @@ class AuthController extends Notifier<AuthState> {
 
   AuthRepository get _repo => ref.read(authRepositoryProvider);
   TokenStore get _tokens => ref.read(tokenStoreProvider);
+  AnalyticsTracker get _analytics => ref.read(analyticsTrackerProvider);
 
   void _emit(AuthState next) {
     state = next;
@@ -41,6 +45,8 @@ class AuthController extends Notifier<AuthState> {
   /// no tokens or any failure drops straight to guest (DESIGN §12 S1.2).
   Future<void> boot() async {
     _emit(const AuthBooting());
+    // Fire-and-forget telemetry; never blocks or fails the boot (DESIGN §14).
+    unawaited(_analytics.appOpen());
     final refresh = await _tokens.readRefresh();
     if (refresh == null || refresh.isEmpty) {
       _emit(const AuthGuest());

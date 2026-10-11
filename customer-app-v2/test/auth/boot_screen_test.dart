@@ -11,6 +11,7 @@ import 'package:easyget/features/auth/data/auth_repository.dart';
 import 'package:easyget/features/auth/presentation/auth_controller.dart';
 import 'package:easyget/features/auth/presentation/auth_state.dart';
 import 'package:easyget/features/auth/presentation/boot_screen.dart';
+import 'package:easyget/features/engagement/data/analytics_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,6 +63,17 @@ class _NoopApiClient extends ApiClient {
   Future<void> warmUp() async {}
 }
 
+class _NoopAnalytics implements AnalyticsRepository {
+  @override
+  Future<void> track({
+    required String eventType,
+    Map<String, dynamic> properties = const {},
+  }) async {}
+
+  @override
+  Future<void> trackBatch(List<AnalyticsEvent> events) async {}
+}
+
 Future<ProviderContainer> _pumpBoot(
   WidgetTester tester, {
   required _FakeRepo repo,
@@ -72,6 +84,8 @@ Future<ProviderContainer> _pumpBoot(
       tokenStoreProvider.overrideWithValue(repo.store),
       // Warm-up pings the real backend; no-op it so no dio timers linger.
       apiClientProvider.overrideWithValue(_NoopApiClient()),
+      // Boot fires APP_OPEN telemetry; no-op so no dio timers linger.
+      analyticsRepositoryProvider.overrideWithValue(_NoopAnalytics()),
     ],
   );
   addTearDown(container.dispose);

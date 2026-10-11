@@ -18,12 +18,17 @@ abstract class TokenStore {
   Future<String?> readGuestSessionKey();
   Future<void> saveGuestSessionKey(String key);
   Future<void> clearGuestSessionKey();
+
+  /// Stable device-generated analytics session id.
+  Future<String?> readSessionId();
+  Future<void> saveSessionId(String id);
 }
 
 class InMemoryTokenStore implements TokenStore {
   static const _accessKey = 'eg_access';
   static const _refreshKey = 'eg_refresh';
   static const _guestKey = 'eg_guest';
+  static const _sessionKey = 'eg_session';
 
   final _map = <String, String>{};
 
@@ -56,6 +61,12 @@ class InMemoryTokenStore implements TokenStore {
 
   @override
   Future<void> clearGuestSessionKey() async => _map.remove(_guestKey);
+
+  @override
+  Future<String?> readSessionId() async => _map[_sessionKey];
+
+  @override
+  Future<void> saveSessionId(String id) async => _map[_sessionKey] = id;
 }
 
 class SecureTokenStore implements TokenStore {
@@ -65,6 +76,7 @@ class SecureTokenStore implements TokenStore {
   static const _accessKey = 'eg_access';
   static const _refreshKey = 'eg_refresh';
   static const _guestKey = 'eg_guest';
+  static const _sessionKey = 'eg_session';
 
   final FlutterSecureStorage _storage;
 
@@ -99,6 +111,13 @@ class SecureTokenStore implements TokenStore {
 
   @override
   Future<void> clearGuestSessionKey() => _storage.delete(key: _guestKey);
+
+  @override
+  Future<String?> readSessionId() => _storage.read(key: _sessionKey);
+
+  @override
+  Future<void> saveSessionId(String id) =>
+      _storage.write(key: _sessionKey, value: id);
 }
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
