@@ -271,6 +271,7 @@ void main() {
       payments: _FakePaymentRepo(),
     );
 
+    await scrollTo(tester, find.text('Tomorrow'));
     await tester.tap(find.text('Tomorrow'));
     await tester.pumpAndSettle();
     await scrollTo(tester, find.text('6 – 9 PM'));
