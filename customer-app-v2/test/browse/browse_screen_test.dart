@@ -207,6 +207,11 @@ void main() {
     expect(delegate.crossAxisSpacing, 12);
     // 800px viewport → 378px columns → aspect derived from card anatomy.
     expect(delegate.childAspectRatio, closeTo(0.58, 0.01));
+
+    // Cards run the real quick-add pipeline: plain Add pills, never the
+    // decorative uncontrolled stepper (no qty-plus anywhere pre-tap).
+    expect(find.text('Add'), findsWidgets);
+    expect(find.byKey(const Key('qty-plus')), findsNothing);
   });
 
   testWidgets('applying Featured resets to page 1 with the filter',
