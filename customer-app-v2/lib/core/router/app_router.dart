@@ -7,6 +7,8 @@ import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/boot_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
+import '../../features/engagement/data/analytics_repository.dart';
+import '../widgets/app_shell.dart';
 
 const Set<String> _publicRoutes = {'/login', '/register'};
 
@@ -59,15 +61,73 @@ Widget _placeholder(String route) => Scaffold(
       body: Center(child: Text('EASYGET · $route')),
     );
 
+/// The 5 tab branches (DESIGN §11.5) hosted by [StatefulShellRoute] so tab
+/// state survives switching. Bodies are keyed placeholders until later plans
+/// replace them screen-by-screen.
+final _shellBranches = <StatefulShellBranch>[
+  StatefulShellBranch(
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (_, _) => const EasyGetTabScaffold(
+          route: 'home',
+          title: 'Home',
+          showSearch: true,
+          home: true,
+        ),
+      ),
+    ],
+  ),
+  StatefulShellBranch(
+    routes: [
+      GoRoute(
+        path: '/browse',
+        builder: (_, _) => const EasyGetTabScaffold(
+          route: 'browse',
+          title: 'Browse',
+          showSearch: true,
+        ),
+      ),
+    ],
+  ),
+  StatefulShellBranch(
+    routes: [
+      GoRoute(
+        path: '/search',
+        builder: (_, _) =>
+            const EasyGetTabScaffold(route: 'search', title: 'Search'),
+      ),
+    ],
+  ),
+  StatefulShellBranch(
+    routes: [
+      GoRoute(
+        path: '/cart',
+        builder: (_, _) =>
+            const EasyGetTabScaffold(route: 'cart', title: 'Your cart'),
+      ),
+    ],
+  ),
+  StatefulShellBranch(
+    routes: [
+      GoRoute(
+        path: '/orders',
+        builder: (_, _) =>
+            const EasyGetTabScaffold(route: 'orders', title: 'Your orders'),
+      ),
+    ],
+  ),
+];
+
 final _routes = <RouteBase>[
   GoRoute(path: '/', builder: (_, _) => const BootScreen()),
   GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
   GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
-  GoRoute(path: '/home', builder: (_, _) => _placeholder('/home')),
-  GoRoute(path: '/browse', builder: (_, _) => _placeholder('/browse')),
-  GoRoute(path: '/search', builder: (_, _) => _placeholder('/search')),
-  GoRoute(path: '/cart', builder: (_, _) => _placeholder('/cart')),
-  GoRoute(path: '/orders', builder: (_, _) => _placeholder('/orders')),
+  StatefulShellRoute.indexedStack(
+    builder: (_, _, navigationShell) =>
+        EasyGetShell(navigationShell: navigationShell),
+    branches: _shellBranches,
+  ),
   GoRoute(path: '/checkout', builder: (_, _) => _placeholder('/checkout')),
   GoRoute(path: '/account', builder: (_, _) => _placeholder('/account')),
   GoRoute(
@@ -81,6 +141,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: '/',
     refreshListenable: listenable,
+    observers: [
+      _PageViewObserver(
+        (route) => ref.read(analyticsTrackerProvider).pageView(route),
+      ),
+    ],
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
       // A cold/unreachable backend keeps the splash so the retry banner stays
@@ -101,3 +166,18 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(router.dispose);
   return router;
 });
+
+/// Fires `PAGE_VIEW` (via the no-throw [AnalyticsTracker]) whenever go_router
+/// pushes a new location — telemetry never blocks or breaks navigation.
+class _PageViewObserver extends NavigatorObserver {
+  _PageViewObserver(this._onPageView);
+
+  final void Function(String route) _onPageView;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final name = route.settings.name;
+    if (name != null && name.isNotEmpty) _onPageView(name);
+    super.didPush(route, previousRoute);
+  }
+}
