@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../models/catalog_models.dart';
+import '../../../wishlist/presentation/card_heart.dart';
 import 'price_block.dart';
 import 'qty_stepper.dart';
 import 'rating_pill.dart';
@@ -108,6 +109,18 @@ class ProductCard extends StatelessWidget {
                 rating: product.ratingAvg,
                 count: product.ratingCount,
                 compact: true,
+              ),
+            ),
+          // Hearts on browsable cards (rail/grid). Line cards (cart) and
+          // slug-less items never show one.
+          if (density != ProductDensity.line &&
+              product.slug.isNotEmpty)
+            Positioned(
+              top: AppSpace.sm,
+              right: AppSpace.sm,
+              child: CardHeart(
+                key: Key('card-heart-${product.slug}'),
+                slug: product.slug,
               ),
             ),
         ],

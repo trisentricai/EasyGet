@@ -315,12 +315,17 @@ void main() {
       cart: _FakeCartRepo(),
     );
 
-    expect(find.byIcon(Icons.favorite_border), findsOneWidget);
+    Finder heartIcon(IconData icon) => find.descendant(
+          of: find.byKey(const Key('pdp-heart')),
+          matching: find.byIcon(icon),
+        );
+
+    expect(heartIcon(Icons.favorite_border), findsOneWidget);
     await tester.tap(find.byKey(const Key('pdp-heart')));
     await tester.pumpAndSettle();
 
     expect(wishlist.toggles.single, {'slug': 'amul-butter', 'hearted': false});
-    expect(find.byIcon(Icons.favorite), findsOneWidget);
+    expect(heartIcon(Icons.favorite), findsOneWidget);
   });
 
   testWidgets('inline variant switch swaps the price', (tester) async {

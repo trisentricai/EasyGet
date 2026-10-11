@@ -4,15 +4,46 @@ import 'package:easyget/features/catalog/presentation/widgets/product_card.dart'
 import 'package:easyget/features/catalog/presentation/widgets/qty_stepper.dart';
 import 'package:easyget/features/catalog/presentation/widgets/rating_pill.dart';
 import 'package:easyget/features/catalog/presentation/widgets/variant_sheet.dart';
+import 'package:easyget/features/wishlist/data/wishlist_repository.dart';
 import 'package:easyget/models/catalog_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-Widget _host(Widget child) => MaterialApp(
-      theme: AppTheme.light(),
-      home: Scaffold(body: Center(child: child)),
+Widget _host(Widget child, {WishlistRepository? wishlist}) => ProviderScope(
+      overrides: [
+        // Hearts must never touch the network in widget tests: default to a
+        // no-op fake, pass a configured one to drive toggle scenarios.
+        wishlistRepositoryProvider.overrideWithValue(
+            wishlist ?? _FakeWishlistRepo()),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(body: Center(child: child)),
+      ),
     );
+
+class _FakeWishlistRepo implements WishlistRepository {
+  final hearts = <String>{};
+  final List<Map<String, Object?>> toggles = [];
+  bool fail = false;
+
+  @override
+  Future<List<String>> fetch() async => hearts.toList();
+
+  @override
+  Future<WishlistToggle> toggle(String slug, {bool hearted = false}) async {
+    if (fail) throw Exception('boom');
+    toggles.add({'slug': slug, 'hearted': hearted});
+    if (hearted) {
+      hearts.remove(slug);
+    } else {
+      hearts.add(slug);
+    }
+    return WishlistToggle(added: !hearted, slug: slug);
+  }
+}
 
 const _butter = CatalogProduct(
   id: 1,
@@ -178,21 +209,14 @@ void main() {
         basePrice: 289,
         discountPercent: 17,
       );
-      await tester.pumpWidget(MaterialApp(
-        theme: AppTheme.light(),
-        home: const Scaffold(
-          body: Row(
-            children: [
-              ProductCard(
-                  product: short,
-                  density: ProductDensity.grid,
-                  width: 180),
-              ProductCard(
-                  product: long,
-                  density: ProductDensity.grid,
-                  width: 180),
-            ],
-          ),
+      await tester.pumpWidget(_host(
+        const Row(
+          children: [
+            ProductCard(
+                product: short, density: ProductDensity.grid, width: 180),
+            ProductCard(
+                product: long, density: ProductDensity.grid, width: 180),
+          ],
         ),
       ));
 
@@ -206,6 +230,41 @@ void main() {
     test('gridAspect matches the fixed card anatomy', () {
       // 180px column → 225px image + 180px slots.
       expect(ProductCard.gridAspect(180), closeTo(180 / 405, 0.001));
+    });
+
+    testWidgets('card heart toggles the wishlist', (tester) async {
+      final wishlist = _FakeWishlistRepo();
+      await tester.pumpWidget(_host(
+        const ProductCard(
+            product: _butter, density: ProductDensity.grid, width: 180),
+        wishlist: wishlist,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.favorite_border), findsOneWidget);
+      await tester.tap(find.byKey(const Key('card-heart-amul-butter')));
+      await tester.pumpAndSettle();
+
+      expect(wishlist.toggles.single,
+          {'slug': 'amul-butter', 'hearted': false});
+      expect(find.byIcon(Icons.favorite), findsOneWidget);
+    });
+
+    testWidgets('card heart failure is announced, never silent',
+        (tester) async {
+      final wishlist = _FakeWishlistRepo()..fail = true;
+      await tester.pumpWidget(_host(
+        const ProductCard(
+            product: _butter, density: ProductDensity.grid, width: 180),
+        wishlist: wishlist,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('card-heart-amul-butter')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Could not update your wishlist.'), findsOneWidget);
+      expect(find.byIcon(Icons.favorite_border), findsOneWidget);
     });
   });
 

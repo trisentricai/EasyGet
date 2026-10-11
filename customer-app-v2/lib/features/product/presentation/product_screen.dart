@@ -24,7 +24,7 @@ import '../../catalog/presentation/widgets/rating_pill.dart';
 import '../../catalog/presentation/widgets/variant_sheet.dart';
 import '../../reviews/data/review_repository.dart';
 import '../../search/data/search_repository.dart';
-import '../../wishlist/presentation/wishlist_controller.dart';
+import '../../wishlist/presentation/card_heart.dart';
 import 'product_providers.dart';
 
 /// S7 · PDP (`/product/:slug`, auth): gallery + heart → name + rating →
@@ -126,15 +126,6 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
               detail: detail,
               index: _galleryIndex,
               onPage: (i) => setState(() => _galleryIndex = i),
-              hearted: ref.watch(wishlistControllerProvider).value
-                      ?.contains(widget.slug) ??
-                  false,
-              onHeart: () {
-                HapticFeedback.lightImpact();
-                ref
-                    .read(wishlistControllerProvider.notifier)
-                    .toggle(widget.slug);
-              },
               onBack: () => popOrHome(context),
             ),
             Padding(
@@ -308,16 +299,12 @@ class _Gallery extends StatelessWidget {
     required this.detail,
     required this.index,
     required this.onPage,
-    required this.hearted,
-    required this.onHeart,
     required this.onBack,
   });
 
   final ProductDetail detail;
   final int index;
   final ValueChanged<int> onPage;
-  final bool hearted;
-  final VoidCallback onHeart;
   final VoidCallback onBack;
 
   List<String> get _urls {
@@ -400,13 +387,9 @@ class _Gallery extends StatelessWidget {
             right: AppSpace.lg,
             child: SafeArea(
               bottom: false,
-              child: _RoundButton(
+              child: CardHeart(
                 key: const Key('pdp-heart'),
-                icon: hearted
-                    ? Icons.favorite
-                    : Icons.favorite_border,
-                color: hearted ? colors.danger : null,
-                onTap: onHeart,
+                slug: detail.slug,
               ),
             ),
           ),
@@ -417,10 +400,9 @@ class _Gallery extends StatelessWidget {
 }
 
 class _RoundButton extends StatelessWidget {
-  const _RoundButton({super.key, required this.icon, this.color, this.onTap});
+  const _RoundButton({required this.icon, required this.onTap});
 
   final IconData icon;
-  final Color? color;
   final VoidCallback? onTap;
 
   @override
@@ -434,8 +416,7 @@ class _RoundButton extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(AppSpace.sm),
-          child: Icon(icon,
-              size: 20, color: color ?? scheme.onSurface),
+          child: Icon(icon, size: 20, color: scheme.onSurface),
         ),
       ),
     );

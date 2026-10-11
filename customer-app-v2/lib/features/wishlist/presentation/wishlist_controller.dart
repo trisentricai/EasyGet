@@ -24,7 +24,9 @@ class WishlistController extends Notifier<AsyncValue<Set<String>>> {
 
   bool hearted(String slug) => state.value?.contains(slug) ?? false;
 
-  Future<void> toggle(String slug) async {
+  /// Flips the heart optimistically; rolls back and returns false when the
+  /// server call fails so the failure is never silent.
+  Future<bool> toggle(String slug) async {
     final currently = hearted(slug);
     final optimistic = {...(state.value ?? {})};
     if (currently) {
@@ -37,6 +39,7 @@ class WishlistController extends Notifier<AsyncValue<Set<String>>> {
       await ref
           .read(wishlistRepositoryProvider)
           .toggle(slug, hearted: currently);
+      return true;
     } catch (_) {
       final rollback = {...optimistic};
       if (currently) {
@@ -45,6 +48,7 @@ class WishlistController extends Notifier<AsyncValue<Set<String>>> {
         rollback.remove(slug);
       }
       state = AsyncData(rollback);
+      return false;
     }
   }
 
