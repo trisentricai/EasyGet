@@ -12,9 +12,12 @@ import 'wishlist_controller.dart';
 /// shared wishlist state, flips optimistically, and says so out loud when
 /// the server refuses (never a silent no-op).
 class CardHeart extends ConsumerWidget {
-  const CardHeart({super.key, required this.slug});
+  const CardHeart({super.key, required this.slug, this.onToggled});
 
   final String slug;
+
+  /// Fires with the NEW heart state after a successful toggle.
+  final ValueChanged<bool>? onToggled;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,7 +37,10 @@ class CardHeart extends ConsumerWidget {
           final ok = await ref
               .read(wishlistControllerProvider.notifier)
               .toggle(slug);
-          if (!ok && context.mounted) {
+          if (!context.mounted) return;
+          if (ok) {
+            onToggled?.call(!hearted);
+          } else {
             showAppSnackbar(context, 'Could not update your wishlist.');
           }
         },

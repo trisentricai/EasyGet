@@ -28,6 +28,9 @@ abstract class WishlistRepository {
   /// Product slugs currently hearted.
   Future<List<String>> fetch();
 
+  /// Full saved product rows for the wishlist screen.
+  Future<List<CatalogProduct>> fetchProducts();
+
   /// Adds when [hearted] is false, removes when true; returns the new state.
   Future<WishlistToggle> toggle(String slug, {bool hearted = false});
 }
@@ -41,6 +44,18 @@ class HttpWishlistRepository implements WishlistRepository {
   Future<List<String>> fetch() async {
     final json = await _api.get<dynamic>(ApiEndpoints.wishlistBase);
     return _slugs(json);
+  }
+
+  @override
+  Future<List<CatalogProduct>> fetchProducts() async {
+    final json = await _api.get<dynamic>(ApiEndpoints.wishlistBase);
+    final rows = json is Map && json['results'] is List
+        ? json['results'] as List
+        : (json is List ? json : const <dynamic>[]);
+    return rows
+        .whereType<Map<String, dynamic>>()
+        .map(CatalogProduct.fromJson)
+        .toList();
   }
 
   @override

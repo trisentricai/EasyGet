@@ -31,6 +31,7 @@ class ProductCard extends StatelessWidget {
     this.onTap,
     this.onOpenVariants,
     this.trailing,
+    this.onHearted,
   });
 
   static const double imageAspect = 1.25; // 4:5
@@ -52,6 +53,9 @@ class ProductCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onOpenVariants;
   final Widget? trailing;
+
+  /// Fires with the new heart state after a successful card-heart toggle.
+  final ValueChanged<bool>? onHearted;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +125,7 @@ class ProductCard extends StatelessWidget {
               child: CardHeart(
                 key: Key('card-heart-${product.slug}'),
                 slug: product.slug,
+                onToggled: onHearted,
               ),
             ),
         ],

@@ -56,6 +56,9 @@ class _FakeProfileRepo implements ProfileRepository {
 class _FakeWishlistRepo implements WishlistRepository {
   @override
   Future<List<String>> fetch() async => ['p-1', 'p-2'];
+
+  @override
+  Future<List<CatalogProduct>> fetchProducts() async => const [];
   @override
   Future<WishlistToggle> toggle(String slug, {bool hearted = false}) =>
       throw UnimplementedError();
@@ -168,6 +171,11 @@ Future<ProviderContainer> _pumpAccount(
         builder: (_, _) => const Scaffold(
             key: Key('addresses-page'), body: Text('ADDRESSES')),
       ),
+      GoRoute(
+        path: '/wishlist',
+        builder: (_, _) => const Scaffold(
+            key: Key('wishlist-page'), body: Text('WISHLIST')),
+      ),
     ],
   );
   await tester.pumpWidget(
@@ -228,6 +236,14 @@ void main() {
     await tester.tap(find.byKey(const Key('row-addresses')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('addresses-page')), findsOneWidget);
+  });
+
+  testWidgets('wishlist row opens the wishlist screen', (tester) async {
+    await _pumpAccount(tester, profile: _FakeProfileRepo());
+
+    await tester.tap(find.byKey(const Key('row-wishlist')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('wishlist-page')), findsOneWidget);
   });
 
   testWidgets('theme chips switch the app mode', (tester) async {

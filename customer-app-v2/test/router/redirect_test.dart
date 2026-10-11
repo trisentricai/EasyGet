@@ -9,6 +9,8 @@ const _private = [
   '/orders',
   '/checkout',
   '/account',
+  '/addresses',
+  '/wishlist',
   '/product/milk',
 ];
 

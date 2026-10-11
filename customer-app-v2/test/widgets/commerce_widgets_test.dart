@@ -33,6 +33,9 @@ class _FakeWishlistRepo implements WishlistRepository {
   Future<List<String>> fetch() async => hearts.toList();
 
   @override
+  Future<List<CatalogProduct>> fetchProducts() async => const [];
+
+  @override
   Future<WishlistToggle> toggle(String slug, {bool hearted = false}) async {
     if (fail) throw Exception('boom');
     toggles.add({'slug': slug, 'hearted': hearted});

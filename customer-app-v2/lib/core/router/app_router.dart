@@ -18,6 +18,7 @@ import '../../features/orders/presentation/order_detail_screen.dart';
 import '../../features/orders/presentation/orders_screen.dart';
 import '../../features/product/presentation/product_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
+import '../../features/wishlist/presentation/wishlist_screen.dart';
 import '../widgets/app_shell.dart';
 
 const Set<String> _publicRoutes = {'/login', '/register'};
@@ -30,6 +31,8 @@ const Set<String> _privateRoutes = {
   '/orders',
   '/checkout',
   '/account',
+  '/addresses',
+  '/wishlist',
 };
 
 bool _isPrivate(String location) =>
@@ -138,6 +141,7 @@ final _routes = <RouteBase>[
   ),
   GoRoute(path: '/account', builder: (_, _) => const AccountScreen()),
   GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
+  GoRoute(path: '/wishlist', builder: (_, _) => const WishlistScreen()),
   GoRoute(
     path: '/order/:id',
     builder: (context, state) {
@@ -146,7 +150,6 @@ final _routes = <RouteBase>[
       return OrderDetailScreen(key: ValueKey(id), orderId: id);
     },
   ),
-  GoRoute(path: '/account', builder: (_, _) => _placeholder('/account')),
   GoRoute(
     path: '/product/:slug',
     builder: (context, state) {

@@ -126,11 +126,11 @@ class _Content extends ConsumerWidget {
             onTap: () => context.push('/addresses'),
           ),
           _NavRow(
+            key: const Key('row-wishlist'),
             icon: Icons.favorite_border,
             label: 'Wishlist',
             badge: '$wishlistCount',
-            onTap: () =>
-                showAppSnackbar(context, 'Wishlist is coming soon.'),
+            onTap: () => context.push('/wishlist'),
           ),
           _NavRow(
             icon: Icons.rate_review_outlined,
