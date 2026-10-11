@@ -10,9 +10,9 @@ import '../../../core/widgets/search_bar.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/states.dart';
 import '../../../models/catalog_models.dart';
-import '../../catalog/presentation/widgets/filter_sheet.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
 import '../../catalog/presentation/widgets/sort_sheet.dart';
+import 'browse_filter_sheet.dart';
 import 'browse_providers.dart';
 
 const _sortLabels = {
@@ -22,6 +22,15 @@ const _sortLabels = {
   'newest': 'Newest',
   'rating': 'Top rated',
 };
+
+/// Active-filter badge for the toolbar button ("Filter" vs "Filter · 2").
+String _filterLabel(BrowseFilter filter) {
+  final count = (filter.brand != null ? 1 : 0) +
+      (filter.minPrice != null || filter.maxPrice != null ? 1 : 0) +
+      (filter.minDiscount != null ? 1 : 0) +
+      (filter.featured == true ? 1 : 0);
+  return count == 0 ? 'Filter' : 'Filter · $count';
+}
 
 /// S5 · Browse / PLP (`/browse?category=`, tab 2): pinned category chips →
 /// toolbar (count + Filter + Sort) → 2-col grid (12dp gap) → infinite
@@ -59,6 +68,13 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
   Future<void> _openFilter() async {
     final filter = ref.read(browseFilterProvider);
     final total = ref.read(browseItemsProvider).total;
+    // Await the brands so the sheet always opens with data (cached after
+    // the first open); failures just mean "All brands".
+    List<Brand> brands = const [];
+    try {
+      brands = await ref.read(browseBrandsProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -66,23 +82,24 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppRadii.sheet)),
       ),
-      builder: (_) => FilterSheet(
-        filters: [
-          FilterToggle(
-              id: 'featured',
-              label: 'Featured',
-              value: filter.featured == true),
-          FilterToggle(
-              id: 'onsale',
-              label: 'On sale',
-              value: (filter.minDiscount ?? 0) > 0),
-        ],
+      builder: (_) => BrowseFilterSheet(
+        initial: BrowseFilters(
+          brand: filter.brand,
+          minPrice: filter.minPrice,
+          maxPrice: filter.maxPrice,
+          minDiscount: filter.minDiscount,
+          featured: filter.featured,
+        ),
+        brands: brands,
         resultCount: total,
-        onApply: (ids) => ref
+        onApply: (f) => ref
             .read(browseFilterProvider.notifier)
             .applyFilters(
-              featured: ids.contains('featured') ? true : null,
-              minDiscount: ids.contains('onsale') ? 10 : null,
+              featured: f.featured,
+              minDiscount: f.minDiscount,
+              brand: f.brand,
+              minPrice: f.minPrice,
+              maxPrice: f.maxPrice,
             ),
       ),
     );
@@ -150,6 +167,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
             total: items.total,
             totalKnown: items.totalKnown,
             loadedCount: items.items.length,
+            filterLabel: _filterLabel(filter),
             sortLabel: _sortLabels[filter.sortId] ?? 'Featured',
             onFilter: _openFilter,
             onSort: _openSort,
@@ -206,6 +224,7 @@ class _Toolbar extends StatelessWidget {
     required this.total,
     required this.totalKnown,
     required this.loadedCount,
+    required this.filterLabel,
     required this.sortLabel,
     required this.onFilter,
     required this.onSort,
@@ -214,6 +233,7 @@ class _Toolbar extends StatelessWidget {
   final int total;
   final bool totalKnown;
   final int loadedCount;
+  final String filterLabel;
   final String sortLabel;
   final VoidCallback onFilter;
   final VoidCallback onSort;
@@ -236,7 +256,7 @@ class _Toolbar extends StatelessWidget {
           TextButton.icon(
             onPressed: onFilter,
             icon: const Icon(Icons.tune, size: 18),
-            label: const Text('Filter'),
+            label: Text(filterLabel),
           ),
           TextButton.icon(
             onPressed: onSort,
@@ -300,9 +320,12 @@ class _Grid extends ConsumerWidget {
           // overflows at any column width.
           childAspectRatio: ProductCard.gridAspect(width),
         ),
-        itemCount: items.items.length + (items.hasMore ? 1 : 0),
-        itemBuilder: (_, i) {
-          if (i >= items.items.length) {
+              itemCount:
+                  items.items.length + (items.loadingMore ? 1 : 0),
+              itemBuilder: (_, i) {
+                // Centered loading tile, mounted ONLY while a page is in
+                // flight — never an idle perpetual spinner.
+                if (i >= items.items.length) {
             return const Center(
               key: Key('browse-loading-more'),
               child: SizedBox(

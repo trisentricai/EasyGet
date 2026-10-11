@@ -82,10 +82,19 @@ class BrowseFilterController extends Notifier<BrowseFilter> {
     if (state.sortId != sortId) state = state.copyWith(sortId: sortId);
   }
 
-  void applyFilters({bool? featured, double? minDiscount}) {
+  void applyFilters({
+    bool? featured,
+    double? minDiscount,
+    String? brand,
+    double? minPrice,
+    double? maxPrice,
+  }) {
     state = state.copyWith(
       featured: () => featured,
       minDiscount: () => minDiscount,
+      brand: () => brand,
+      minPrice: () => minPrice,
+      maxPrice: () => maxPrice,
     );
   }
 
@@ -221,4 +230,8 @@ final browseItemsProvider =
 
 final browseCategoriesProvider = FutureProvider<List<Category>>(
   (ref) => ref.watch(catalogRepositoryProvider).categories(),
+);
+
+final browseBrandsProvider = FutureProvider<List<Brand>>(
+  (ref) => ref.watch(catalogRepositoryProvider).brands(),
 );

@@ -1,4 +1,5 @@
 import 'package:easyget/core/theme/app_theme.dart';
+import 'package:easyget/features/browse/presentation/browse_filter_sheet.dart';
 import 'package:easyget/features/browse/presentation/browse_screen.dart';
 import 'package:easyget/features/catalog/data/catalog_repository.dart';
 import 'package:easyget/models/catalog_models.dart';
@@ -34,6 +35,12 @@ class _FakeCatalogRepo implements CatalogRepository {
   Future<List<Category>> categories() async => _categories;
 
   @override
+  Future<List<Brand>> brands() async => const [
+        Brand(id: 1, name: 'Acme', slug: 'acme'),
+        Brand(id: 2, name: 'Volt', slug: 'volt'),
+      ];
+
+  @override
   Future<CatalogPage> products({
     String? category,
     String? brand,
@@ -46,6 +53,9 @@ class _FakeCatalogRepo implements CatalogRepository {
   }) async {
     queries.add({
       'category': category,
+      'brand': brand,
+      'minPrice': minPrice,
+      'maxPrice': maxPrice,
       'isFeatured': isFeatured,
       'minDiscount': minDiscount,
       'sort': sort,
@@ -83,8 +93,6 @@ class _FakeCatalogRepo implements CatalogRepository {
 
   @override
   Future<ProductDetail> product(String slug) => throw UnimplementedError();
-  @override
-  Future<List<Brand>> brands() => throw UnimplementedError();
   @override
   Future<CatalogPage> search(String query,
           {String? sort,
@@ -169,8 +177,17 @@ void main() {
 
     await tester.tap(find.text('Filter'));
     await tester.pumpAndSettle();
+    expect(find.text('Brand'), findsOneWidget);
+    expect(find.text('Price'), findsOneWidget);
+    expect(find.text('Discount'), findsOneWidget);
+    expect(
+        find.descendant(
+          of: find.byType(BrowseFilterSheet),
+          matching: find.text('Acme'),
+        ),
+        findsOneWidget);
     expect(find.text('Show 4'), findsOneWidget);
-    expect(find.byType(Switch), findsWidgets);
+    expect(find.byType(Switch), findsOneWidget);
     await tester.tap(find.text('Show 4'));
     await tester.pumpAndSettle();
 
@@ -199,7 +216,7 @@ void main() {
 
     await tester.tap(find.text('Filter'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Featured'));
+    await tester.tap(find.text('Featured only'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Show 4'));
     await tester.pumpAndSettle();
@@ -207,6 +224,34 @@ void main() {
     final last = repo.queries.last;
     expect(last['isFeatured'], isTrue);
     expect(last['page'], 1);
+    expect(find.text('Filter · 1'), findsOneWidget);
+  });
+
+  testWidgets('brand + price + discount flow into the query', (tester) async {
+    final repo = _FakeCatalogRepo();
+    await _pumpBrowse(tester, repo);
+
+    await tester.tap(find.text('Filter'));
+    await tester.pumpAndSettle();
+    final sheetAcme = find.descendant(
+      of: find.byType(BrowseFilterSheet),
+      matching: find.text('Acme'),
+    );
+    await tester.tap(sheetAcme);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('₹100–500'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('20%+'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Show 4'));
+    await tester.pumpAndSettle();
+
+    final last = repo.queries.last;
+    expect(last['brand'], 'acme');
+    expect(last['minPrice'], 100);
+    expect(last['maxPrice'], 500);
+    expect(last['minDiscount'], 20.0);
+    expect(find.text('Filter · 3'), findsOneWidget);
   });
 
   testWidgets('sort selection re-queries with the sort param', (tester) async {
