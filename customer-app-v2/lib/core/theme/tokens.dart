@@ -42,6 +42,40 @@ class AppColors {
   static const Color darkOnPrimary = Color(0xFF06281C);
 }
 
+/// Spacing scale (DESIGN §10.5) — 4pt base, no odd numbers.
+class AppSpace {
+  const AppSpace._();
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 20;
+  static const double xxl = 24;
+  static const double xxxl = 32;
+  static const double huge = 48;
+}
+
+/// Corner radii (DESIGN §10.6).
+class AppRadii {
+  const AppRadii._();
+  static const double card = 18;
+  static const double image = 14;
+  static const double button = 16;
+  static const double input = 14;
+  static const double sheet = 24;
+  static const double pill = 999;
+}
+
+/// Motion durations + easing (DESIGN §10.8). Reduced motion is honoured by
+/// consumers skipping the rise/slide while keeping fades ≤ [micro].
+class AppMotion {
+  const AppMotion._();
+  static const Duration micro = Duration(milliseconds: 180);
+  static const Duration base = Duration(milliseconds: 280);
+  static const Duration page = Duration(milliseconds: 350);
+  static const Curve curve = Curves.easeOutCubic;
+}
+
 /// Token getters shared by the light and dark color extensions.
 abstract class FreshMarketColorTokens {
   Color get brand;
