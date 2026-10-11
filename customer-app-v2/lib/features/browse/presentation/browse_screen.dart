@@ -283,11 +283,13 @@ class _Grid extends ConsumerWidget {
         controller: controller,
         padding: const EdgeInsets.fromLTRB(
             AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.xxl),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           mainAxisSpacing: AppSpace.md,
           crossAxisSpacing: AppSpace.md,
-          childAspectRatio: 0.62,
+          // Derived from the card's fixed anatomy so rows align and nothing
+          // overflows at any column width.
+          childAspectRatio: ProductCard.gridAspect(width),
         ),
         itemCount: items.items.length + (items.hasMore ? 1 : 0),
         itemBuilder: (_, i) {

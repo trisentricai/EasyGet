@@ -174,6 +174,8 @@ void main() {
     expect(delegate.crossAxisCount, 2);
     expect(delegate.mainAxisSpacing, 12);
     expect(delegate.crossAxisSpacing, 12);
+    // 800px viewport → 378px columns → aspect derived from card anatomy.
+    expect(delegate.childAspectRatio, closeTo(0.58, 0.01));
   });
 
   testWidgets('applying Featured resets to page 1 with the filter',

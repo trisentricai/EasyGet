@@ -9,6 +9,12 @@ import 'qty_stepper.dart';
 import 'rating_pill.dart';
 
 /// DESIGN §11.2 — one card, three densities, one Add system.
+///
+/// Rail/grid cards use FIXED internal slots (name 38 + brand line 18 +
+/// price 48 + gaps) so every card in a row/rail measures identically no
+/// matter how long the product name is — rows can never stagger or overflow.
+/// [gridSlotsHeight] is the fixed trailing height; [gridAspect] derives the
+/// GridView childAspectRatio for any column width.
 enum ProductDensity { rail, grid, line }
 
 class ProductCard extends StatelessWidget {
@@ -25,6 +31,15 @@ class ProductCard extends StatelessWidget {
     this.onOpenVariants,
     this.trailing,
   });
+
+  static const double imageAspect = 1.25; // 4:5
+  static const double nameSlotHeight = 38;
+  static const double brandSlotHeight = 18;
+  static const double priceSlotHeight = 64;
+  static const double gridSlotsHeight = 180;
+
+  static double gridAspect(double itemWidth) =>
+      itemWidth / (itemWidth * imageAspect + gridSlotsHeight);
 
   final CatalogProduct product;
   final ProductDensity density;
@@ -108,7 +123,6 @@ class ProductCard extends StatelessWidget {
       );
 
   Widget _grid(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
@@ -121,14 +135,10 @@ class ProductCard extends StatelessWidget {
           children: [
             _image(context, aspect: 4 / 5),
             const SizedBox(height: AppSpace.sm),
-            _name(context),
-            _subtitle(context, scheme),
+            _nameSlot(context),
+            _brandSlot(context),
             const SizedBox(height: AppSpace.xs),
-            PriceBlock(
-              price: product.basePrice,
-              mrp: product.mrp,
-              discountPercent: product.discountPercent,
-            ),
+            _priceSlot(),
             const SizedBox(height: AppSpace.sm),
             _addControl(),
           ],
@@ -138,7 +148,6 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _rail(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
@@ -151,10 +160,10 @@ class ProductCard extends StatelessWidget {
           children: [
             _image(context, aspect: 1),
             const SizedBox(height: AppSpace.sm),
-            _name(context),
-            _subtitle(context, scheme),
+            _nameSlot(context),
+            _brandSlot(context),
             const SizedBox(height: AppSpace.xs),
-            PriceBlock(price: product.basePrice, mrp: product.mrp),
+            _priceSlot(),
             const SizedBox(height: AppSpace.sm),
             _addControl(),
           ],
@@ -210,6 +219,53 @@ class ProductCard extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           trailing ?? _addControl(),
         ],
+      ),
+    );
+  }
+
+  /// Fixed 2-line name slot (38dp): short names leave air, long names clamp —
+  /// either way the card below starts at the same offset.
+  Widget _nameSlot(BuildContext context) {
+    return SizedBox(
+      height: nameSlotHeight,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: _name(context),
+      ),
+    );
+  }
+
+  /// Fixed brand slot (18dp): always reserved so the price block aligns even
+  /// when a product has no brand line.
+  Widget _brandSlot(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final line = product.brand;
+    if (line == null || line.isEmpty) {
+      return const SizedBox(height: brandSlotHeight);
+    }
+    return SizedBox(
+      height: brandSlotHeight,
+      child: Text(
+        line,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTypography.caption(scheme.onSurfaceVariant),
+      ),
+    );
+  }
+
+  /// Fixed price slot (48dp): reserves the save line so discounted and
+  /// full-price cards measure identically.
+  Widget _priceSlot() {
+    return SizedBox(
+      height: priceSlotHeight,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: PriceBlock(
+          price: product.basePrice,
+          mrp: product.mrp,
+          discountPercent: product.discountPercent,
+        ),
       ),
     );
   }

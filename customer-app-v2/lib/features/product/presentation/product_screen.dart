@@ -881,7 +881,7 @@ class _RelatedRail extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpace.sm),
             SizedBox(
-              height: 320,
+              height: 336,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(

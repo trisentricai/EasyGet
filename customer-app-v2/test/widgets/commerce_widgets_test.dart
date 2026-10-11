@@ -134,8 +134,7 @@ void main() {
     });
 
     testWidgets('taps open the variant sheet only when variants > 1',
-        (tester) async {
-      var opened = 0;
+        (tester) async {      var opened = 0;
       var pdp = 0;
 
       await tester.pumpWidget(_host(ProductCard(
@@ -158,6 +157,55 @@ void main() {
       )));
       await tester.tap(find.byKey(const Key('product-card')));
       expect(pdp, 1);
+    });
+
+    testWidgets('grid cards measure identically whatever the content',
+        (tester) async {
+      const short = CatalogProduct(
+        id: 1,
+        name: 'Milk',
+        slug: 'milk',
+        mrp: 60,
+        basePrice: 60,
+      );
+      const long = CatalogProduct(
+        id: 2,
+        name:
+            'A very long product name that wraps across two full lines here',
+        slug: 'long',
+        brand: 'Some Brand With A Long Name',
+        mrp: 349,
+        basePrice: 289,
+        discountPercent: 17,
+      );
+      await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.light(),
+        home: const Scaffold(
+          body: Row(
+            children: [
+              ProductCard(
+                  product: short,
+                  density: ProductDensity.grid,
+                  width: 180),
+              ProductCard(
+                  product: long,
+                  density: ProductDensity.grid,
+                  width: 180),
+            ],
+          ),
+        ),
+      ));
+
+      final shortHeight =
+          tester.getSize(find.byKey(const Key('product-card')).at(0)).height;
+      final longHeight =
+          tester.getSize(find.byKey(const Key('product-card')).at(1)).height;
+      expect(shortHeight, longHeight);
+    });
+
+    test('gridAspect matches the fixed card anatomy', () {
+      // 180px column → 225px image + 180px slots.
+      expect(ProductCard.gridAspect(180), closeTo(180 / 405, 0.001));
     });
   });
 

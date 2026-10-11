@@ -440,7 +440,7 @@ class _ProductRail extends StatelessWidget {
           child: SectionHeader(title: section.title ?? 'For you'),
         ),
         SizedBox(
-          height: 280,
+          height: 336,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),

@@ -255,7 +255,7 @@ class _EmptyMode extends ConsumerWidget {
             const SectionHeader(title: 'Recently viewed'),
             const SizedBox(height: AppSpace.sm),
             SizedBox(
-              height: 320,
+              height: 336,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: views.length,
@@ -412,11 +412,11 @@ class _ResultsView extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(
                   AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.md),
               gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
+                  SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: AppSpace.md,
                 crossAxisSpacing: AppSpace.md,
-                childAspectRatio: 0.62,
+                childAspectRatio: ProductCard.gridAspect(width),
               ),
               itemCount:
                   state.results.length + (state.hasMore ? 1 : 0),
@@ -458,7 +458,7 @@ class _ViewsRail extends ConsumerWidget {
     final views = ref.watch(recentlyViewedProvider);
     if (views.isEmpty) return const SizedBox.shrink();
     return Container(
-      height: compact ? 300 : 320,
+      height: 336,
       padding: const EdgeInsets.only(top: AppSpace.sm),
       decoration: BoxDecoration(
         border: Border(
