@@ -44,7 +44,11 @@ class AddressesScreen extends ConsumerWidget {
                     key: const Key('addresses-add'),
                     onPressed: () => _addAddress(context, ref),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add address'),
+                    // Explicitly centered icon + label: no flex bias drift.
+                    label: const Text(
+                      'Add address',
+                      textAlign: TextAlign.center,
+                    ),
                     style: FilledButton.styleFrom(
                       backgroundColor:
                           Theme.of(context).colorScheme.primary,

@@ -55,6 +55,20 @@ class _FakeCatalogRepo implements CatalogRepository {
     if (category == 'empty-cat') {
       return const CatalogPage(results: [], total: 0, page: 1);
     }
+    if (category == 'many') {
+      // Bare-list backend shape: no envelope (total/count echo, page echo).
+      final p = page ?? 1;
+      final count = p == 1 ? 20 : 5;
+      final base = p == 1 ? 0 : 20;
+      return CatalogPage(
+        results: [
+          for (var i = 0; i < count; i++)
+            _product(p * 100 + i, 'Many ${base + i + 1}', 100),
+        ],
+        total: count,
+        page: 1,
+      );
+    }
     final p = page ?? 1;
     return CatalogPage(
       results: [
@@ -244,8 +258,35 @@ void main() {
     expect(repo.queries.last['category'], isNull);
   });
 
-  testWidgets('failure shows ErrorState with a working Retry', (tester) async {
-    final repo = _FakeCatalogRepo()..failProducts = true;
+  testWidgets('bare-list backend pages on via the full-page rule',
+      (tester) async {
+    final repo = _FakeCatalogRepo();
+    await _pumpBrowse(tester, repo, location: '/browse?category=many');
+
+    // Total unknown on bare lists: the toolbar shows the loaded count.
+    expect(find.text('20 items'), findsOneWidget);
+    expect(repo.queries.last['page'], 1);
+
+    List<Object?> pages() =>
+        repo.queries.map((q) => q['page']).toList();
+    for (var i = 0; i < 8 && !pages().contains(2); i++) {
+      await tester.fling(
+          find.byType(GridView), const Offset(0, -3000), 2000);
+      await tester.pumpAndSettle();
+    }
+    expect(pages().where((p) => p == 2), hasLength(1));
+    expect(find.text('25 items'), findsOneWidget);
+
+    // The short terminal page stops the chain: never a page 3.
+    for (var i = 0; i < 4; i++) {
+      await tester.fling(
+          find.byType(GridView), const Offset(0, -3000), 2000);
+      await tester.pumpAndSettle();
+    }
+    expect(pages().any((p) => p == 3), isFalse);
+  });
+
+  testWidgets('failure shows ErrorState with a working Retry', (tester) async {    final repo = _FakeCatalogRepo()..failProducts = true;
     await _pumpBrowse(tester, repo);
 
     expect(find.text('Something went wrong'), findsOneWidget);

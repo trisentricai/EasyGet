@@ -61,6 +61,15 @@ class _FakeCatalogRepo implements CatalogRepository {
             title: 'Our story',
             subtitle: 'Farm fresh, every morning.',
           ),
+          const StorefrontSection(
+            id: 4,
+            type: 'HERO',
+            title: 'Festival sale',
+            items: [
+              SectionItem(
+                  id: 5, image: 'https://example.com/hero.jpg'),
+            ],
+          ),
         ],
       );
 
@@ -131,6 +140,11 @@ Future<void> _pumpHome(WidgetTester tester, _FakeCatalogRepo repo) async {
             const Scaffold(key: Key('browse-page'), body: Text('BROWSE')),
       ),
       GoRoute(
+        path: '/browse/all',
+        builder: (_, _) => const Scaffold(
+            key: Key('browse-all-page'), body: Text('BROWSE ALL')),
+      ),
+      GoRoute(
         path: '/product/:slug',
         builder: (_, _) =>
             const Scaffold(key: Key('product-page'), body: Text('PRODUCT')),
@@ -157,7 +171,8 @@ void main() {
     await _pumpHome(tester, _FakeCatalogRepo());
 
     expect(find.text('Free delivery over ₹499'), findsOneWidget);
-    expect(find.byType(PageView), findsOneWidget);
+    // Banner carousel + full-bleed hero banner.
+    expect(find.byType(PageView), findsNWidgets(2));
     expect(find.byKey(const Key('carousel-dot-0')), findsOneWidget);
     expect(find.byKey(const Key('carousel-dot-1')), findsOneWidget);
 
@@ -166,19 +181,36 @@ void main() {
     expect(find.text('Cat 8'), findsOneWidget);
     expect(find.text('Cat 9'), findsNothing);
 
+    // Strictly horizontal, non-wrapping category track.
+    final track = tester.widget<ListView>(find.descendant(
+      of: find.byKey(const Key('home-category-track')),
+      matching: find.byType(ListView),
+    ));
+    expect(track.scrollDirection, Axis.horizontal);
+
     expect(find.text('Fresh picks'), findsOneWidget);
     expect(find.text('Amul Butter'), findsOneWidget);
     expect(find.text('₹289'), findsOneWidget);
     expect(find.text('Our story'), findsOneWidget);
   });
 
-  testWidgets('See all goes to /browse and rail cards go to the PDP',
+  testWidgets('See all pushes BrowseScreen; system back returns Home',
       (tester) async {
     await _pumpHome(tester, _FakeCatalogRepo());
 
+    await tester.scrollUntilVisible(
+      find.text('See all'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('See all'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('browse-page')), findsOneWidget);
+    expect(find.byKey(const Key('browse-all-page')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Fresh picks'), findsOneWidget);
   });
 
   testWidgets('rail card tap opens its product', (tester) async {

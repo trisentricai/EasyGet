@@ -104,6 +104,7 @@ class BrowseItemsState {
     this.items = const [],
     this.page = 0,
     this.total = 0,
+    this.totalKnown = false,
     this.hasMore = false,
     this.loading = true,
     this.loadingMore = false,
@@ -113,6 +114,10 @@ class BrowseItemsState {
   final List<CatalogProduct> items;
   final int page;
   final int total;
+
+  /// False for bare-list backends (no envelope): the toolbar then shows the
+  /// loaded count instead of a meaningless fallback total.
+  final bool totalKnown;
   final bool hasMore;
   final bool loading;
   final bool loadingMore;
@@ -122,6 +127,7 @@ class BrowseItemsState {
     List<CatalogProduct>? items,
     int? page,
     int? total,
+    bool? totalKnown,
     bool? hasMore,
     bool? loading,
     bool? loadingMore,
@@ -131,6 +137,7 @@ class BrowseItemsState {
         items: items ?? this.items,
         page: page ?? this.page,
         total: total ?? this.total,
+        totalKnown: totalKnown ?? this.totalKnown,
         hasMore: hasMore ?? this.hasMore,
         loading: loading ?? this.loading,
         loadingMore: loadingMore ?? this.loadingMore,
@@ -139,6 +146,11 @@ class BrowseItemsState {
 }
 
 class BrowseItemsController extends Notifier<BrowseItemsState> {
+  /// Backend page size: GET /products/ returns bare 20-item lists with no
+  /// envelope (probed 2026-10-11), so a full page means "maybe more" and an
+  /// empty/short page terminates the chain.
+  static const serverPageSize = 20;
+
   int _generation = 0;
 
   @override
@@ -147,6 +159,10 @@ class BrowseItemsController extends Notifier<BrowseItemsState> {
     _load(filter, reset: true);
     return const BrowseItemsState();
   }
+
+  static bool _hasMore(CatalogPage res) =>
+      (res.hasMore || res.results.length >= serverPageSize) &&
+      res.results.isNotEmpty;
 
   Future<void> _load(BrowseFilter filter, {required bool reset}) async {
     final generation = ++_generation;
@@ -171,9 +187,12 @@ class BrowseItemsController extends Notifier<BrowseItemsState> {
       if (generation != _generation) return;
       state = BrowseItemsState(
         items: reset ? res.results : [...state.items, ...res.results],
-        page: res.page,
+        // The requested page, not the response echo (bare lists echo page 1).
+        page: nextPage,
         total: res.total,
-        hasMore: res.hasMore,
+        totalKnown:
+            res.pageSize != null || res.total > res.results.length,
+        hasMore: _hasMore(res),
         loading: false,
       );
     } catch (e) {

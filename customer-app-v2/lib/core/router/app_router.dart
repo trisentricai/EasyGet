@@ -127,6 +127,15 @@ final _routes = <RouteBase>[
     branches: _shellBranches,
   ),
   GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
+  // Top-level (outside the shell) Browse: the Home "See all" pushes here so
+  // system back returns to Home. The tab target stays untouched.
+  GoRoute(
+    path: '/browse/all',
+    builder: (context, state) {
+      final category = state.uri.queryParameters['category'];
+      return BrowseScreen(key: ValueKey('browse-all-$category'));
+    },
+  ),
   GoRoute(path: '/account', builder: (_, _) => const AccountScreen()),
   GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
   GoRoute(

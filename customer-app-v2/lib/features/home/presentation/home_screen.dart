@@ -164,14 +164,18 @@ class _HomeContent extends StatelessWidget {
               _TickerLine(text: render.ticker!.items.first),
             for (final section in render.sections)
               if (section.type == 'BANNER' || section.type == 'HERO')
-                _BannerCarousel(section: section),
+                _BannerCarousel(
+                  key: ValueKey('carousel-${section.id}'),
+                  section: section,
+                  hero: section.type == 'HERO',
+                ),
             if (categories.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                     AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.sm),
                 child: SectionHeader(
                   title: 'Shop by category',
-                  onSeeAll: () => context.go('/browse'),
+                  onSeeAll: () => context.push('/browse/all'),
                 ),
               ),
               _CategoryGrid(categories: categories),
@@ -246,11 +250,13 @@ class _TickerLine extends StatelessWidget {
   }
 }
 
-/// Banner carousel: 16:7, edge-to-edge with gutter, dots.
+/// Banner carousel: 16:7 with dots. HERO sections render full-bleed
+/// (edge-to-edge, square corners); BANNER sections render as gutter cards.
 class _BannerCarousel extends StatefulWidget {
-  const _BannerCarousel({required this.section});
+  const _BannerCarousel({super.key, required this.section, this.hero = false});
 
   final StorefrontSection section;
+  final bool hero;
 
   @override
   State<_BannerCarousel> createState() => _BannerCarouselState();
@@ -284,32 +290,34 @@ class _BannerCarouselState extends State<_BannerCarousel> {
             onPageChanged: (i) => setState(() => _index = i),
             itemBuilder: (_, i) {
               final item = items[i];
-              return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-                child: GestureDetector(
-                  onTap: item.link == null
-                      ? null
-                      : () => context.go(item.link!),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.sunken,
-                      borderRadius:
-                          BorderRadius.circular(AppRadii.image),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: CachedNetworkImage(
-                      imageUrl: item.image!,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) =>
-                          Container(color: colors.sunken),
-                      errorWidget: (_, _, _) => Icon(
-                        Icons.image_not_supported_outlined,
-                        color: colors.faint,
-                      ),
+              final hero = widget.hero;
+              final slide = GestureDetector(
+                onTap:
+                    item.link == null ? null : () => context.go(item.link!),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colors.sunken,
+                    borderRadius: BorderRadius.circular(
+                        hero ? 0 : AppRadii.image),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: CachedNetworkImage(
+                    imageUrl: item.image!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, _) =>
+                        Container(color: colors.sunken),
+                    errorWidget: (_, _, _) => Icon(
+                      Icons.image_not_supported_outlined,
+                      color: colors.faint,
                     ),
                   ),
                 ),
+              );
+              if (hero) return slide;
+              return Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+                child: slide,
               );
             },
           ),
@@ -342,7 +350,8 @@ class _BannerCarouselState extends State<_BannerCarousel> {
   }
 }
 
-/// "Shop by category": 4 columns, first 8 tiles (+ See all in the header).
+/// "Shop by category": a strictly horizontal, non-wrapping track of image
+/// tiles (first 8 + See all in the header, which pushes the Browse tab).
 class _CategoryGrid extends StatelessWidget {
   const _CategoryGrid({required this.categories});
 
@@ -351,21 +360,22 @@ class _CategoryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = categories.take(8).toList();
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding:
-          const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: AppSpace.md,
-        crossAxisSpacing: AppSpace.sm,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: tiles.length,
-      itemBuilder: (_, i) => CategoryTile(
-        category: tiles[i],
-        onTap: () => context.go('/browse?category=${tiles[i].slug}'),
+    return SizedBox(
+      key: const Key('home-category-track'),
+      height: 108,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+        itemCount: tiles.length,
+        separatorBuilder: (_, _) =>
+            const SizedBox(width: AppSpace.md),
+        itemBuilder: (_, i) => CategoryTile(
+          category: tiles[i],
+          size: 72,
+          onTap: () =>
+              context.go('/browse?category=${tiles[i].slug}'),
+        ),
       ),
     );
   }

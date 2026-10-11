@@ -148,6 +148,8 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
           ),
           _Toolbar(
             total: items.total,
+            totalKnown: items.totalKnown,
+            loadedCount: items.items.length,
             sortLabel: _sortLabels[filter.sortId] ?? 'Featured',
             onFilter: _openFilter,
             onSort: _openSort,
@@ -202,12 +204,16 @@ class _ChipsRow extends StatelessWidget {
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.total,
+    required this.totalKnown,
+    required this.loadedCount,
     required this.sortLabel,
     required this.onFilter,
     required this.onSort,
   });
 
   final int total;
+  final bool totalKnown;
+  final int loadedCount;
   final String sortLabel;
   final VoidCallback onFilter;
   final VoidCallback onSort;
@@ -220,7 +226,10 @@ class _Toolbar extends StatelessWidget {
           AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm),
       child: Row(
         children: [
-          Text('$total items',
+          Text(
+              totalKnown
+                  ? '$total items'
+                  : '$loadedCount items',
               style:
                   AppTypography.tabularNumber(scheme.onSurfaceVariant)),
           const Spacer(),

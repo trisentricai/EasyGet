@@ -276,6 +276,16 @@ void main() {
     expect(field(const Key('addr-postal')).controller!.text, '560001');
   });
 
+  testWidgets('add-address CTA is perfectly centered', (tester) async {
+    await _pumpAddresses(tester, repo: _FakeAddressRepo());
+
+    final bar = tester.getRect(find.byKey(const Key('addresses-add')));
+    expect(bar.center.dx, 400);
+    final label =
+        tester.widget<Text>(find.text('Add address'));
+    expect(label.textAlign, TextAlign.center);
+  });
+
   group('Photon parsing', () {
     test('builds stable ids and readable descriptions', () {
       final prediction = PlacePrediction.fromPhoton({
@@ -306,7 +316,8 @@ void main() {
   });
 }
 
-class _FakePlaces implements PlaceAutocompleteService {  final List<String> queries = [];
+class _FakePlaces implements PlaceAutocompleteService {
+  final List<String> queries = [];
 
   @override
   Future<List<PlacePrediction>> autocomplete(String input) async {
