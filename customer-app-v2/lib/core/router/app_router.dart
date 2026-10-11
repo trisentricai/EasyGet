@@ -10,6 +10,7 @@ import '../../features/auth/presentation/register_screen.dart';
 import '../../features/browse/presentation/browse_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/product/presentation/product_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../widgets/app_shell.dart';
 
@@ -125,7 +126,12 @@ final _routes = <RouteBase>[
   GoRoute(path: '/account', builder: (_, _) => _placeholder('/account')),
   GoRoute(
     path: '/product/:slug',
-    builder: (_, _) => _placeholder('/product/:slug'),
+    builder: (context, state) {
+      // Keyed per slug so variant/gallery/review state never leaks across
+      // products (e.g. related-rail jumps).
+      final slug = state.pathParameters['slug']!;
+      return ProductScreen(key: ValueKey(slug), slug: slug);
+    },
   ),
 ];
 
