@@ -102,16 +102,16 @@ class _AddressFormSheetState extends ConsumerState<AddressFormSheet> {
 
   void _onSearchChanged(String value) {
     _searchTimer?.cancel();
-    final service = ref.read(placeAutocompleteProvider);
-    if (service == null || value.trim().length < 3) {
+    if (value.trim().length < 3) {
       setState(() {
         _suggestions = const [];
         _searching = false;
       });
       return;
     }
+    final service = ref.read(placeAutocompleteProvider);
     setState(() => _searching = true);
-    _searchTimer = Timer(const Duration(milliseconds: 400), () async {
+    _searchTimer = Timer(const Duration(milliseconds: 500), () async {
       try {
         final rows = await service.autocomplete(value);
         if (!mounted) return;
@@ -131,7 +131,6 @@ class _AddressFormSheetState extends ConsumerState<AddressFormSheet> {
 
   Future<void> _pickPrediction(PlacePrediction prediction) async {
     final service = ref.read(placeAutocompleteProvider);
-    if (service == null) return;
     FocusScope.of(context).unfocus();
     setState(() {
       _suggestions = const [];
@@ -212,7 +211,6 @@ class _AddressFormSheetState extends ConsumerState<AddressFormSheet> {
               ),
               const SizedBox(height: AppSpace.md),
               _AutocompleteField(
-                visible: ref.watch(placeAutocompleteProvider) != null,
                 controller: _search,
                 searching: _searching,
                 suggestions: _suggestions,
@@ -319,7 +317,6 @@ class _AddressFormSheetState extends ConsumerState<AddressFormSheet> {
 /// `PLACES_API_KEY` is baked in — otherwise the sheet stays fully manual.
 class _AutocompleteField extends StatelessWidget {
   const _AutocompleteField({
-    required this.visible,
     required this.controller,
     required this.searching,
     required this.suggestions,
@@ -327,7 +324,6 @@ class _AutocompleteField extends StatelessWidget {
     required this.onPick,
   });
 
-  final bool visible;
   final TextEditingController controller;
   final bool searching;
   final List<PlacePrediction> suggestions;
@@ -336,7 +332,6 @@ class _AutocompleteField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!visible) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     final colors = Theme.of(context).freshColors;
     return Column(

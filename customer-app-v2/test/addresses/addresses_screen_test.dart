@@ -239,18 +239,19 @@ void main() {
     expect((radio.dy - chip.dy).abs(), lessThanOrEqualTo(2));
   });
 
-  testWidgets('manual mode hides the places search box', (tester) async {
+  testWidgets('search box is always present (keyless Photon backend)',
+      (tester) async {
     await _pumpAddresses(tester, repo: _FakeAddressRepo());
 
     await tester.tap(find.byKey(const Key('addresses-add')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('addr-search')), findsNothing);
+    // No key, no gating: the free backend needs no configuration.
+    expect(find.byKey(const Key('addr-search')), findsOneWidget);
     expect(find.byKey(const Key('addr-line1')), findsOneWidget);
   });
 
-  testWidgets('picking a prediction fills the fields', (tester) async {
-    await _pumpAddresses(
+  testWidgets('picking a prediction fills the fields', (tester) async {    await _pumpAddresses(
       tester,
       repo: _FakeAddressRepo(),
       places: _FakePlaces(),
@@ -274,10 +275,38 @@ void main() {
     expect(field(const Key('addr-state')).controller!.text, 'Karnataka');
     expect(field(const Key('addr-postal')).controller!.text, '560001');
   });
+
+  group('Photon parsing', () {
+    test('builds stable ids and readable descriptions', () {
+      final prediction = PlacePrediction.fromPhoton({
+        'properties': {
+          'osm_type': 'W',
+          'osm_id': 123,
+          'name': 'MG Road',
+          'city': 'Bengaluru',
+          'state': 'Karnataka',
+          'postcode': '560001',
+          'countrycode': 'IN',
+        },
+      });
+      expect(prediction.placeId, 'W:123');
+      expect(prediction.description, 'MG Road, Bengaluru, Karnataka, 560001');
+    });
+
+    test('details read the cached address parts', () {
+      final details = PlaceDetails.fromPhoton({
+        'street': '12 MG Road',
+        'city': 'Bengaluru',
+        'state': 'Karnataka',
+        'postcode': '560001',
+      });
+      expect(details.line1, '12 MG Road');
+      expect(details.postalCode, '560001');
+    });
+  });
 }
 
-class _FakePlaces implements PlaceAutocompleteService {
-  final List<String> queries = [];
+class _FakePlaces implements PlaceAutocompleteService {  final List<String> queries = [];
 
   @override
   Future<List<PlacePrediction>> autocomplete(String input) async {

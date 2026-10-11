@@ -1,20 +1,32 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/config/app_config.dart';
-
-/// One Google Places autocomplete hit.
+/// One address autocomplete hit.
 class PlacePrediction {
   const PlacePrediction({required this.placeId, required this.description});
 
   final String placeId;
   final String description;
 
-  factory PlacePrediction.fromJson(Map<String, dynamic> json) =>
-      PlacePrediction(
-        placeId: (json['place_id'] ?? '') as String,
-        description: (json['description'] ?? '') as String,
-      );
+  factory PlacePrediction.fromPhoton(Map<String, dynamic> json) {
+    final props =
+        (json['properties'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{};
+    // Values arrive mixed (osm_id is numeric) — stringify defensively.
+    String str(Object? value) => (value ?? '').toString();
+    final bits = [
+      str(props['name'].toString().isEmpty ? props['street'] : props['name']),
+      str(props['city']),
+      str(props['state']),
+      str(props['postcode']),
+    ].where((b) => b.isNotEmpty).toList();
+    final osmType = str(props['osm_type']);
+    final osmId = str(props['osm_id']);
+    return PlacePrediction(
+      placeId: '$osmType:$osmId',
+      description: bits.join(', '),
+    );
+  }
 }
 
 /// Resolved address parts for a picked place (India-shaped).
@@ -30,81 +42,74 @@ class PlaceDetails {
   final String city;
   final String state;
   final String postalCode;
+
+  factory PlaceDetails.fromPhoton(Map<String, dynamic> props) =>
+      PlaceDetails(
+        line1: ((props['street'] ?? props['name'] ?? '').toString()),
+        city: ((props['city'] ?? '').toString()),
+        state: ((props['state'] ?? '').toString()),
+        postalCode: ((props['postcode'] ?? '').toString()),
+      );
 }
 
-/// Address autocomplete over the Google Places HTTP API (no native plugin,
-/// no extra dependency). Restricted to Indian addresses.
+/// Address autocomplete. Abstract for fake tests.
 abstract class PlaceAutocompleteService {
   Future<List<PlacePrediction>> autocomplete(String input);
 
   Future<PlaceDetails?> details(String placeId);
 }
 
-class HttpPlaceAutocompleteService implements PlaceAutocompleteService {
-  HttpPlaceAutocompleteService(this._dio, this._apiKey);
+/// Free, keyless autocomplete over Photon (OpenStreetMap data, fair use —
+/// the sheet debounces keystrokes). No Google key, no billing account.
+/// Predictions carry their address parts inline, so `details` resolves
+/// from the last result set with no second network call.
+class PhotonPlaceAutocompleteService implements PlaceAutocompleteService {
+  PhotonPlaceAutocompleteService(this._dio);
 
   final Dio _dio;
-  final String _apiKey;
 
-  static const _base = 'https://maps.googleapis.com/maps/api/place';
+  Map<String, Map<String, dynamic>> _cache = const {};
 
   @override
   Future<List<PlacePrediction>> autocomplete(String input) async {
     final q = input.trim();
     if (q.length < 3) return const [];
     final res = await _dio.get<Map<String, dynamic>>(
-      '$_base/autocomplete/json',
-      queryParameters: {
-        'input': q,
-        'key': _apiKey,
-        'components': 'country:IN',
-        'types': 'address',
-      },
+      'https://photon.komoot.io/api/',
+      queryParameters: {'q': q, 'limit': 8, 'lang': 'en'},
     );
-    final rows = (res.data?['predictions'] as List?) ?? const [];
-    return rows
-        .whereType<Map<String, dynamic>>()
-        .map(PlacePrediction.fromJson)
-        .where((p) => p.placeId.isNotEmpty)
-        .toList();
+    final features = (res.data?['features'] as List?) ?? const [];
+    final next = <String, Map<String, dynamic>>{};
+    final out = <PlacePrediction>[];
+    for (final feature in features.whereType<Map<String, dynamic>>()) {
+      final props =
+          (feature['properties'] as Map?)?.cast<String, dynamic>() ??
+              const <String, dynamic>{};
+      // India-only storefront.
+      if ((props['countrycode'] ?? '') != 'IN') continue;
+      final prediction = PlacePrediction.fromPhoton(feature);
+      if (prediction.placeId == ':' || prediction.description.isEmpty) {
+        continue;
+      }
+      next[prediction.placeId] = props;
+      out.add(prediction);
+      if (out.length >= 5) break;
+    }
+    _cache = next;
+    return out;
   }
 
   @override
   Future<PlaceDetails?> details(String placeId) async {
-    final res = await _dio.get<Map<String, dynamic>>(
-      '$_base/details/json',
-      queryParameters: {
-        'place_id': placeId,
-        'key': _apiKey,
-        'fields': 'address_component',
-      },
-    );
-    final components =
-        (res.data?['result']?['address_components'] as List?) ?? const [];
-    String pick(String type) {
-      for (final c in components.whereType<Map<String, dynamic>>()) {
-        final types = (c['types'] as List?)?.map((e) => '$e') ?? const [];
-        if (types.contains(type)) return (c['long_name'] ?? '') as String;
-      }
-      return '';
-    }
-
-    final street = pick('street_number');
-    final route = pick('route');
-    final line1 = '$street $route'.trim();
-    return PlaceDetails(
-      line1: line1,
-      city: pick('locality'),
-      state: pick('administrative_area_level_1'),
-      postalCode: pick('postal_code'),
-    );
+    final props = _cache[placeId];
+    if (props == null) return null;
+    return PlaceDetails.fromPhoton(props);
   }
 }
 
-/// Null when no `PLACES_API_KEY` is baked in — sheets fall back to manual
-/// entry instead of showing a dead search box.
+/// Always on: Photon needs no key and no billing, so the search box is a
+/// permanent part of the address form (manual fields stay below it).
 final placeAutocompleteProvider =
-    Provider<PlaceAutocompleteService?>((_) {
-  if (AppConfig.placesApiKey.isEmpty) return null;
-  return HttpPlaceAutocompleteService(Dio(), AppConfig.placesApiKey);
+    Provider<PlaceAutocompleteService>((_) {
+  return PhotonPlaceAutocompleteService(Dio());
 });
