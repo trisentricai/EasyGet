@@ -31,10 +31,11 @@ class SortSheet extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: AppSpace.md),
@@ -68,8 +69,9 @@ class SortSheet extends StatelessWidget {
               title: Text(option.label,
                   style: AppTypography.bodyMedium(scheme.onSurface)),
             ),
-          const SizedBox(height: AppSpace.sm),
-        ],
+            const SizedBox(height: AppSpace.sm),
+          ],
+        ),
       ),
     );
   }

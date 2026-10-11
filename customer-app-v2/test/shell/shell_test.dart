@@ -81,8 +81,8 @@ class _EmptyCatalogRepo implements CatalogRepository {
           double? minDiscount,
           bool? isFeatured,
           String? sort,
-          int? page}) =>
-      throw UnimplementedError();
+          int? page}) async =>
+      const CatalogPage(results: [], total: 0, page: 1);
   @override
   Future<ProductDetail> product(String slug) => throw UnimplementedError();
   @override
@@ -187,7 +187,7 @@ void main() {
     await tester.tap(find.text('Browse'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('placeholder-browse')), findsOneWidget);
+    expect(find.text('No products here'), findsOneWidget);
     expect(find.text('Nothing here yet'), findsNothing);
 
     await tester.tap(find.text('Home'));

@@ -60,10 +60,11 @@ class _FilterSheetState extends State<FilterSheet> {
 
     return SafeArea(
       top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: AppSpace.md),
@@ -126,7 +127,8 @@ class _FilterSheetState extends State<FilterSheet> {
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

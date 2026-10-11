@@ -7,6 +7,7 @@ import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/boot_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
+import '../../features/browse/presentation/browse_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../widgets/app_shell.dart';
@@ -78,11 +79,7 @@ final _shellBranches = <StatefulShellBranch>[
     routes: [
       GoRoute(
         path: '/browse',
-        builder: (_, _) => const EasyGetTabScaffold(
-          route: 'browse',
-          title: 'Browse',
-          showSearch: true,
-        ),
+        builder: (_, _) => const BrowseScreen(),
       ),
     ],
   ),
