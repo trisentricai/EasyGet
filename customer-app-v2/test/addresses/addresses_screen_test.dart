@@ -1,5 +1,6 @@
 import 'package:easyget/core/theme/app_theme.dart';
 import 'package:easyget/features/addresses/data/address_repository.dart';
+import 'package:easyget/features/addresses/data/place_autocomplete.dart';
 import 'package:easyget/features/addresses/presentation/addresses_screen.dart';
 import 'package:easyget/models/address_model.dart';
 import 'package:flutter/material.dart';
@@ -101,6 +102,7 @@ class _FakeAddressRepo implements AddressRepository {
 Future<void> _pumpAddresses(
   WidgetTester tester, {
   required _FakeAddressRepo repo,
+  PlaceAutocompleteService? places,
 }) async {
   final router = GoRouter(
     initialLocation: '/addresses',
@@ -112,7 +114,11 @@ Future<void> _pumpAddresses(
   );
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [addressRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        addressRepositoryProvider.overrideWithValue(repo),
+        if (places != null)
+          placeAutocompleteProvider.overrideWithValue(places),
+      ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
         routerConfig: router,
@@ -219,4 +225,74 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('12 MG Road'), findsOneWidget);
   });
+
+  testWidgets('cards align to gutters with centered rows', (tester) async {
+    await _pumpAddresses(tester, repo: _FakeAddressRepo());
+
+    final card = tester.getRect(find.byKey(const Key('address-card-1')));
+    expect(card.left, 16);
+    expect(800 - card.right, 16);
+
+    final radio =
+        tester.getCenter(find.byIcon(Icons.radio_button_checked));
+    final chip = tester.getCenter(find.text('Home'));
+    expect((radio.dy - chip.dy).abs(), lessThanOrEqualTo(2));
+  });
+
+  testWidgets('manual mode hides the places search box', (tester) async {
+    await _pumpAddresses(tester, repo: _FakeAddressRepo());
+
+    await tester.tap(find.byKey(const Key('addresses-add')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('addr-search')), findsNothing);
+    expect(find.byKey(const Key('addr-line1')), findsOneWidget);
+  });
+
+  testWidgets('picking a prediction fills the fields', (tester) async {
+    await _pumpAddresses(
+      tester,
+      repo: _FakeAddressRepo(),
+      places: _FakePlaces(),
+    );
+
+    await tester.tap(find.byKey(const Key('addresses-add')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const Key('addr-search')), '12 MG Road');
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('12 MG Road, Bengaluru'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('addr-prediction-0')));
+    await tester.pumpAndSettle();
+
+    TextField field(Key key) =>
+        tester.widget<TextField>(find.byKey(key));
+    expect(field(const Key('addr-line1')).controller!.text, '12 MG Road');
+    expect(field(const Key('addr-city')).controller!.text, 'Bengaluru');
+    expect(field(const Key('addr-state')).controller!.text, 'Karnataka');
+    expect(field(const Key('addr-postal')).controller!.text, '560001');
+  });
+}
+
+class _FakePlaces implements PlaceAutocompleteService {
+  final List<String> queries = [];
+
+  @override
+  Future<List<PlacePrediction>> autocomplete(String input) async {
+    queries.add(input);
+    return const [
+      PlacePrediction(
+          placeId: 'p1', description: '12 MG Road, Bengaluru'),
+    ];
+  }
+
+  @override
+  Future<PlaceDetails?> details(String placeId) async => const PlaceDetails(
+        line1: '12 MG Road',
+        city: 'Bengaluru',
+        state: 'Karnataka',
+        postalCode: '560001',
+      );
 }

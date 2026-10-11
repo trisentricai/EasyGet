@@ -45,6 +45,7 @@ class AddressCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(
                   selected
@@ -75,7 +76,11 @@ class AddressCard extends StatelessWidget {
                     onPressed: onEdit,
                     icon: const Icon(Icons.edit_outlined),
                     iconSize: 20,
-                    visualDensity: VisualDensity.compact,
+                    // Zero padding + explicit 40px box: the row stays
+                    // compact AND the radio/chips stay truly centered.
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                        minWidth: 40, minHeight: 40),
                     color: scheme.onSurfaceVariant,
                   ),
                 if (onDelete != null)
@@ -84,7 +89,9 @@ class AddressCard extends StatelessWidget {
                     onPressed: onDelete,
                     icon: const Icon(Icons.delete_outline),
                     iconSize: 20,
-                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                        minWidth: 40, minHeight: 40),
                     color: scheme.error,
                   ),
               ],

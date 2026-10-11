@@ -15,6 +15,16 @@ class AppConfig {
     defaultValue: 'easyget',
   );
 
+  /// Google Places API key for address autocomplete (address form sheets).
+  /// Empty by default — the sheets fall back to fully manual entry.
+  /// Enable with: flutter run --dart-define=PLACES_API_KEY=AIza...
+  /// (Needs the Places API enabled on the key, Android+iOS unrestricted or
+  /// restricted to this app.)
+  static const placesApiKey = String.fromEnvironment(
+    'PLACES_API_KEY',
+    defaultValue: '',
+  );
+
   /// Google sign-in on Android/iOS needs the OAuth client that the backend
   /// accepts (`serverClientId`). Same value as customer-web's
   /// `VITE_GOOGLE_CLIENT_ID`. Public by design - embedded in the app binary.

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../models/address_model.dart';
 import '../data/address_repository.dart';
+import '../data/place_autocomplete.dart';
 
 /// Shared add/edit address sheet (S9 checkout + S13 addresses): validated
 /// fields, inline errors, v1 India-only (country is fixed, not a field).
@@ -51,8 +54,15 @@ class _AddressFormSheetState extends ConsumerState<AddressFormSheet> {
   bool _busy = false;
   String? _error;
 
+  Timer? _searchTimer;
+  List<PlacePrediction> _suggestions = const [];
+  bool _searching = false;
+  final _search = TextEditingController();
+
   @override
   void dispose() {
+    _searchTimer?.cancel();
+    _search.dispose();
     _label.dispose();
     _line1.dispose();
     _line2.dispose();
@@ -88,6 +98,61 @@ class _AddressFormSheetState extends ConsumerState<AddressFormSheet> {
   AddressDraft? _fail(String message) {
     setState(() => _error = message);
     return null;
+  }
+
+  void _onSearchChanged(String value) {
+    _searchTimer?.cancel();
+    final service = ref.read(placeAutocompleteProvider);
+    if (service == null || value.trim().length < 3) {
+      setState(() {
+        _suggestions = const [];
+        _searching = false;
+      });
+      return;
+    }
+    setState(() => _searching = true);
+    _searchTimer = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        final rows = await service.autocomplete(value);
+        if (!mounted) return;
+        setState(() {
+          _suggestions = rows;
+          _searching = false;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _suggestions = const [];
+          _searching = false;
+        });
+      }
+    });
+  }
+
+  Future<void> _pickPrediction(PlacePrediction prediction) async {
+    final service = ref.read(placeAutocompleteProvider);
+    if (service == null) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _suggestions = const [];
+      _search.text = prediction.description;
+    });
+    try {
+      final details = await service.details(prediction.placeId);
+      if (!mounted || details == null) return;
+      setState(() {
+        if (details.line1.isNotEmpty) _line1.text = details.line1;
+        if (details.city.isNotEmpty) _city.text = details.city;
+        if (details.state.isNotEmpty) _state.text = details.state;
+        if (details.postalCode.isNotEmpty) {
+          _postal.text = details.postalCode;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(
+          () => _error = 'Could not load that place — type it manually.');
+    }
   }
 
   Future<void> _save() async {
@@ -146,6 +211,14 @@ class _AddressFormSheetState extends ConsumerState<AddressFormSheet> {
                 style: AppTypography.screenTitle(scheme.onSurface),
               ),
               const SizedBox(height: AppSpace.md),
+              _AutocompleteField(
+                visible: ref.watch(placeAutocompleteProvider) != null,
+                controller: _search,
+                searching: _searching,
+                suggestions: _suggestions,
+                onChanged: _onSearchChanged,
+                onPick: _pickPrediction,
+              ),
               _field(_label, 'Label (Home / Work)', key: const Key('addr-label')),
               const SizedBox(height: AppSpace.sm),
               _field(_line1, 'House / street *',
@@ -238,6 +311,114 @@ class _AddressFormSheetState extends ConsumerState<AddressFormSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Places search box on top of the manual form. Rendered ONLY when a
+/// `PLACES_API_KEY` is baked in — otherwise the sheet stays fully manual.
+class _AutocompleteField extends StatelessWidget {
+  const _AutocompleteField({
+    required this.visible,
+    required this.controller,
+    required this.searching,
+    required this.suggestions,
+    required this.onChanged,
+    required this.onPick,
+  });
+
+  final bool visible;
+  final TextEditingController controller;
+  final bool searching;
+  final List<PlacePrediction> suggestions;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<PlacePrediction> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!visible) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).freshColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 52,
+          child: TextField(
+            key: const Key('addr-search'),
+            controller: controller,
+            onChanged: onChanged,
+            textCapitalization: TextCapitalization.words,
+            style: AppTypography.body(scheme.onSurface),
+            decoration: InputDecoration(
+              hintText: 'Search address…',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: searching
+                  ? const Padding(
+                      padding: EdgeInsets.all(AppSpace.md),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2),
+                      ),
+                    )
+                  : null,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.lg),
+              border: OutlineInputBorder(
+                borderRadius:
+                    BorderRadius.circular(AppRadii.input),
+                borderSide: BorderSide(color: colors.faint),
+              ),
+            ),
+          ),
+        ),
+        if (suggestions.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius:
+                  BorderRadius.circular(AppRadii.input),
+              border: Border.all(color: colors.faint),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < suggestions.length; i++)
+                  InkWell(
+                    key: Key('addr-prediction-$i'),
+                    onTap: () => onPick(suggestions[i]),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpace.lg,
+                          vertical: AppSpace.sm),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on_outlined,
+                              size: 18,
+                              color: scheme.onSurfaceVariant),
+                          const SizedBox(width: AppSpace.sm),
+                          Expanded(
+                            child: Text(
+                              suggestions[i].description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.body(
+                                  scheme.onSurface),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpace.sm),
+      ],
     );
   }
 }
