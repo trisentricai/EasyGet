@@ -64,6 +64,7 @@ export function ProductPage({ slug }: { slug: string }) {
 
   const activeVariant = product.variants.find((v) => v.id === variantId) ?? null;
   const price = activeVariant?.price ?? product.base_price;
+  const outOfStock = product.in_stock === false;
   const images = product.images.length
     ? product.images
     : product.primary_image
@@ -154,7 +155,17 @@ export function ProductPage({ slug }: { slug: string }) {
             className={`product-thumb detail-thumb ${fxClass(activeFx)}`}
             style={fxStyle(activeFx)}
           >
-            {activeImage ? <img src={activeImage} alt={product.name} decoding="async" /> : <Monogram text={product.name} />}
+            {activeImage ? (
+              <img
+                src={activeImage}
+                alt={product.name}
+                decoding="async"
+                width={800}
+                height={800}
+              />
+            ) : (
+              <Monogram text={product.name} />
+            )}
           </div>
           {images.length > 1 ? (
             <div className="thumb-row">
@@ -201,6 +212,15 @@ export function ProductPage({ slug }: { slug: string }) {
             ) : null}
             {discount > 0 ? <span className="off">{discount}% off</span> : null}
           </div>
+
+          {outOfStock ? (
+            <div style={{ marginTop: 12 }}>
+              <span className="chip chip-err">Out of stock</span>
+              <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+                This item is not stocked right now — check back soon.
+              </p>
+            </div>
+          ) : null}
 
           {product.offers?.length ? (
             <div className="buybox-section" style={{ marginTop: 16 }}>
@@ -298,11 +318,11 @@ export function ProductPage({ slug }: { slug: string }) {
           </div>
 
           <div className="buybox-actions">
-            <button className="btn-cart" disabled={busy || !variantId} onClick={() => void addToCart(false)}>
+            <button className="btn-cart" disabled={busy || !variantId || outOfStock} onClick={() => void addToCart(false)}>
               <Icon name="cart" size={17} />
-              {busy ? "Adding…" : "Add to cart"}
+              {outOfStock ? "Out of stock" : busy ? "Adding…" : "Add to cart"}
             </button>
-            <button className="btn-buy" disabled={busy || !variantId} onClick={() => void addToCart(true)}>
+            <button className="btn-buy" disabled={busy || !variantId || outOfStock} onClick={() => void addToCart(true)}>
               Buy now
             </button>
           </div>
@@ -358,13 +378,28 @@ function SimilarRail({ slug, categorySlug }: { slug: string; categorySlug: strin
 
 function SimilarCard({ product }: { product: Product }) {
   const image = img(product.primary_image);
+  const out = product.in_stock === false;
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
       <div
         className={`product-thumb ${fxClass(product.primary_image_display)}`}
         style={fxStyle(product.primary_image_display)}
       >
-        {image ? <img src={image} alt={product.name} loading="lazy" decoding="async" /> : <Monogram text={product.name} />}
+        {image ? (
+          <img
+            src={image}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            width={600}
+            height={600}
+          />
+        ) : (
+          <Monogram text={product.name} />
+        )}
+        {out ? (
+          <span className="chip chip-out">Out of stock</span>
+        ) : null}
       </div>
       <div className="product-body">
         <div className="product-brand">{product.brand || ""}</div>

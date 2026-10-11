@@ -181,8 +181,17 @@ class SearchViewSet(viewsets.GenericViewSet):
             enqueue(bump_popular_search, query=query_text)
 
         serializer = self.get_serializer(results, many=True)
+        payload = serializer.data
+        # Same Out-of-Stock contract as the catalog: search already lists
+        # every active product, so tag each row (views-only, no serializer
+        # change) to keep cards/detail consistent.
+        from products.views import stocked_product_ids
+
+        stocked = stocked_product_ids([r.get("id") for r in payload])
+        for row in payload:
+            row["in_stock"] = row.get("id") in stocked
         return Response({
-            "results": serializer.data,
+            "results": payload,
             "total": total,
             "page": page,
             "page_size": page_size,

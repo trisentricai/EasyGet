@@ -6,6 +6,7 @@ import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/
 import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
 import { fxClass, fxStyle } from "../utils/imageFx";
 import {
+  AllProductsGrid,
   BannerCarousel,
   DealsRail,
   RecentlyViewedRail,
@@ -62,6 +63,7 @@ export function HomePage() {
       <DealsRail />
       <RecommendedRail />
       <RecentlyViewedRail />
+      <AllProductsGrid />
     </div>
   );
 }
@@ -119,6 +121,8 @@ function HeroSection({ section }: { section: StoreSection }) {
           src={heroImg}
           alt=""
           decoding="async"
+          width={1200}
+          height={675}
         />
       ) : null}
       <div className="hero-content" style={align === "right" ? { marginLeft: "auto", textAlign: "right" } : undefined}>

@@ -50,6 +50,26 @@ def with_rating_stats(qs):
     )
 
 
+def stocked_product_ids(product_ids):
+    """IDs (from the given list) with any in-stock (qty > 0) row in an
+    active store. One query for the whole page — feeds the public
+    `in_stock` flag so the storefront can render Out-of-Stock instead of
+    hiding the product (Flipkart pattern). Imported lazily to avoid a
+    products <-> inventory module cycle."""
+    from inventory.models import StockItem
+
+    ids = [p for p in product_ids if p is not None]
+    if not ids:
+        return set()
+    return set(
+        StockItem.objects.filter(
+            variant__product_id__in=ids,
+            store__is_active=True,
+            quantity__gt=0,
+        ).values_list("variant__product_id", flat=True)
+    )
+
+
 class ProductPagination(PageNumberPagination):
     """200+ item catalogs took ~3.5s per unpaginated request on Supabase."""
 
@@ -87,8 +107,12 @@ class ProductViewSet(ModelViewSet):
     Visibility (GET):
       - staff see everything;
       - tenant members additionally see their own catalog (incl. inactive);
-      - everyone else only sees active products stocked by an active store —
-        merchant catalogs are private until they are actually being sold.
+      - platform products (no tenant) are public when active — even with
+        zero stock, served with `in_stock: false` so the storefront renders
+        Out-of-Stock instead of a dead 404 (Flipkart pattern);
+      - merchant products stay private until stocked by an active store.
+      `in_stock` reflects qty > 0 in an active store (one extra query per
+      page, no serializer/model change).
 
     Writes (POST/PATCH/DELETE): staff or tenant members only. Created products
     are bound to the creator's tenant (staff may create platform products).
@@ -164,18 +188,23 @@ class ProductViewSet(ModelViewSet):
 
         # Visibility (applies BEFORE sorting so sorted lists can't leak
         # inactive/unstocked merchant catalogs to regular customers).
+        # Platform products (tenant None) are public as soon as they are
+        # active — zero-stock ones render Out-of-Stock via `in_stock`.
         user = self.request.user
         if not user.is_staff:
             tenant_ids = user_tenant_ids(user)
+            platform_visible = Q(is_active=True, tenant__isnull=True)
+            stocked_visible = Q(
+                is_active=True, variants__stock_items__store__is_active=True
+            )
             if tenant_ids:
                 qs = qs.filter(
                     Q(tenant_id__in=tenant_ids)
-                    | Q(is_active=True, variants__stock_items__store__is_active=True)
+                    | platform_visible
+                    | stocked_visible
                 ).distinct()
             else:
-                qs = qs.filter(
-                    is_active=True, variants__stock_items__store__is_active=True
-                ).distinct()
+                qs = qs.filter(platform_visible | stocked_visible).distinct()
 
         sort = params.get("sort")
         if sort == "price_asc":
@@ -196,6 +225,22 @@ class ProductViewSet(ModelViewSet):
         # Explicit stable ordering: required for correct pagination
         # (silences UnorderedObjectListWarning; id breaks updated_at ties).
         return qs.order_by("-updated_at", "-id")
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        data = response.data
+        results = data.get("results", []) if isinstance(data, dict) else data
+        stocked = stocked_product_ids([r.get("id") for r in results])
+        for row in results:
+            row["in_stock"] = row.get("id") in stocked
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        data = response.data
+        if isinstance(data, dict) and data.get("id") is not None:
+            data["in_stock"] = data["id"] in stocked_product_ids([data["id"]])
+        return response
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

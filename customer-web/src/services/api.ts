@@ -363,6 +363,8 @@ export type Product = {
   base_price: string | null;
   discount_percent: number;
   is_featured: boolean;
+  /** False when no qty > 0 sits in an active store (page opens, buying disabled). */
+  in_stock?: boolean | null;
   primary_image: string | null;
   primary_image_display?: ImageDisplay | null;
   rating_avg: number | null;

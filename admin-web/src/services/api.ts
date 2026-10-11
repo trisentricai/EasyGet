@@ -224,6 +224,8 @@ export type Product = {
   base_price: string | null;
   is_featured: boolean;
   is_active: boolean;
+  /** False when no qty > 0 sits in an active store (detail still opens). */
+  in_stock?: boolean | null;
 };
 
 /** Display knobs every rendered image carries (focal point, scale, hover). */

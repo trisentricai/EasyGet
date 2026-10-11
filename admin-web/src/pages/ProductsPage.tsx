@@ -362,8 +362,13 @@ export function ProductsPage() {
                     <td>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {!p.is_active && <span className="badge err">Hidden</span>}
+                        {p.is_active && p.in_stock === false && (
+                          <span className="badge warn" title="Active but no qty > 0 in any active store — customers see Out of Stock">
+                            No stock
+                          </span>
+                        )}
                         {p.is_featured && <span className="badge warn">Featured</span>}
-                        {p.is_active && !p.is_featured && <span className="badge ok">Live</span>}
+                        {p.is_active && p.in_stock !== false && !p.is_featured && <span className="badge ok">Live</span>}
                       </div>
                     </td>
                     <td>

@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   asArray,
+  errText,
   img,
   listCategories,
   listProductsPaged,
@@ -10,7 +12,7 @@ import {
 import { href } from "../hooks/useHashRoute";
 import { fxClass, fxStyle } from "../utils/imageFx";
 import { Icon } from "./icons";
-import { ProductCard, Section } from "./ui";
+import { ProductCard, Section, CardSkeletonGrid, EmptyState } from "./ui";
 import {
   getRecentViews,
   toProductCard,
@@ -94,6 +96,8 @@ function HeroSlide({ section }: { section: StoreSection }) {
           src={image}
           alt=""
           decoding="async"
+          width={1200}
+          height={675}
         />
       ) : null}
       <div className="hero-content">
@@ -129,28 +133,22 @@ function Rail({ children }: { children: React.ReactNode }) {
 
 /** Top-discount products across the catalog ("Deals of the Day"). */
 export function DealsRail() {
-  const [deals, setDeals] = useState<Product[] | null>(null);
   const countdown = useMidnightCountdown();
-
-  useEffect(() => {
-    let cancelled = false;
-    listProductsPaged({ page_size: "60" })
-      .then((d) => {
-        if (cancelled) return;
-        setDeals(
-          [...d.results]
+  const { data } = useQuery({
+    queryKey: ["products", "deals"],
+    queryFn: () => listProductsPaged({ page_size: "60" }),
+    staleTime: 2 * 60_000,
+  });
+  const deals = useMemo(
+    () =>
+      data
+        ? [...data.results]
             .filter((p) => (p.discount_percent ?? 0) > 0)
             .sort((a, b) => (b.discount_percent ?? 0) - (a.discount_percent ?? 0))
-            .slice(0, 12),
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setDeals([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+            .slice(0, 12)
+        : null,
+    [data],
+  );
 
   if (!deals || deals.length === 0) return null;
   return (
@@ -170,20 +168,15 @@ export function DealsRail() {
   );
 }
 
-/** All categories as tappable cards. */
+/** All categories as tappable cards. Shares the ["categories"] cache with
+ *  the header strip and browse filters — one fetch per session visit. */
 export function CategoryRail() {
-  const [cats, setCats] = useState<{ name: string; slug: string }[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    listCategories()
-      .then((d) => {
-        if (!cancelled) setCats(asArray(d));
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data } = useQuery({
+    queryKey: ["categories"],
+    queryFn: listCategories,
+    staleTime: 5 * 60_000,
+  });
+  const cats = asArray(data);
   if (!cats.length) return null;
   return (
     <Section title="Shop by Category">
@@ -218,22 +211,13 @@ export function RecentlyViewedRail() {
 /** Products from the shopper's most-viewed category. */
 export function RecommendedRail() {
   const top = useMemo(() => topCategory(), []);
-  const [items, setItems] = useState<Product[] | null>(null);
-
-  useEffect(() => {
-    if (!top) return;
-    let cancelled = false;
-    listProductsPaged({ category: top.slug, page_size: "12" })
-      .then((d) => {
-        if (!cancelled) setItems(d.results);
-      })
-      .catch(() => {
-        if (!cancelled) setItems([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [top?.slug]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { data } = useQuery({
+    queryKey: ["products", "recommended", top?.slug ?? null],
+    queryFn: () => listProductsPaged({ category: top!.slug, page_size: "12" }),
+    enabled: !!top,
+    staleTime: 2 * 60_000,
+  });
+  const items = data?.results ?? null;
 
   if (!top || !items || items.length === 0) return null;
   return (
@@ -249,6 +233,117 @@ export function RecommendedRail() {
           </div>
         ))}
       </Rail>
+    </Section>
+  );
+}
+
+/**
+ * Full catalog grid for the home page tail: every visible product,
+ * paginated with infinite scroll until the end. Renders AFTER the
+ * curated rails (Shop by category / Deals / Recommended / Recently
+ * viewed) so shoppers can keep scrolling through everything.
+ */
+export function AllProductsGrid() {
+  const {
+    data,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ["products", "home-all"],
+    queryFn: ({ pageParam }) =>
+      listProductsPaged({ page: String(pageParam), page_size: "20" }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.next ? allPages.length + 1 : undefined,
+    staleTime: 2 * 60_000,
+  });
+
+  const products = data ? data.pages.flatMap((p) => p.results) : null;
+  const total = data?.pages[0]?.count ?? null;
+  const errorMsg = error ? errText(error) : null;
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [nearBottom, setNearBottom] = useState(false);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage) return;
+    const io = new IntersectionObserver(([entry]) => setNearBottom(entry.isIntersecting), {
+      rootMargin: "0px 0px 200px 0px",
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, products?.length]);
+
+  useEffect(() => {
+    if (!data || !nearBottom || !hasNextPage || isFetchingNextPage) return;
+    void fetchNextPage();
+  }, [data, nearBottom, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  if (isLoading) {
+    return (
+      <Section
+        title="Explore all products"
+        subtitle="The full catalog — keep scrolling"
+      >
+        <CardSkeletonGrid />
+      </Section>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <Section title="Explore all products">
+        <EmptyState icon="warning" title="Couldn't load products" text={errorMsg} />
+      </Section>
+    );
+  }
+
+  if (!products || products.length === 0) return null;
+
+  return (
+    <Section
+      title="Explore all products"
+      subtitle={
+        total !== null
+          ? `${total} products — scroll for more`
+          : "The full catalog — keep scrolling"
+      }
+      action={<a className="link" href={href("browse")}>See all</a>}
+    >
+      <div className="grid grid-products">
+        {products.map((p) => (
+          <ProductCard key={p.id} product={p} />
+        ))}
+      </div>
+      {isFetchingNextPage ? (
+        <div style={{ marginTop: 18 }}>
+          <CardSkeletonGrid count={4} />
+        </div>
+      ) : null}
+      {hasNextPage ? (
+        <>
+          <div ref={sentinelRef} style={{ height: 1 }} aria-hidden="true" />
+          {!nearBottom ? (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
+              <button
+                className="btn"
+                onClick={() => void fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage
+                  ? "Loading…"
+                  : total !== null
+                    ? `Load more (${total - products.length} left)`
+                    : "Load more"}
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </Section>
   );
 }

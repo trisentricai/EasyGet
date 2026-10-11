@@ -446,6 +446,20 @@ button { font-family: inherit; }
 .grid { display: grid; gap: 14px; }
 .grid-categories { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .grid-products { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+
+/* Ruled product grid: 1px hairlines run through the gaps (and around the
+   whole grid) so every card sits in a visibly bordered column — the layout
+   reads as a flush, clearly divided table instead of floating cards. */
+.grid-products {
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+.grid-products > .product-card,
+.grid-products > .card-skeleton {
+  border: none;
+  border-radius: 0;
+}
 .grid-gallery { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 
 .cat-card {
@@ -635,6 +649,7 @@ button { font-family: inherit; }
 }
 .chip-featured { position: absolute; top: 8px; left: 8px; background: var(--primary); color: #fff; }
 .chip-deal { position: absolute; top: 8px; left: 8px; background: var(--danger); color: #fff; }
+.chip-out { position: absolute; top: 8px; left: 8px; background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--surface)); }
 .chip-pending { background: color-mix(in srgb, var(--secondary) 25%, var(--surface)); color: var(--warn-ink); }
 .chip-ok { background: color-mix(in srgb, var(--ok) 15%, var(--surface)); color: var(--ok); }
 .chip-err { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); color: var(--danger); }

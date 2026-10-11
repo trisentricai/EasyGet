@@ -23,6 +23,7 @@ export type RecentView = {
   discount: number;
   ratingAvg: number | null;
   ratingCount: number;
+  inStock?: boolean | null;
   at: number;
 };
 
@@ -55,6 +56,7 @@ export function recordView(p: {
   discount_percent?: number;
   rating_avg?: number | null;
   rating_count?: number;
+  in_stock?: boolean | null;
 }): void {
   const list = read<RecentView[]>(RECENT_KEY, []).filter((v) => v.slug !== p.slug);
   list.unshift({
@@ -69,6 +71,7 @@ export function recordView(p: {
     discount: p.discount_percent ?? 0,
     ratingAvg: p.rating_avg ?? null,
     ratingCount: p.rating_count ?? 0,
+    inStock: p.in_stock ?? null,
     at: Date.now(),
   });
   write(RECENT_KEY, list.slice(0, MAX_RECENT));
@@ -114,6 +117,7 @@ export function toProductCard(v: RecentView): Product {
     primary_image: v.image,
     rating_avg: v.ratingAvg,
     rating_count: v.ratingCount ?? 0,
+    in_stock: v.inStock ?? null,
   };
 }
 

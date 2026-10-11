@@ -117,14 +117,28 @@ export function WishButton({ slug, className = "" }: { slug: string; className?:
 export function ProductCard({ product }: { product: Product }) {
   const image = img(product.primary_image);
   const freeDelivery = Number(product.base_price ?? 0) >= 499;
+  const out = product.in_stock === false;
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
       <div
         className={`product-thumb ${fxClass(product.primary_image_display)}`}
         style={fxStyle(product.primary_image_display)}
       >
-        {image ? <img src={image} alt={product.name} loading="lazy" decoding="async" /> : <Monogram text={product.name} />}
-        {(product.discount_percent ?? 0) >= 50 ? (
+        {image ? (
+          <img
+            src={image}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            width={600}
+            height={600}
+          />
+        ) : (
+          <Monogram text={product.name} />
+        )}
+        {out ? (
+          <span className="chip chip-out">Out of stock</span>
+        ) : (product.discount_percent ?? 0) >= 50 ? (
           <span className="chip chip-deal">{product.discount_percent}% off</span>
         ) : product.is_featured ? (
           <span className="chip chip-featured">★ Featured</span>
@@ -138,7 +152,11 @@ export function ProductCard({ product }: { product: Product }) {
           <RatingPill avg={product.rating_avg} count={product.rating_count} />
         </div>
         <Price price={product.base_price} mrp={product.mrp} discount={product.discount_percent} size="sm" />
-        {freeDelivery ? <div className="free-ship">Free delivery</div> : null}
+        {out ? (
+          <div className="free-ship" style={{ color: "var(--danger)" }}>Out of stock</div>
+        ) : freeDelivery ? (
+          <div className="free-ship">Free delivery</div>
+        ) : null}
       </div>
     </a>
   );
