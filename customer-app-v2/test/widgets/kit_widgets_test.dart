@@ -148,6 +148,19 @@ void main() {
       expect(taps, 1);
     });
 
+    testWidgets('states center their content vertically', (tester) async {
+      await tester.pumpWidget(_host(const EmptyState(
+        title: 'Nothing here yet',
+        body: 'Check back soon.',
+      )));
+
+      final center =
+          tester.getCenter(find.text('Nothing here yet'));
+      // 600px viewport: centered content sits mid-screen, never top-glued.
+      expect(center.dy, greaterThan(200));
+      expect(center.dy, lessThan(450));
+    });
+
     testWidgets('ErrorState offers a Retry action', (tester) async {
       var retries = 0;
       await tester.pumpWidget(_host(ErrorState(

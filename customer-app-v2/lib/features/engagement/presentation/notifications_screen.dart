@@ -136,7 +136,7 @@ class _NotificationRow extends ConsumerWidget {
           border: Border.all(color: colors.faint),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 40,

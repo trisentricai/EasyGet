@@ -24,51 +24,61 @@ class _StateView extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final colors = Theme.of(context).freshColors;
-    return Padding(
-      padding: const EdgeInsets.all(AppSpace.xxl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: colors.primaryTint,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: scheme.primary, size: 28),
-          ),
-          const SizedBox(height: AppSpace.lg),
-          Text(title,
-              textAlign: TextAlign.center,
-              style: AppTypography.screenTitle(scheme.onSurface)),
-          if (body != null) ...[
-            const SizedBox(height: AppSpace.sm),
-            Text(body!,
-                textAlign: TextAlign.center,
-                style: AppTypography.body(scheme.onSurfaceVariant)),
-          ],
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: AppSpace.xl),
-            SizedBox(
-              height: 54,
-              child: FilledButton(
-                onPressed: onAction,
-                style: FilledButton.styleFrom(
-                  backgroundColor: scheme.primary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpace.xxl),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.button),
+    // Centered in the available body (not stuck to the top): every
+    // full-screen usage renders these as the Scaffold body or inside an
+    // Expanded, both of which give a bounded height.
+    return Center(
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: colors.primaryTint,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: scheme.primary, size: 28),
+              ),
+              const SizedBox(height: AppSpace.lg),
+              Text(title,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.screenTitle(scheme.onSurface)),
+              if (body != null) ...[
+                const SizedBox(height: AppSpace.sm),
+                Text(body!,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body(scheme.onSurfaceVariant)),
+              ],
+              if (actionLabel != null && onAction != null) ...[
+                const SizedBox(height: AppSpace.xl),
+                SizedBox(
+                  height: 54,
+                  child: FilledButton(
+                    onPressed: onAction,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: scheme.primary,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpace.xxl),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppRadii.button),
+                      ),
+                    ),
+                    child: Text(actionLabel!,
+                        style: AppTypography.label(scheme.onPrimary,
+                            size: 16)),
                   ),
                 ),
-                child: Text(actionLabel!,
-                    style: AppTypography.label(scheme.onPrimary, size: 16)),
-              ),
-            ),
-          ],
-        ],
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
