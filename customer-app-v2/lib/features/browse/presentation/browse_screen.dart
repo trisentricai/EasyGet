@@ -306,7 +306,7 @@ class _Grid extends ConsumerWidget {
             product: product,
             density: ProductDensity.grid,
             width: width,
-            onTap: () => context.go('/product/${product.slug}'),
+            onTap: () => context.push('/product/${product.slug}'),
           );
         },
       ),

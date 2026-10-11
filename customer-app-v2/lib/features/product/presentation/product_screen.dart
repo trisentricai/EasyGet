@@ -9,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
 import '../../../core/widgets/eta_pill.dart';
+import '../../../core/widgets/nav.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
@@ -96,7 +97,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
       error: (e, _) => Scaffold(
         appBar: EasyGetAppBar(
           showBack: true,
-          onBack: () => context.pop(),
+          onBack: () => popOrHome(context),
           title: 'Product',
         ),
         body: ErrorState(
@@ -133,7 +134,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                     .read(wishlistControllerProvider.notifier)
                     .toggle(widget.slug);
               },
-              onBack: () => context.pop(),
+              onBack: () => popOrHome(context),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -893,7 +894,7 @@ class _RelatedRail extends ConsumerWidget {
                   density: ProductDensity.rail,
                   width: 148,
                   onTap: () =>
-                      context.go('/product/${rows[i].slug}'),
+                      context.push('/product/${rows[i].slug}'),
                 ),
               ),
             ),

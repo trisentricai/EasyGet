@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/address_card.dart';
 import '../../../core/widgets/app_bar.dart';
+import '../../../core/widgets/nav.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
@@ -26,7 +26,7 @@ class AddressesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: EasyGetAppBar(
         showBack: true,
-        onBack: () => context.pop(),
+        onBack: () => popOrHome(context),
         title: 'Addresses',
       ),
       body: _Body(state: state),

@@ -120,6 +120,11 @@ void main() {
     await tester.tap(find.byKey(const Key('order-card-2')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('order-detail-page')), findsOneWidget);
+
+    // System back must return to the list (push, never go).
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key('order-card-2')), findsOneWidget);
   });
 
   testWidgets('cancel asks for a reason, cancels and refreshes', (tester) async {

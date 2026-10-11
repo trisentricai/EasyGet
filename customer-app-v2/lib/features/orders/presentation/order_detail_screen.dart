@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
+import '../../../core/widgets/nav.dart';
 import '../../../core/widgets/order_timeline.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/skeletons.dart';
@@ -32,7 +32,7 @@ class OrderDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: EasyGetAppBar(
         showBack: true,
-        onBack: () => context.pop(),
+        onBack: () => popOrHome(context),
         title: 'Order #${state.detail?.orderNumber ?? orderId}',
       ),
       body: _Body(orderId: orderId, state: state),

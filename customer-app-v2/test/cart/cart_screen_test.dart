@@ -250,5 +250,10 @@ void main() {
     await tester.tap(find.byKey(const Key('cart-checkout')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('checkout-page')), findsOneWidget);
+
+    // System back must return to the cart (push, never go).
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key('cart-checkout')), findsOneWidget);
   });
 }

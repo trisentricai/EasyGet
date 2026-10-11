@@ -128,7 +128,7 @@ class _OrderCard extends ConsumerWidget {
     return InkWell(
       key: Key('order-card-${order.id}'),
       borderRadius: BorderRadius.circular(AppRadii.card),
-      onTap: () => context.go('/order/${order.id}'),
+      onTap: () => context.push('/order/${order.id}'),
       child: Container(
         padding: const EdgeInsets.all(AppSpace.lg),
         decoration: BoxDecoration(

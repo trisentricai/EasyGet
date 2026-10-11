@@ -10,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/address_card.dart';
 import '../../../core/widgets/app_bar.dart';
+import '../../../core/widgets/nav.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
@@ -44,7 +45,7 @@ class CheckoutScreen extends ConsumerWidget {
     return Scaffold(
       appBar: EasyGetAppBar(
         showBack: true,
-        onBack: () => context.pop(),
+        onBack: () => popOrHome(context),
         title: 'Checkout',
       ),
       body: _Body(state: state),

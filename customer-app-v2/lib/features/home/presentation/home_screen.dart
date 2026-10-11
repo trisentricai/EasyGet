@@ -46,7 +46,7 @@ class HomeScreen extends ConsumerWidget {
         actions: [
           IconButton(
             key: const Key('home-account'),
-            onPressed: () => context.go('/account'),
+            onPressed: () => context.push('/account'),
             icon: const Icon(Icons.account_circle_outlined),
             tooltip: 'Account',
           ),
@@ -460,7 +460,7 @@ class _ProductRail extends StatelessWidget {
                 ),
                 density: ProductDensity.rail,
                 width: 148,
-                onTap: () => context.go('/product/${item.productSlug}'),
+                onTap: () => context.push('/product/${item.productSlug}'),
               );
             },
           ),

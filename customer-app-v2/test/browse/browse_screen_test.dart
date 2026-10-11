@@ -224,6 +224,11 @@ void main() {
     await tester.tap(find.text('Item 1A'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('product-page')), findsOneWidget);
+
+    // System back must return to Browse (push, never go).
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Item 1A'), findsOneWidget);
   });
 
   testWidgets('empty category offers Clear filters', (tester) async {

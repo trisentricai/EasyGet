@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'nav.dart';
+
 /// Navigation chrome shared by every tab + inner page (DESIGN §11.5):
 /// surface fill, no elevation, hairline scrolled-under border, Headline title.
+/// The back affordance is a framework [BackButton] (so the test `pageBack`
+/// and assistive tech find it) with [popOrHome] as the default action.
 class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
   const EasyGetAppBar({
     super.key,
@@ -38,10 +42,9 @@ class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       titleSpacing: showBack ? 0 : 16,
       leading: showBack
-          ? IconButton(
-              icon: const Icon(Icons.arrow_back),
+          ? BackButton(
               onPressed:
-                  onBack ?? () => Navigator.of(context).maybePop(),
+                  onBack ?? () => popOrHome(context),
             )
           : null,
       title: addressRow ?? (title == null ? null : Text(title!)),

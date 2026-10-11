@@ -266,7 +266,7 @@ class _EmptyMode extends ConsumerWidget {
                   density: ProductDensity.rail,
                   width: 148,
                   onTap: () =>
-                      context.go('/product/${views[i].slug}'),
+                      context.push('/product/${views[i].slug}'),
                 ),
               ),
             ),
@@ -436,7 +436,7 @@ class _ResultsView extends ConsumerWidget {
                   density: ProductDensity.grid,
                   width: width,
                   onTap: () =>
-                      context.go('/product/${product.slug}'),
+                      context.push('/product/${product.slug}'),
                 );
               },
             ),
@@ -487,7 +487,7 @@ class _ViewsRail extends ConsumerWidget {
                 density: ProductDensity.rail,
                 width: 132,
                 onTap: () =>
-                    context.go('/product/${views[i].slug}'),
+                    context.push('/product/${views[i].slug}'),
               ),
             ),
           ),

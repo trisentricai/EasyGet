@@ -6,6 +6,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
+import '../../../core/widgets/nav.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
@@ -26,7 +27,11 @@ class AccountScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider);
     return Scaffold(
-      appBar: const EasyGetAppBar(title: 'Account'),
+      appBar: EasyGetAppBar(
+        showBack: true,
+        onBack: () => popOrHome(context),
+        title: 'Account',
+      ),
       body: profile.when(
         loading: () => const SingleChildScrollView(
           physics: NeverScrollableScrollPhysics(),
@@ -117,7 +122,7 @@ class _Content extends ConsumerWidget {
             key: const Key('row-addresses'),
             icon: Icons.location_on_outlined,
             label: 'Addresses',
-            onTap: () => context.go('/addresses'),
+            onTap: () => context.push('/addresses'),
           ),
           _NavRow(
             icon: Icons.favorite_border,

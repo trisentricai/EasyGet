@@ -478,7 +478,7 @@ class _CheckoutBar extends StatelessWidget {
           width: double.infinity,
           child: FilledButton(
             key: const Key('cart-checkout'),
-            onPressed: () => context.go('/checkout'),
+            onPressed: () => context.push('/checkout'),
             style: FilledButton.styleFrom(
               backgroundColor: scheme.primary,
               shape: RoundedRectangleBorder(
