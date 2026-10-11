@@ -12,6 +12,7 @@ import '../../features/cart/presentation/cart_screen.dart';
 import '../../features/checkout/presentation/checkout_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/orders/presentation/orders_screen.dart';
 import '../../features/product/presentation/product_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../widgets/app_shell.dart';
@@ -107,8 +108,7 @@ final _shellBranches = <StatefulShellBranch>[
     routes: [
       GoRoute(
         path: '/orders',
-        builder: (_, _) =>
-            const EasyGetTabScaffold(route: 'orders', title: 'Your orders'),
+        builder: (_, _) => const OrdersScreen(),
       ),
     ],
   ),
