@@ -8,6 +8,7 @@ import '../../features/auth/presentation/boot_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
+import '../../features/home/presentation/home_screen.dart';
 import '../widgets/app_shell.dart';
 
 const Set<String> _publicRoutes = {'/login', '/register'};
@@ -62,19 +63,14 @@ Widget _placeholder(String route) => Scaffold(
     );
 
 /// The 5 tab branches (DESIGN §11.5) hosted by [StatefulShellRoute] so tab
-/// state survives switching. Bodies are keyed placeholders until later plans
-/// replace them screen-by-screen.
+/// state survives switching. Finished screens render directly; the rest are
+/// keyed placeholders until their plan replaces them screen-by-screen.
 final _shellBranches = <StatefulShellBranch>[
   StatefulShellBranch(
     routes: [
       GoRoute(
         path: '/home',
-        builder: (_, _) => const EasyGetTabScaffold(
-          route: 'home',
-          title: 'Home',
-          showSearch: true,
-          home: true,
-        ),
+        builder: (_, _) => const HomeScreen(),
       ),
     ],
   ),

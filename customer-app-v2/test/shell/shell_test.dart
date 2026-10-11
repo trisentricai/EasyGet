@@ -4,9 +4,13 @@ import 'package:easyget/core/storage/token_store.dart';
 import 'package:easyget/features/auth/data/app_user.dart';
 import 'package:easyget/features/auth/data/auth_repository.dart';
 import 'package:easyget/features/cart/data/cart_repository.dart';
+import 'package:easyget/features/catalog/data/catalog_repository.dart';
 import 'package:easyget/features/engagement/data/analytics_repository.dart';
 import 'package:easyget/main.dart';
 import 'package:easyget/models/cart_models.dart';
+import 'package:easyget/models/catalog_models.dart';
+import 'package:easyget/models/pincode_model.dart';
+import 'package:easyget/models/storefront_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,6 +62,47 @@ class _NoopApiClient extends ApiClient {
   Future<void> warmUp() async {}
 }
 
+/// Empty catalog: the Home tab renders its EmptyState in shell tests.
+class _EmptyCatalogRepo implements CatalogRepository {
+  @override
+  Future<StorefrontRender> platformStorefront() async =>
+      const StorefrontRender(
+        store: StoreInfo(id: 1, name: 'EasyGet', slug: 'easyget'),
+        theme: StoreTheme(),
+      );
+  @override
+  Future<List<Category>> categories() async => const [];
+  @override
+  Future<CatalogPage> products(
+          {String? category,
+          String? brand,
+          double? minPrice,
+          double? maxPrice,
+          double? minDiscount,
+          bool? isFeatured,
+          String? sort,
+          int? page}) =>
+      throw UnimplementedError();
+  @override
+  Future<ProductDetail> product(String slug) => throw UnimplementedError();
+  @override
+  Future<List<Brand>> brands() => throw UnimplementedError();
+  @override
+  Future<CatalogPage> search(String query,
+          {String? sort,
+          int page = 1,
+          String? category,
+          double? minPrice,
+          double? maxPrice,
+          bool? isFeatured}) =>
+      throw UnimplementedError();
+  @override
+  Future<PincodeInfo> pincode(String code) => throw UnimplementedError();
+  @override
+  Future<StorefrontRender> storefront(String slug) =>
+      throw UnimplementedError();
+}
+
 class _NoopAnalytics implements AnalyticsRepository {
   @override
   Future<void> track({
@@ -82,6 +127,7 @@ Future<ProviderContainer> _pumpApp(
     apiClientProvider.overrideWithValue(_NoopApiClient()),
     analyticsRepositoryProvider.overrideWithValue(_NoopAnalytics()),
     cartRepositoryProvider.overrideWithValue(_FakeCartRepo(cartItems)),
+    catalogRepositoryProvider.overrideWithValue(_EmptyCatalogRepo()),
   ]);
   addTearDown(container.dispose);
 
@@ -100,14 +146,14 @@ void main() {
   testWidgets('guest (no session) is bounced to /login', (tester) async {
     await _pumpApp(tester, signedIn: false);
     expect(find.text('Sign in'), findsOneWidget);
-    expect(find.byKey(const Key('placeholder-home')), findsNothing);
+    expect(find.text('Nothing here yet'), findsNothing);
   });
 
   testWidgets('signed-in lands on /home with the 5-tab BottomNav',
       (tester) async {
     await _pumpApp(tester, signedIn: true);
 
-    expect(find.byKey(const Key('placeholder-home')), findsOneWidget);
+    expect(find.text('Nothing here yet'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Browse'), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
@@ -142,11 +188,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('placeholder-browse')), findsOneWidget);
-    expect(find.byKey(const Key('placeholder-home')), findsNothing);
+    expect(find.text('Nothing here yet'), findsNothing);
 
     await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('placeholder-home')), findsOneWidget);
+    expect(find.text('Nothing here yet'), findsOneWidget);
   });
 
   testWidgets('tapping the SearchBar opens the /search tab', (tester) async {
