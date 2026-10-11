@@ -230,13 +230,17 @@ void main() {
     expect(find.byKey(const Key('addresses-page')), findsOneWidget);
   });
 
-  testWidgets('theme segmented switches the app mode', (tester) async {
+  testWidgets('theme chips switch the app mode', (tester) async {
     final container =
         await _pumpAccount(tester, profile: _FakeProfileRepo());
 
-    await tester.tap(find.text('Dark'));
+    await tester.tap(find.byKey(const Key('theme-dark')));
     await tester.pumpAndSettle();
     expect(container.read(themeModeProvider), ThemeMode.dark);
+
+    await tester.tap(find.byKey(const Key('theme-light')));
+    await tester.pumpAndSettle();
+    expect(container.read(themeModeProvider), ThemeMode.light);
   });
 
   testWidgets('notifications toggle flips locally', (tester) async {

@@ -6,6 +6,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
+import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/nav.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
@@ -262,38 +263,57 @@ class _SectionLabel extends StatelessWidget {
 class _ThemeRow extends ConsumerWidget {
   const _ThemeRow();
 
+  static const _modes = [
+    (ThemeMode.light, 'Light'),
+    (ThemeMode.system, 'Auto'),
+    (ThemeMode.dark, 'Dark'),
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     final scheme = Theme.of(context).colorScheme;
+    final notifier = ref.read(themeModeProvider.notifier);
     return Padding(
       padding: const EdgeInsets.symmetric(
           horizontal: AppSpace.lg, vertical: AppSpace.xs),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(Icons.brightness_6_outlined,
               size: 22, color: scheme.onSurfaceVariant),
           const SizedBox(width: AppSpace.lg),
           Expanded(
-            child: Text('Appearance',
-                style: AppTypography.bodyMedium(
-                    scheme.onSurface)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Appearance',
+                    style: AppTypography.bodyMedium(
+                        scheme.onSurface)),
+                Text(
+                  mode == ThemeMode.dark
+                      ? 'Dark'
+                      : mode == ThemeMode.light
+                          ? 'Light'
+                          : 'Follows system',
+                  style: AppTypography.caption(
+                      scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
           ),
-          SegmentedButton<ThemeMode>(
-            key: const Key('theme-segmented'),
-            segments: const [
-              ButtonSegment(
-                  value: ThemeMode.light, label: Text('Light')),
-              ButtonSegment(
-                  value: ThemeMode.system, label: Text('Auto')),
-              ButtonSegment(
-                  value: ThemeMode.dark, label: Text('Dark')),
-            ],
-            selected: {mode},
-            onSelectionChanged: (selected) => ref
-                .read(themeModeProvider.notifier)
-                .set(selected.single),
-          ),
+          const SizedBox(width: AppSpace.sm),
+          for (var i = 0; i < _modes.length; i++) ...[
+            AppChip(
+              key: Key('theme-${_modes[i].$1.name}'),
+              label: _modes[i].$2,
+              selected: mode == _modes[i].$1,
+              onTap: () => notifier.set(_modes[i].$1),
+            ),
+            if (i != _modes.length - 1)
+              const SizedBox(width: AppSpace.sm),
+          ],
         ],
       ),
     );
