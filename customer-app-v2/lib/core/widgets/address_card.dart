@@ -28,7 +28,7 @@ class AddressCard extends StatelessWidget {
     final colors = Theme.of(context).freshColors;
 
     return GestureDetector(
-      key: const Key('address-card'),
+      key: Key('address-card-${address.id}'),
       behavior: HitTestBehavior.opaque,
       onTap: onSelect,
       child: Container(
@@ -71,7 +71,7 @@ class AddressCard extends StatelessWidget {
                 const Spacer(),
                 if (onEdit != null)
                   IconButton(
-                    key: const ValueKey('address-edit'),
+                    key: ValueKey('address-edit-${address.id}'),
                     onPressed: onEdit,
                     icon: const Icon(Icons.edit_outlined),
                     iconSize: 20,
@@ -80,7 +80,7 @@ class AddressCard extends StatelessWidget {
                   ),
                 if (onDelete != null)
                   IconButton(
-                    key: const ValueKey('address-delete'),
+                    key: ValueKey('address-delete-${address.id}'),
                     onPressed: onDelete,
                     icon: const Icon(Icons.delete_outline),
                     iconSize: 20,

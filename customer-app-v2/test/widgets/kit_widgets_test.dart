@@ -227,10 +227,10 @@ void main() {
       expect(find.textContaining('12 MG Road'), findsOneWidget);
       expect(find.text('9876543210'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('address-delete')));
+      await tester.tap(find.byKey(const Key('address-delete-1')));
       expect(deleted, 1);
 
-      await tester.tap(find.byKey(const Key('address-card')));
+      await tester.tap(find.byKey(const Key('address-card-1')));
       expect(selected, 1);
     });
   });
