@@ -13,6 +13,7 @@ import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/states.dart';
 import '../../../models/catalog_models.dart';
 import '../../../models/storefront_models.dart';
+import '../../catalog/presentation/widgets/category_tile.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
 import 'home_providers.dart';
 
@@ -362,56 +363,9 @@ class _CategoryGrid extends StatelessWidget {
         childAspectRatio: 0.8,
       ),
       itemCount: tiles.length,
-      itemBuilder: (_, i) => _CategoryTile(category: tiles[i]),
-    );
-  }
-}
-
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.category});
-
-  final Category category;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final colors = Theme.of(context).freshColors;
-    return InkWell(
-      key: Key('category-tile-${category.slug}'),
-      borderRadius: BorderRadius.circular(AppRadii.image),
-      onTap: () => context.go('/browse?category=${category.slug}'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: colors.sunken,
-              borderRadius: BorderRadius.circular(AppRadii.image),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: (category.image ?? '').isEmpty
-                ? Icon(Icons.grid_view_outlined,
-                    color: colors.faint)
-                : CachedNetworkImage(
-                    imageUrl: category.image!,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, _, _) => Icon(
-                      Icons.grid_view_outlined,
-                      color: colors.faint,
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            category.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: AppTypography.caption(scheme.onSurface),
-          ),
-        ],
+      itemBuilder: (_, i) => CategoryTile(
+        category: tiles[i],
+        onTap: () => context.go('/browse?category=${tiles[i].slug}'),
       ),
     );
   }

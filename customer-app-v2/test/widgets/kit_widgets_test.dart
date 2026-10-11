@@ -9,9 +9,11 @@ import 'package:easyget/core/widgets/skeletons.dart';
 import 'package:easyget/core/widgets/snackbar.dart';
 import 'package:easyget/core/widgets/states.dart';
 import 'package:easyget/core/widgets/status_pill.dart';
+import 'package:easyget/features/catalog/presentation/widgets/category_tile.dart';
 import 'package:easyget/features/catalog/presentation/widgets/filter_sheet.dart';
 import 'package:easyget/features/catalog/presentation/widgets/sort_sheet.dart';
 import 'package:easyget/models/address_model.dart';
+import 'package:easyget/models/catalog_models.dart';
 import 'package:easyget/models/order_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,8 +27,35 @@ Widget _host(Widget child) => MaterialApp(
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
-  group('SectionHeader', () {
-    testWidgets('title left, ghost See all right, never centered',
+  group('CategoryTile', () {
+    testWidgets('shows the image avatar, name and taps through',
+        (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_host(CategoryTile(
+        category: const Category(
+            id: 1,
+            name: 'Dairy',
+            slug: 'dairy',
+            image: 'https://example.com/dairy.png'),
+        onTap: () => taps++,
+      )));
+
+      expect(find.byKey(const Key('category-tile-dairy')), findsOneWidget);
+      expect(find.text('Dairy'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('category-tile-dairy')));
+      expect(taps, 1);
+    });
+
+    testWidgets('falls back to an icon without an image', (tester) async {
+      await tester.pumpWidget(_host(const CategoryTile(
+        category: Category(id: 2, name: 'Staples', slug: 'staples'),
+      )));
+
+      expect(find.byIcon(Icons.grid_view_outlined), findsOneWidget);
+    });
+  });
+
+  group('SectionHeader', () {    testWidgets('title left, ghost See all right, never centered',
         (tester) async {
       var taps = 0;
       await tester.pumpWidget(_host(SectionHeader(

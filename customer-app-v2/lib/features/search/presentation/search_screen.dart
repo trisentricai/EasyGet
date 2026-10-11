@@ -8,6 +8,7 @@ import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/states.dart';
+import '../../catalog/presentation/widgets/category_tile.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
 import '../data/search_repository.dart';
 import 'search_controller.dart';
@@ -237,17 +238,19 @@ class _EmptyMode extends ConsumerWidget {
           if (cats.isNotEmpty) ...[
             const _RowLabel(label: 'Browse categories'),
             const SizedBox(height: AppSpace.sm),
-            Wrap(
-              spacing: AppSpace.sm,
-              runSpacing: AppSpace.sm,
-              children: [
-                for (final category in cats.take(8))
-                  AppChip(
-                    label: category.name,
-                    onTap: () => context
-                        .go('/browse?category=${category.slug}'),
-                  ),
-              ],
+            SizedBox(
+              height: 108,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: cats.length > 8 ? 8 : cats.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpace.md),
+                itemBuilder: (_, i) => CategoryTile(
+                  category: cats[i],
+                  onTap: () =>
+                      context.go('/browse?category=${cats[i].slug}'),
+                ),
+              ),
             ),
             const SizedBox(height: AppSpace.xl),
           ],
