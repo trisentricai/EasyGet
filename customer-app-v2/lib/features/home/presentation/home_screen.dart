@@ -54,7 +54,9 @@ class HomeScreen extends ConsumerWidget {
             tooltip: 'Account',
           ),
         ],
-        bottom: const AppSearchBar(),
+        bottom: AppSearchBar(
+          onMic: () => context.go('/search?listen=1'),
+        ),
       ),
       body: _Body(
         storefront: storefront,

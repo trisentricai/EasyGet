@@ -150,9 +150,11 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     final categories = ref.watch(browseCategoriesProvider);
 
     return Scaffold(
-      appBar: const EasyGetAppBar(
+      appBar: EasyGetAppBar(
         title: 'Browse',
-        bottom: AppSearchBar(),
+        bottom: AppSearchBar(
+          onMic: () => context.go('/search?listen=1'),
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

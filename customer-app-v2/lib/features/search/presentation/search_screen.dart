@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,10 +9,12 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/skeletons.dart';
+import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
 import '../../catalog/presentation/widgets/category_tile.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
 import '../data/search_repository.dart';
+import '../data/voice_search.dart';
 import 'search_controller.dart';
 
 /// S6 · Search (`/search?q=`, tab 3): autofocus field → recents + category
@@ -33,8 +37,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   /// afterwards the field owns the query.
   String? _lastRouteQuery;
 
+  /// Last `?listen=` seen: `1` auto-starts voice search once per arrival.
+  String? _lastListenFlag;
+
+  /// True while the mic is hot. Stopped on dispose + on submit.
+  bool _listening = false;
+
+  /// Service captured at listen time so dispose() never touches `ref`
+  /// (unsafe once the element deactivates).
+  VoiceSearchService? _voiceService;
+
   @override
   void dispose() {
+    unawaited(_voiceService?.stop());
     _field.dispose();
     _scroll.dispose();
     super.dispose();
@@ -49,8 +64,39 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   void _clearAll() {
+    _stopVoice();
     _field.clear();
     ref.read(searchControllerProvider.notifier).clearSearch();
+  }
+
+  Future<void> _startVoice() async {
+    final service = ref.read(voiceSearchProvider);
+    if (!await service.ensurePermission()) {
+      if (!mounted) return;
+      showAppSnackbar(context, 'Microphone is unavailable.');
+      return;
+    }
+    if (!mounted) return;
+    _voiceService = service;
+    setState(() => _listening = true);
+    await service.listen(onResult: (text, finalResult) {
+      if (!mounted) return;
+      _field.text = text;
+      ref.read(searchControllerProvider.notifier).setDraft(text);
+      if (finalResult) {
+        _stopVoice();
+        if (text.trim().isNotEmpty) {
+          ref.read(searchControllerProvider.notifier).submit(text);
+        }
+      }
+    });
+  }
+
+  void _stopVoice() {
+    if (!_listening) return;
+    setState(() => _listening = false);
+    unawaited(_voiceService?.stop());
+    _voiceService = null;
   }
 
   void _pickSuggestion(String term) {
@@ -76,8 +122,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final routeQuery =
-        (GoRouterState.of(context).uri.queryParameters['q'] ?? '').trim();
+    final params = GoRouterState.of(context).uri.queryParameters;
+    final routeQuery = (params['q'] ?? '').trim();
     if (routeQuery != _lastRouteQuery) {
       _lastRouteQuery = routeQuery;
       if (routeQuery.isNotEmpty) {
@@ -86,6 +132,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             _field.text = routeQuery;
             ref.read(searchControllerProvider.notifier).submit(routeQuery);
           }
+        });
+      }
+    }
+    final listenFlag = params['listen'] ?? '';
+    if (listenFlag != _lastListenFlag) {
+      _lastListenFlag = listenFlag;
+      if (listenFlag == '1') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _startVoice();
         });
       }
     }
@@ -102,6 +157,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm),
               child: _SearchField(
                 controller: _field,
+                listening: _listening,
                 onChanged: (v) => ref
                     .read(searchControllerProvider.notifier)
                     .setDraft(v),
@@ -109,6 +165,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     .read(searchControllerProvider.notifier)
                     .submit(v),
                 onClear: _clearAll,
+                onMic: _listening ? _stopVoice : _startVoice,
               ),
             ),
             Expanded(child: _content(state)),
@@ -123,15 +180,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
+    required this.listening,
     required this.onChanged,
     required this.onSubmitted,
     required this.onClear,
+    required this.onMic,
   });
 
   final TextEditingController controller;
+  final bool listening;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
+  final VoidCallback onMic;
 
   @override
   Widget build(BuildContext context) {
@@ -158,13 +219,28 @@ class _SearchField extends StatelessWidget {
                   onSubmitted: onSubmitted,
                   style: AppTypography.body(scheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: 'Search atta, milk, soap…',
+                    hintText: listening
+                        ? 'Listening…'
+                        : 'Search atta, milk, soap…',
                     hintStyle:
                         AppTypography.body(scheme.onSurfaceVariant),
                     border: InputBorder.none,
                     isDense: true,
                   ),
                 ),
+              ),
+              IconButton(
+                key: const Key('search-mic'),
+                onPressed: onMic,
+                tooltip: listening ? 'Stop listening' : 'Voice search',
+                icon: Icon(
+                  listening ? Icons.stop_circle : Icons.mic_none,
+                  color: listening
+                      ? scheme.error
+                      : scheme.onSurfaceVariant,
+                ),
+                iconSize: 22,
+                visualDensity: VisualDensity.compact,
               ),
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: controller,

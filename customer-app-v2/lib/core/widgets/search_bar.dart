@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_typography.dart';
 
 /// Persistent search field under Home/Browse app bars (DESIGN §11.5):
-/// 52dp, sunken fill, radius 16, decorative mic + camera, taps open `/search`.
+/// 52dp, sunken fill, radius 16. Taps open `/search`; the mic jumps
+/// straight into voice search (`/search?listen=1`). No camera (v1 scope).
 class AppSearchBar extends StatelessWidget implements PreferredSizeWidget {
-  const AppSearchBar({super.key, this.onTap});
+  const AppSearchBar({super.key, this.onTap, this.onMic});
 
   final VoidCallback? onTap;
+  final VoidCallback? onMic;
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -41,10 +43,17 @@ class AppSearchBar extends StatelessWidget implements PreferredSizeWidget {
                       style: AppTypography.body(scheme.onSurfaceVariant),
                     ),
                   ),
-                  Icon(Icons.mic_none, color: scheme.onSurfaceVariant, size: 22),
-                  const SizedBox(width: 12),
-                  Icon(Icons.camera_alt_outlined,
-                      color: scheme.onSurfaceVariant, size: 22),
+                  if (onMic != null)
+                    IconButton(
+                      key: const Key('app-search-mic'),
+                      onPressed: onMic,
+                      icon: Icon(Icons.mic_none,
+                          color: scheme.onSurfaceVariant, size: 22),
+                      visualDensity: VisualDensity.compact,
+                    )
+                  else
+                    Icon(Icons.mic_none,
+                        color: scheme.onSurfaceVariant, size: 22),
                 ],
               ),
             ),

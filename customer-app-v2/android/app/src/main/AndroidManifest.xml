@@ -3,6 +3,8 @@
          the app requests on first use). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Voice search (mic button on the search field). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <application
         android:label="EasyGet"
         android:name="${applicationName}"

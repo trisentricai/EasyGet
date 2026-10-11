@@ -1,6 +1,7 @@
 import 'package:easyget/core/theme/app_theme.dart';
 import 'package:easyget/features/catalog/data/catalog_repository.dart';
 import 'package:easyget/features/search/data/search_repository.dart';
+import 'package:easyget/features/search/data/voice_search.dart';
 import 'package:easyget/features/search/presentation/search_screen.dart';
 import 'package:easyget/models/catalog_models.dart';
 import 'package:easyget/models/pincode_model.dart';
@@ -107,9 +108,29 @@ class _FakeCatalogRepo implements CatalogRepository {
       throw UnimplementedError();
 }
 
+class _FakeVoice implements VoiceSearchService {
+  bool permission = true;
+  bool listening = false;
+  void Function(String text, bool finalResult)? hook;
+
+  @override
+  Future<bool> ensurePermission() async => permission;
+
+  @override
+  Future<void> listen(
+      {required void Function(String text, bool finalResult) onResult}) async {
+    listening = true;
+    hook = onResult;
+  }
+
+  @override
+  Future<void> stop() async => listening = false;
+}
+
 Future<ProviderContainer> _pumpSearch(
   WidgetTester tester, {
   required _FakeSearchRepo searchRepo,
+  _FakeVoice? voice,
   List<String> seedHistory = const [],
   List<CatalogProduct> seedViews = const [],
   String location = '/search',
@@ -117,6 +138,7 @@ Future<ProviderContainer> _pumpSearch(
   final container = ProviderContainer(overrides: [
     searchRepositoryProvider.overrideWithValue(searchRepo),
     catalogRepositoryProvider.overrideWithValue(_FakeCatalogRepo()),
+    if (voice != null) voiceSearchProvider.overrideWithValue(voice),
   ]);
   addTearDown(container.dispose);
   for (final term in seedHistory) {
@@ -313,5 +335,58 @@ void main() {
     expect(find.text('Show more · 45 of 45'), findsNothing);
     expect(
         find.text('You have seen all 45 products'), findsOneWidget);
+  });
+
+  group('voice search', () {
+    testWidgets('mic starts listening; interim fills, final submits',
+        (tester) async {
+      final repo = _FakeSearchRepo();
+      final voice = _FakeVoice();
+      await _pumpSearch(tester, searchRepo: repo, voice: voice);
+
+      await tester.tap(find.byKey(const Key('search-mic')));
+      await tester.pumpAndSettle();
+      expect(voice.listening, isTrue);
+      expect(find.text('Listening…'), findsOneWidget);
+
+      voice.hook!('att', false);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('att one'), findsOneWidget);
+
+      voice.hook!('atta', true);
+      await tester.pumpAndSettle();
+      expect(repo.resultCalls.last, 'atta p1');
+      expect(find.text('atta Item'), findsOneWidget);
+      expect(voice.listening, isFalse);
+    });
+
+    testWidgets('denied mic announces instead of crashing', (tester) async {
+      final voice = _FakeVoice()..permission = false;
+      await _pumpSearch(tester, searchRepo: _FakeSearchRepo(), voice: voice);
+
+      await tester.tap(find.byKey(const Key('search-mic')));
+      await tester.pumpAndSettle();
+
+      expect(voice.listening, isFalse);
+      expect(find.text('Microphone is unavailable.'), findsOneWidget);
+    });
+
+    testWidgets('?listen=1 deep link auto-starts voice', (tester) async {
+      final voice = _FakeVoice();
+      await _pumpSearch(
+        tester,
+        searchRepo: _FakeSearchRepo(),
+        voice: voice,
+        location: '/search?listen=1',
+      );
+
+      expect(voice.listening, isTrue);
+    });
+
+    testWidgets('no camera icon anywhere on search', (tester) async {
+      await _pumpSearch(tester, searchRepo: _FakeSearchRepo());
+
+      expect(find.byIcon(Icons.camera_alt_outlined), findsNothing);
+    });
   });
 }
