@@ -8,6 +8,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../data/google_auth_source.dart';
+import '../../engagement/data/push_service.dart';
 import 'auth_controller.dart';
 
 /// S2 · Login (DESIGN §12 S2): email/password + Google, cold-start aware.
@@ -71,6 +72,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _showSnack(error);
       return;
     }
+    unawaited(ref.read(pushServiceProvider).syncIfSignedIn());
     context.go('/home');
   }
 
@@ -110,6 +112,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _showSnack(error);
       return;
     }
+    unawaited(ref.read(pushServiceProvider).syncIfSignedIn());
     context.go('/home');
   }
 

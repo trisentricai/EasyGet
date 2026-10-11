@@ -18,7 +18,19 @@ abstract class LocalNotifier {
     required String orderNumber,
     required String status,
   });
+
+  /// Generic foreground alert (FCM data messages, watcher overflow, …).
+  Future<void> showAlert({
+    required String title,
+    required String body,
+    String? payload,
+  });
 }
+
+/// Shared channel: the background isolate (FCM) and the foreground plugin
+/// must post to the same channel id.
+const orderUpdatesChannelId = 'order_updates';
+const orderUpdatesChannelName = 'Order updates';
 
 class PluginLocalNotifier implements LocalNotifier {
   PluginLocalNotifier(this._plugin, {required this.onTapOrder});
@@ -27,8 +39,8 @@ class PluginLocalNotifier implements LocalNotifier {
   final void Function(int orderId) onTapOrder;
 
   static const _channel = AndroidNotificationChannel(
-    'order_updates',
-    'Order updates',
+    orderUpdatesChannelId,
+    orderUpdatesChannelName,
     description: 'Status changes on your active orders.',
     importance: Importance.high,
   );
@@ -72,12 +84,26 @@ class PluginLocalNotifier implements LocalNotifier {
     required int orderId,
     required String orderNumber,
     required String status,
+  }) =>
+      showAlert(
+        title: 'Order $orderNumber',
+        body: humanizeStatus(status),
+        payload: '$orderId',
+        id: orderId,
+      );
+
+  @override
+  Future<void> showAlert({
+    required String title,
+    required String body,
+    String? payload,
+    int? id,
   }) async {
     try {
       await _plugin.show(
-        id: orderId,
-        title: 'Order $orderNumber',
-        body: humanizeStatus(status),
+        id: id ?? DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
+        title: title,
+        body: body,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             _channel.id,
@@ -87,7 +113,7 @@ class PluginLocalNotifier implements LocalNotifier {
             priority: Priority.high,
           ),
         ),
-        payload: '$orderId',
+        payload: payload,
       );
     } catch (_) {
       // Alerts are best-effort; the inbox + polling UI remain the source.

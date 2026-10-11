@@ -6,6 +6,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/account/presentation/account_providers.dart';
 import 'features/engagement/data/order_watcher.dart';
+import 'features/engagement/data/push_service.dart';
 import 'features/engagement/presentation/update_gate.dart';
 
 void main() {
@@ -44,6 +45,8 @@ class _EasyGetAppState extends ConsumerState<EasyGetApp> {
       // Foreground order-status alerts (idempotent; silent when logged out
       // or when notifications are denied).
       ref.read(orderWatcherProvider.notifier).start();
+      // FCM token registration (guarded: no Play services → no-op).
+      ref.read(pushServiceProvider).syncIfSignedIn();
     });
   }
 

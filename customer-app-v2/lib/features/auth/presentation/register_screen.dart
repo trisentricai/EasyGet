@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
+import '../../engagement/data/push_service.dart';
 import 'auth_controller.dart';
 
 /// S3 · Register (DESIGN §12 S3): instant signup, per-field DRF errors,
@@ -103,6 +104,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _busy = false);
 
     if (error == null) {
+      unawaited(ref.read(pushServiceProvider).syncIfSignedIn());
       context.go('/home');
       return;
     }

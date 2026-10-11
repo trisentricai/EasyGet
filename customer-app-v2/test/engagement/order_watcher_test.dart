@@ -51,6 +51,14 @@ class _FakeNotifier implements LocalNotifier {
     shown.add(
         {'orderId': orderId, 'orderNumber': orderNumber, 'status': status});
   }
+
+  @override
+  Future<void> showAlert(
+      {required String title,
+      required String body,
+      String? payload}) async {
+    shown.add({'title': title, 'body': body});
+  }
 }
 
 Future<ProviderContainer> _pumpWatcher(
