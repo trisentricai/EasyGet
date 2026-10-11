@@ -7,6 +7,7 @@ import 'package:easyget/features/cart/data/cart_repository.dart';
 import 'package:easyget/features/catalog/data/catalog_repository.dart';
 import 'package:easyget/features/engagement/data/analytics_repository.dart';
 import 'package:easyget/features/engagement/data/notifications_repository.dart';
+import 'package:easyget/features/engagement/data/order_watcher.dart';
 import 'package:easyget/features/search/data/search_repository.dart';
 import 'package:easyget/main.dart';
 import 'package:easyget/models/cart_models.dart';
@@ -117,6 +118,14 @@ class _EmptySearchRepo implements SearchRepository {
       const CatalogPage(results: [], total: 0, page: 1);
 }
 
+/// The foreground order watcher owns a 60s polling timer that would outlive
+/// widget tests (pending-timer invariant). Shell tests suppress it; the
+/// watcher lifecycle itself is covered by order_watcher_test.
+class _NoopWatcher extends OrderStatusWatcher {
+  @override
+  void start() {}
+}
+
 class _FakeNotificationsRepo implements NotificationsRepository {
   _FakeNotificationsRepo(this.unread);
   final int unread;
@@ -160,6 +169,7 @@ Future<ProviderContainer> _pumpApp(
     searchRepositoryProvider.overrideWithValue(_EmptySearchRepo()),
     notificationsRepositoryProvider
         .overrideWithValue(_FakeNotificationsRepo(unread)),
+    orderWatcherProvider.overrideWith(() => _NoopWatcher()),
   ]);
   addTearDown(container.dispose);
 

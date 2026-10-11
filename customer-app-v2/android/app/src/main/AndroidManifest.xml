@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Order-status alerts (Android 13+ needs the runtime grant too, which
+         the app requests on first use). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <application
         android:label="EasyGet"
         android:name="${applicationName}"
