@@ -367,7 +367,8 @@ void main() {
     expect(find.text('₹334'), findsWidgets);
   });
 
-  testWidgets('sticky stepper adds then removes the line', (tester) async {
+  testWidgets('add opens a pending picker; confirm commits the units',
+      (tester) async {
     final cart = _FakeCartRepo();
     await _pumpPdp(
       tester,
@@ -382,15 +383,49 @@ void main() {
           matching: inner,
         );
 
-    await tester.tap(withinSticky(find.byKey(const Key('qty-add'))));
+    // Phase 1: Add opens the picker — nothing hits the server yet.
+    await tester.tap(withinSticky(find.byKey(const Key('pdp-add'))));
     await tester.pumpAndSettle();
-    expect(cart.calls, ['add 11 x1']);
-    expect(withinSticky(find.text('1')), findsOneWidget);
+    expect(cart.calls, isEmpty);
+    expect(withinSticky(find.text('Add 1 · ₹199')), findsOneWidget);
 
+    // Phase 2: choosing units only updates the pending CTA…
+    await tester.tap(withinSticky(find.byKey(const Key('qty-plus'))));
+    await tester.pumpAndSettle();
+    expect(cart.calls, isEmpty);
+    expect(withinSticky(find.text('Add 2 · ₹398')), findsOneWidget);
+
+    // …confirm commits both units in ONE call, then the live stepper shows.
+    await tester.tap(withinSticky(find.byKey(const Key('pdp-confirm'))));
+    await tester.pumpAndSettle();
+    expect(cart.calls, ['add 11 x2']);
+    expect(withinSticky(find.text('2')), findsOneWidget);
+
+    // Live edits still apply straight to the server cart.
     await tester.tap(withinSticky(find.byKey(const Key('qty-minus'))));
     await tester.pumpAndSettle();
-    expect(cart.calls.last.startsWith('remove '), isTrue);
-    expect(withinSticky(find.text('Add')), findsOneWidget);
+    expect(cart.calls.last, 'update 1 x1');
+  });
+
+  testWidgets('backing the picker to zero returns to Add', (tester) async {
+    await _pumpPdp(
+      tester,
+      catalog: _FakeCatalogRepo(),
+      reviews: _FakeReviewsRepo(),
+      wishlist: _FakeWishlistRepo(),
+      cart: _FakeCartRepo(),
+    );
+
+    Finder withinSticky(Finder inner) => find.descendant(
+          of: find.byKey(const Key('pdp-sticky-stepper')),
+          matching: inner,
+        );
+
+    await tester.tap(withinSticky(find.byKey(const Key('pdp-add'))));
+    await tester.pumpAndSettle();
+    await tester.tap(withinSticky(find.byKey(const Key('qty-minus'))));
+    await tester.pumpAndSettle();
+    expect(withinSticky(find.byKey(const Key('pdp-add'))), findsOneWidget);
   });
 
   testWidgets('pincode checker answers quietly inline', (tester) async {

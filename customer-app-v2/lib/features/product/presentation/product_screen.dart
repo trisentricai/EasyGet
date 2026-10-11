@@ -16,6 +16,7 @@ import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
 import '../../../models/catalog_models.dart';
 import '../../../models/review_model.dart';
+import '../../cart/data/cart_repository.dart';
 import '../../catalog/presentation/widgets/price_block.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
 import '../../catalog/presentation/widgets/qty_stepper.dart';
@@ -222,6 +223,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
         ),
       ),
       bottomNavigationBar: _StickyBar(
+        // Keyed per variant so a pending selection never leaks across
+        // variant switches.
+        key: ValueKey('sticky-${selected?.id}'),
         price: price,
         mrp: detail.mrp,
         discountPercent: detail.discountPercent,
@@ -905,9 +909,13 @@ class _RelatedRail extends ConsumerWidget {
   }
 }
 
-/// Sticky thumb-zone bar: server PriceBlock + Add/stepper wired to the cart.
-class _StickyBar extends ConsumerWidget {
+/// Sticky thumb-zone bar: server PriceBlock + a confirm-before-add pipeline.
+/// First tap opens a pending stepper (nothing hits the server); the confirm
+/// CTA commits the chosen units at once. Once units live in the cart, the
+/// stepper edits them live (+ → addItem, − → PATCH-by-rewrite).
+class _StickyBar extends ConsumerStatefulWidget {
   const _StickyBar({
+    super.key,
     required this.price,
     required this.mrp,
     required this.discountPercent,
@@ -920,8 +928,18 @@ class _StickyBar extends ConsumerWidget {
   final int? variantId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_StickyBar> createState() => _StickyBarState();
+}
+
+class _StickyBarState extends ConsumerState<_StickyBar> {
+  bool _selecting = false;
+  int _pending = 1;
+  bool _confirming = false;
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final variantId = widget.variantId;
     final qty = variantId == null
         ? 0
         : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ??
@@ -941,9 +959,9 @@ class _StickyBar extends ConsumerWidget {
           children: [
             Expanded(
               child: PriceBlock(
-                  price: price,
-                  mrp: mrp,
-                  discountPercent: discountPercent),
+                  price: widget.price,
+                  mrp: widget.mrp,
+                  discountPercent: widget.discountPercent),
             ),
             if (variantId == null)
               Text('Unavailable',
@@ -952,27 +970,132 @@ class _StickyBar extends ConsumerWidget {
             else
               KeyedSubtree(
                 key: const Key('pdp-sticky-stepper'),
-                child: QtyStepper(
-                  quantity: qty,
-                  onChanged: (next) {
-                    final id = variantId;
-                    if (id == null) return;
-                    if (next > qty) {
-                      ref
-                          .read(pdpCartControllerProvider.notifier)
-                          .increment(id);
-                    } else {
-                      ref
-                          .read(pdpCartControllerProvider.notifier)
-                          .decrement(id);
-                    }
-                  },
-                ),
+                child: _control(context, variantId, qty),
               ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _control(BuildContext context, int variantId, int qty) {
+    if (qty == 0 && !_selecting) return _addPill(context);
+    if (_selecting && qty == 0) return _pendingPicker(context, variantId);
+    return QtyStepper(
+      quantity: qty,
+      onChanged: (next) {
+        if (next > qty) {
+          ref.read(pdpCartControllerProvider.notifier).increment(variantId);
+        } else {
+          ref.read(pdpCartControllerProvider.notifier).decrement(variantId);
+        }
+      },
+    );
+  }
+
+  /// Phase 1 — nothing in the cart yet: an Add pill that only OPENS the
+  /// pending picker. No server call happens here.
+  Widget _addPill(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return KeyedSubtree(
+      key: const ValueKey('phase-add'),
+      child: SizedBox(
+        height: 40,
+        child: OutlinedButton(
+          key: const Key('pdp-add'),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            setState(() {
+              _selecting = true;
+              _pending = 1;
+            });
+          },
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(72, 40),
+            padding:
+                const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+            side: BorderSide(color: scheme.primary),
+            foregroundColor: scheme.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadii.button),
+            ),
+            textStyle: AppTypography.label(scheme.primary),
+          ),
+          child: const Text('Add'),
+        ),
+      ),
+    );
+  }
+
+  /// Phase 2 — pending picker: local stepper + a confirm CTA that commits
+  /// the chosen units in ONE addItem call. Backing to 0 cancels.
+  Widget _pendingPicker(BuildContext context, int variantId) {
+    final scheme = Theme.of(context).colorScheme;
+    return KeyedSubtree(
+      key: const ValueKey('phase-select'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          QtyStepper(
+            key: const ValueKey('pending'),
+            quantity: _pending,
+            onChanged: (next) {
+              if (next <= 0) {
+                setState(() => _selecting = false);
+              } else {
+                setState(() => _pending = next);
+              }
+            },
+          ),
+          const SizedBox(height: AppSpace.xs),
+          SizedBox(
+            width: 176,
+            height: 44,
+            child: FilledButton(
+              key: const Key('pdp-confirm'),
+              onPressed: _confirming ? null : () => _confirm(variantId),
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppRadii.button),
+                ),
+              ),
+              child: _confirming
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      'Add $_pending · ₹${_rupees(widget.price * _pending)}',
+                      style: AppTypography.label(scheme.onPrimary),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirm(int variantId) async {
+    setState(() => _confirming = true);
+    try {
+      await ref
+          .read(cartRepositoryProvider)
+          .addItem(variantId: variantId, quantity: _pending);
+      await ref.read(pdpCartControllerProvider.notifier).refresh();
+      if (!mounted) return;
+      setState(() {
+        _confirming = false;
+        _selecting = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _confirming = false);
+      showAppSnackbar(context, 'Could not add to cart.');
+    }
   }
 }
 
