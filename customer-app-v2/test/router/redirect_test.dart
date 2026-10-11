@@ -11,7 +11,9 @@ const _private = [
   '/account',
   '/addresses',
   '/wishlist',
+  '/notifications',
   '/product/milk',
+  '/order/1',
 ];
 
 const _public = ['/login', '/register'];

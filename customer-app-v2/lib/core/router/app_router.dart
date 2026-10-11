@@ -13,6 +13,7 @@ import '../../features/browse/presentation/browse_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
 import '../../features/checkout/presentation/checkout_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
+import '../../features/engagement/presentation/notifications_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/orders/presentation/order_detail_screen.dart';
 import '../../features/orders/presentation/orders_screen.dart';
@@ -33,10 +34,13 @@ const Set<String> _privateRoutes = {
   '/account',
   '/addresses',
   '/wishlist',
+  '/notifications',
 };
 
 bool _isPrivate(String location) =>
-    _privateRoutes.contains(location) || location.startsWith('/product/');
+    _privateRoutes.contains(location) ||
+    location.startsWith('/product/') ||
+    location.startsWith('/order/');
 
 /// Pure redirect decision (DESIGN §14). Exported so the whole matrix is
 /// unit-tested without a live router.
@@ -142,6 +146,9 @@ final _routes = <RouteBase>[
   GoRoute(path: '/account', builder: (_, _) => const AccountScreen()),
   GoRoute(path: '/addresses', builder: (_, _) => const AddressesScreen()),
   GoRoute(path: '/wishlist', builder: (_, _) => const WishlistScreen()),
+  GoRoute(
+      path: '/notifications',
+      builder: (_, _) => const NotificationsScreen()),
   GoRoute(
     path: '/order/:id',
     builder: (context, state) {

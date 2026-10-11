@@ -6,10 +6,12 @@ import 'package:easyget/features/auth/data/auth_repository.dart';
 import 'package:easyget/features/cart/data/cart_repository.dart';
 import 'package:easyget/features/catalog/data/catalog_repository.dart';
 import 'package:easyget/features/engagement/data/analytics_repository.dart';
+import 'package:easyget/features/engagement/data/notifications_repository.dart';
 import 'package:easyget/features/search/data/search_repository.dart';
 import 'package:easyget/main.dart';
 import 'package:easyget/models/cart_models.dart';
 import 'package:easyget/models/catalog_models.dart';
+import 'package:easyget/models/notification_model.dart';
 import 'package:easyget/models/pincode_model.dart';
 import 'package:easyget/models/storefront_models.dart';
 import 'package:flutter/material.dart';
@@ -115,7 +117,22 @@ class _EmptySearchRepo implements SearchRepository {
       const CatalogPage(results: [], total: 0, page: 1);
 }
 
-class _NoopAnalytics implements AnalyticsRepository {  @override
+class _FakeNotificationsRepo implements NotificationsRepository {
+  _FakeNotificationsRepo(this.unread);
+  final int unread;
+
+  @override
+  Future<List<AppNotification>> list() async => const [];
+  @override
+  Future<int> unreadCount() async => unread;
+  @override
+  Future<void> markRead(int id) async {}
+  @override
+  Future<void> markAllRead() async {}
+}
+
+class _NoopAnalytics implements AnalyticsRepository {
+  @override
   Future<void> track({
     required String eventType,
     Map<String, dynamic> properties = const {},
@@ -128,6 +145,7 @@ Future<ProviderContainer> _pumpApp(
   WidgetTester tester, {
   required bool signedIn,
   int cartItems = 0,
+  int unread = 0,
 }) async {
   final store = InMemoryTokenStore();
   if (signedIn) await store.save(access: 'A', refresh: 'R');
@@ -140,6 +158,8 @@ Future<ProviderContainer> _pumpApp(
     cartRepositoryProvider.overrideWithValue(_FakeCartRepo(cartItems)),
     catalogRepositoryProvider.overrideWithValue(_EmptyCatalogRepo()),
     searchRepositoryProvider.overrideWithValue(_EmptySearchRepo()),
+    notificationsRepositoryProvider
+        .overrideWithValue(_FakeNotificationsRepo(unread)),
   ]);
   addTearDown(container.dispose);
 
@@ -214,5 +234,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Search the store'), findsOneWidget);
+  });
+
+  testWidgets('bell badge hides at 0 and shows the unread count',
+      (tester) async {
+    await _pumpApp(tester, signedIn: true, unread: 0);
+    expect(find.byKey(const Key('home-notifications')), findsOneWidget);
+    expect(find.byKey(const Key('notif-badge')), findsNothing);
+
+    await _pumpApp(tester, signedIn: true, unread: 3);
+    expect(find.byKey(const Key('notif-badge')), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
   });
 }

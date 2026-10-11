@@ -9,6 +9,7 @@ import '../../../core/widgets/app_bar.dart';
 import '../../../core/widgets/eta_pill.dart';
 import '../../../core/widgets/search_bar.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../engagement/presentation/notifications_providers.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/states.dart';
 import '../../../models/catalog_models.dart';
@@ -45,6 +46,7 @@ class HomeScreen extends ConsumerWidget {
           child: EtaPill(minutes: 12),
         ),
         actions: [
+          const _BellAction(),
           IconButton(
             key: const Key('home-account'),
             onPressed: () => context.push('/account'),
@@ -63,9 +65,32 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+/// Bell with the unread-count badge → notifications inbox.
+class _BellAction extends ConsumerWidget {
+  const _BellAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread =
+        ref.watch(unreadCountProvider).value ?? 0;
+    final icon = IconButton(
+      key: const Key('home-notifications'),
+      onPressed: () => context.push('/notifications'),
+      icon: const Icon(Icons.notifications_outlined),
+      tooltip: 'Notifications',
+    );
+    if (unread <= 0) return icon;
+    return Badge(
+      key: const Key('notif-badge'),
+      label: Text(unread > 99 ? '99+' : '$unread'),
+      backgroundColor: Theme.of(context).freshColors.marigold,
+      child: icon,
+    );
+  }
+}
+
 /// Home-tab delivery address row (chevron → address sheet in S13).
-class _HomeAddressRow extends StatelessWidget {
-  const _HomeAddressRow();
+class _HomeAddressRow extends StatelessWidget {  const _HomeAddressRow();
 
   @override
   Widget build(BuildContext context) {
