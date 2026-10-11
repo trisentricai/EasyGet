@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:easyget/core/theme/app_theme.dart';
 import 'package:easyget/core/widgets/nav.dart';
 import 'package:flutter/material.dart';
@@ -92,5 +94,27 @@ void main() {
 
     await systemBack(tester);
     expect(find.text('HOME'), findsOneWidget);
+  });
+
+  test('no code pushes tab roots (duplicate page keys)', () {
+    // Pushing a StatefulShellRoute branch (go_router) trips the framework
+    // duplicate-page-key assertion (navigator.dart:4032). Tabs go();
+    // details push(). Query strings and deeper paths (/browse/all,
+    // /product/x) are fine — only the exact tab roots are banned.
+    final pattern =
+        RegExp(r"\.push\('/(home|browse|search|cart|orders)(\?[^']*)?'\)");
+    final offenders = <String>[];
+    for (final entry in Directory('lib').listSync(recursive: true)) {
+      final file = File(entry.path);
+      if (!file.path.endsWith('.dart')) continue;
+      final lines = file.readAsLinesSync();
+      for (var i = 0; i < lines.length; i++) {
+        if (pattern.hasMatch(lines[i])) {
+          offenders.add('${file.path}:${i + 1}: ${lines[i].trim()}');
+        }
+      }
+    }
+    expect(offenders, isEmpty,
+        reason: 'Tab roots must go(), never push(): $offenders');
   });
 }

@@ -1104,8 +1104,9 @@ class _StickyBarState extends ConsumerState<_StickyBar> {
       showAppSnackbar(
         context,
         'Added $units × ${widget.productName} (₹${_rupees(widget.price * units)})',
+        // The cart is a tab root: go(), never push() (duplicate page keys).
         actionLabel: 'View cart',
-        onAction: () => context.push('/cart'),
+        onAction: () => context.go('/cart'),
       );
     } catch (e) {
       if (!mounted) return;

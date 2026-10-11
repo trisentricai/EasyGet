@@ -71,8 +71,10 @@ Future<void> quickAddFromCard(
       showAppSnackbar(
         context,
         'Added 1 × $name (₹${_rupees(price)})',
+        // The cart is a tab root: go(), never push() — pushing a shell
+        // branch trips the Navigator duplicate-page-key assertion.
         actionLabel: 'View cart',
-        onAction: () => context.push('/cart'),
+        onAction: () => context.go('/cart'),
       );
     } catch (_) {
       if (context.mounted) {
