@@ -37,13 +37,21 @@ class HomeScreen extends ConsumerWidget {
     final categories = ref.watch(homeCategoriesProvider);
 
     return Scaffold(
-      appBar: const EasyGetAppBar(
-        addressRow: _HomeAddressRow(),
-        etaPill: KeyedSubtree(
+      appBar: EasyGetAppBar(
+        addressRow: const _HomeAddressRow(),
+        etaPill: const KeyedSubtree(
           key: Key('home-eta-pill'),
           child: EtaPill(minutes: 12),
         ),
-        bottom: AppSearchBar(),
+        actions: [
+          IconButton(
+            key: const Key('home-account'),
+            onPressed: () => context.go('/account'),
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'Account',
+          ),
+        ],
+        bottom: const AppSearchBar(),
       ),
       body: _Body(
         storefront: storefront,

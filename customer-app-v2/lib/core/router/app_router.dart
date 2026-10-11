@@ -6,6 +6,7 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/boot_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/account/presentation/account_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/browse/presentation/browse_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
@@ -125,6 +126,7 @@ final _routes = <RouteBase>[
     branches: _shellBranches,
   ),
   GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
+  GoRoute(path: '/account', builder: (_, _) => const AccountScreen()),
   GoRoute(
     path: '/order/:id',
     builder: (context, state) {
