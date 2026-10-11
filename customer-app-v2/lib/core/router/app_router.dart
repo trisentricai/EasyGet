@@ -8,6 +8,7 @@ import '../../features/auth/presentation/boot_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/browse/presentation/browse_screen.dart';
+import '../../features/cart/presentation/cart_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/product/presentation/product_screen.dart';
@@ -97,8 +98,7 @@ final _shellBranches = <StatefulShellBranch>[
     routes: [
       GoRoute(
         path: '/cart',
-        builder: (_, _) =>
-            const EasyGetTabScaffold(route: 'cart', title: 'Your cart'),
+        builder: (_, _) => const CartScreen(),
       ),
     ],
   ),
