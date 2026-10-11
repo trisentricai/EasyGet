@@ -156,6 +156,8 @@ class _FakePaymentRepo implements PaymentRepository {
   Future<List<PaymentMethod>> methods() async => const [
         PaymentMethod(
             id: 5, type: 'UPI', label: 'My UPI', upiId: 'user@upi'),
+        PaymentMethod(
+            id: 6, type: 'CARD', label: 'My Card', last4: '4242'),
       ];
 
   @override
@@ -255,10 +257,11 @@ void main() {
     expect(find.text('9 AM – 12 PM'), findsOneWidget);
     expect(find.text('Cash on delivery'), findsOneWidget);
     expect(find.text('My UPI'), findsOneWidget);
+    expect(find.text('My Card'), findsOneWidget);
     expect(find.text('Place order · ₹498'), findsOneWidget);
   });
 
-  testWidgets('slot choice lands in delivery_instructions', (tester) async {
+  testWidgets('slot + note land in delivery_instructions', (tester) async {
     final orders = _FakeOrdersRepo();
     await _pumpCheckout(
       tester,
@@ -273,6 +276,10 @@ void main() {
     await scrollTo(tester, find.text('6 – 9 PM'));
     await tester.tap(find.text('6 – 9 PM'));
     await tester.pumpAndSettle();
+    await scrollTo(tester, find.byKey(const Key('checkout-note')));
+    await tester.enterText(
+        find.byKey(const Key('checkout-note')), 'Leave at gate');
+    await tester.pumpAndSettle();
     await scrollTo(tester, find.byKey(const Key('checkout-place')));
     await tester.tap(find.byKey(const Key('checkout-place')));
     await tester.pumpAndSettle();
@@ -281,7 +288,7 @@ void main() {
     expect(orders.creates.single['deliveryAddress'],
         contains('12 MG Road'));
     expect(orders.creates.single['instructions'],
-        'Delivery slot: Tomorrow, 6 – 9 PM');
+        'Delivery slot: Tomorrow, 6 – 9 PM\nNote: Leave at gate');
   });
 
   testWidgets('COD skips the payment call; UPI creates one', (tester) async {
@@ -308,8 +315,8 @@ void main() {
       orders: orders,
       payments: payments,
     );
-    await scrollTo(tester, find.byKey(const Key('pay-upi-5')));
-    await tester.tap(find.byKey(const Key('pay-upi-5')));
+    await scrollTo(tester, find.byKey(const Key('pay-UPI-5')));
+    await tester.tap(find.byKey(const Key('pay-UPI-5')));
     await tester.pumpAndSettle();
     await scrollTo(tester, find.byKey(const Key('checkout-place')));
     await tester.tap(find.byKey(const Key('checkout-place')));
@@ -318,6 +325,27 @@ void main() {
     expect(payments.payments.single['gateway'], 'PHONEPE');
     expect(payments.payments.single['paymentMethodId'], 5);
     expect(payments.payments.single['order'], 101);
+  });
+
+  testWidgets('card methods map to their gateway', (tester) async {
+    final payments = _FakePaymentRepo();
+    await _pumpCheckout(
+      tester,
+      addresses: _FakeAddressRepo(),
+      cart: _FakeCartRepo(),
+      orders: _FakeOrdersRepo(),
+      payments: payments,
+    );
+
+    await scrollTo(tester, find.byKey(const Key('pay-CARD-6')));
+    await tester.tap(find.byKey(const Key('pay-CARD-6')));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.byKey(const Key('checkout-place')));
+    await tester.tap(find.byKey(const Key('checkout-place')));
+    await tester.pumpAndSettle();
+
+    expect(payments.payments.single['gateway'], 'STRIPE');
+    expect(payments.payments.single['paymentMethodId'], 6);
   });
 
   testWidgets('double tap places a single order', (tester) async {

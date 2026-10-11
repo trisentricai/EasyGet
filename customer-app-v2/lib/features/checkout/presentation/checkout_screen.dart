@@ -16,6 +16,7 @@ import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
 import '../../../models/address_model.dart';
+import '../../../models/payment_model.dart';
 import '../../addresses/presentation/address_form_sheet.dart';
 import '../../cart/presentation/cart_controller.dart';
 import 'checkout_controller.dart';
@@ -312,17 +313,55 @@ class _SlotPicker extends ConsumerWidget {
                 ),
             ],
           ),
+          const SizedBox(height: AppSpace.sm),
+          SizedBox(
+            height: 52,
+            child: TextField(
+              key: const Key('checkout-note'),
+              onChanged: notifier.setNote,
+              textCapitalization: TextCapitalization.sentences,
+              style: AppTypography.body(
+                  Theme.of(context).colorScheme.onSurface),
+              decoration: InputDecoration(
+                hintText: 'Delivery instructions (optional)',
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpace.lg),
+                border: OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppRadii.input),
+                  borderSide: BorderSide(
+                      color: Theme.of(context)
+                          .freshColors
+                          .faint),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-/// Payment rows: saved UPI methods + always-available COD.
+/// Payment rows: every saved method from the API (any type) plus an
+/// always-available Cash-on-delivery row.
 class _MethodList extends ConsumerWidget {
   const _MethodList({required this.state});
 
   final CheckoutState state;
+
+  static const _icons = {
+    'UPI': Icons.qr_code_2,
+    'CARD': Icons.credit_card,
+    'WALLET': Icons.account_balance_wallet,
+    'COD': Icons.money,
+  };
+
+  String _subtitle(PaymentMethod method) {
+    if ((method.upiId ?? '').isNotEmpty) return method.upiId!;
+    if ((method.last4 ?? '').isNotEmpty) return '•••• ${method.last4}';
+    return 'Pay on delivery';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -333,6 +372,7 @@ class _MethodList extends ConsumerWidget {
     Widget row({
       required Key key,
       required bool selected,
+      required IconData icon,
       required String title,
       required String subtitle,
       required VoidCallback onTap,
@@ -356,10 +396,8 @@ class _MethodList extends ConsumerWidget {
             child: Row(
               children: [
                 Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  size: 20,
+                  icon,
+                  size: 22,
                   color:
                       selected ? scheme.primary : colors.faint,
                 ),
@@ -379,6 +417,14 @@ class _MethodList extends ConsumerWidget {
                     ],
                   ),
                 ),
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  size: 20,
+                  color:
+                      selected ? scheme.primary : colors.faint,
+                ),
               ],
             ),
           ),
@@ -388,20 +434,21 @@ class _MethodList extends ConsumerWidget {
 
     return Column(
       children: [
-        for (final method in state.upiMethods)
+        for (final method in state.methods)
           row(
-            key: Key('pay-upi-${method.id}'),
-            selected: state.method == 'upi' &&
+            key: Key('pay-${method.type}-${method.id}'),
+            icon: _icons[method.type] ?? Icons.payment,
+            selected: state.method == method.type.toLowerCase() &&
                 state.savedMethodId == method.id,
-            title: method.label.isEmpty ? 'UPI' : method.label,
-            subtitle: (method.upiId ?? '').isEmpty
-                ? 'Pay on delivery'
-                : method.upiId!,
-            onTap: () => notifier.setMethod('upi', method.id),
+            title: method.label.isEmpty ? method.type : method.label,
+            subtitle: _subtitle(method),
+            onTap: () => notifier.setMethod(
+                method.type.toLowerCase(), method.id),
           ),
         row(
           key: const Key('pay-cod'),
-          selected: state.method == 'cod',
+          icon: _icons['COD']!,
+          selected: state.method == 'cod' && state.savedMethodId == null,
           title: 'Cash on delivery',
           subtitle: 'Pay at your door',
           onTap: () => notifier.setMethod('cod'),

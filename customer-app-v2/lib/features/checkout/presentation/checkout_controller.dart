@@ -20,6 +20,7 @@ class CheckoutState {
     this.selectedAddressId,
     this.day = 'Today',
     this.window = '9 AM – 12 PM',
+    this.note = '',
     this.method = 'cod',
     this.savedMethodId,
     this.methods = const [],
@@ -36,6 +37,7 @@ class CheckoutState {
   final int? selectedAddressId;
   final String day;
   final String window;
+  final String note;
   final String method;
   final int? savedMethodId;
   final List<PaymentMethod> methods;
@@ -55,7 +57,11 @@ class CheckoutState {
   List<PaymentMethod> get upiMethods =>
       methods.where((m) => m.type == 'UPI').toList();
 
-  String get slotText => 'Delivery slot: $day, $window';
+  String get slotText {
+    final base = 'Delivery slot: $day, $window';
+    if (note.trim().isEmpty) return base;
+    return '$base\nNote: ${note.trim()}';
+  }
 
   CheckoutState copyWith({
     List<Address>? addresses,
@@ -64,6 +70,7 @@ class CheckoutState {
     int? Function()? selectedAddressId,
     String? day,
     String? window,
+    String? note,
     String? method,
     int? Function()? savedMethodId,
     List<PaymentMethod>? methods,
@@ -83,6 +90,7 @@ class CheckoutState {
             : selectedAddressId(),
         day: day ?? this.day,
         window: window ?? this.window,
+        note: note ?? this.note,
         method: method ?? this.method,
         savedMethodId: savedMethodId == null
             ? this.savedMethodId
@@ -98,6 +106,16 @@ class CheckoutState {
 }
 
 class CheckoutController extends Notifier<CheckoutState> {
+  /// Best-effort gateway mapping for saved method types (the payments API
+  /// only accepts RAZORPAY | STRIPE | PHONEPE | COD). COD always pays
+  /// at the door and skips the payment call entirely.
+  static const gateways = {
+    'UPI': 'PHONEPE',
+    'CARD': 'STRIPE',
+    'WALLET': 'RAZORPAY',
+    'COD': 'COD',
+  };
+
   @override
   CheckoutState build() {
     _load();
@@ -157,6 +175,10 @@ class CheckoutController extends Notifier<CheckoutState> {
     state = state.copyWith(window: window);
   }
 
+  void setNote(String note) {
+    state = state.copyWith(note: note);
+  }
+
   void setMethod(String method, [int? savedMethodId]) {
     state = state.copyWith(
         method: method, savedMethodId: () => savedMethodId);
@@ -182,7 +204,7 @@ class CheckoutController extends Notifier<CheckoutState> {
       if (state.method != 'cod') {
         await ref.read(paymentRepositoryProvider).createForOrder(
               order: order.id,
-              gateway: 'PHONEPE',
+              gateway: gateways[state.method.toUpperCase()] ?? 'COD',
               amount: order.total,
               paymentMethodId: state.savedMethodId,
             );
