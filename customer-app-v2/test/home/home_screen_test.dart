@@ -15,6 +15,8 @@ class _FakeCatalogRepo implements CatalogRepository {
   int categoriesCalls = 0;
   bool fail = false;
   bool empty = false;
+  bool typelessProducts = false;
+  bool storyOnly = false;
 
   StorefrontRender get _render => StorefrontRender(
         store: const StoreInfo(id: 1, name: 'EasyGet', slug: 'easyget'),
@@ -88,6 +90,40 @@ class _FakeCatalogRepo implements CatalogRepository {
         theme: StoreTheme(),
       );
     }
+    if (typelessProducts) {
+      return const StorefrontRender(
+        store: StoreInfo(id: 1, name: 'EasyGet', slug: 'easyget'),
+        theme: StoreTheme(),
+        sections: [
+          StorefrontSection(
+            id: 9,
+            type: '',
+            title: 'Mystery picks',
+            items: [
+              SectionItem(
+                  id: 10,
+                  productSlug: 'mystery-butter',
+                  caption: 'Mystery Butter',
+                  productPrice: 150),
+            ],
+          ),
+        ],
+      );
+    }
+    if (storyOnly) {
+      return const StorefrontRender(
+        store: StoreInfo(id: 1, name: 'EasyGet', slug: 'easyget'),
+        theme: StoreTheme(),
+        sections: [
+          StorefrontSection(
+            id: 3,
+            type: 'RICH_TEXT',
+            title: 'Our story',
+            subtitle: 'Farm fresh, every morning.',
+          ),
+        ],
+      );
+    }
     return _render;
   }
 
@@ -99,16 +135,30 @@ class _FakeCatalogRepo implements CatalogRepository {
   }
 
   @override
-  Future<CatalogPage> products(
-          {String? category,
-          String? brand,
-          double? minPrice,
-          double? maxPrice,
-          double? minDiscount,
-          bool? isFeatured,
-          String? sort,
-          int? page}) =>
-      throw UnimplementedError();
+  Future<CatalogPage> products({
+    String? category,
+    String? brand,
+    double? minPrice,
+    double? maxPrice,
+    double? minDiscount,
+    bool? isFeatured,
+    String? sort,
+    int? page,
+  }) async =>
+      CatalogPage(
+        results: [
+          const CatalogProduct(
+              id: 7,
+              name: 'Fallback Find',
+              slug: 'fallback-find',
+              brand: 'Acme',
+              mrp: 120,
+              basePrice: 99),
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+      );
   @override
   Future<ProductDetail> product(String slug) => throw UnimplementedError();
   @override
@@ -256,5 +306,24 @@ void main() {
     await _pumpHome(tester, repo);
 
     expect(find.text('Nothing here yet'), findsOneWidget);
+  });
+
+  testWidgets('typeless product sections still render as rails',
+      (tester) async {
+    final repo = _FakeCatalogRepo()..typelessProducts = true;
+    await _pumpHome(tester, repo);
+
+    expect(find.text('Mystery picks'), findsOneWidget);
+    expect(find.text('Mystery Butter'), findsOneWidget);
+  });
+
+  testWidgets('no product rows falls back to catalog rails', (tester) async {
+    final repo = _FakeCatalogRepo()..storyOnly = true;
+    await _pumpHome(tester, repo);
+
+    expect(find.text('Hot sales'), findsOneWidget);
+    expect(find.text('Top rated'), findsOneWidget);
+    expect(find.text('New arrivals'), findsOneWidget);
+    expect(find.text('Fallback Find'), findsWidgets);
   });
 }

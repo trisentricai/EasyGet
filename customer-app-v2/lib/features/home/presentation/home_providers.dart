@@ -13,3 +13,19 @@ final homeStorefrontProvider = FutureProvider<StorefrontRender>(
 final homeCategoriesProvider = FutureProvider<List<Category>>(
   (ref) => ref.watch(catalogRepositoryProvider).categories(),
 );
+
+/// Fallback rails: rendered ONLY when the storefront carries no product
+/// rows, so Home always shows products (Hot sales / Top rated / New).
+final hotSalesProvider = FutureProvider<CatalogPage>(
+  (ref) => ref.watch(catalogRepositoryProvider).products(isFeatured: true),
+);
+
+final topRatedProvider = FutureProvider<CatalogPage>(
+  (ref) =>
+      ref.watch(catalogRepositoryProvider).products(sort: 'rating'),
+);
+
+final newArrivalsProvider = FutureProvider<CatalogPage>(
+  (ref) =>
+      ref.watch(catalogRepositoryProvider).products(sort: 'newest'),
+);

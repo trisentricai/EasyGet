@@ -140,6 +140,36 @@ class _Body extends StatelessWidget {
   }
 }
 
+/// Section-kind inference: the live backend ships sections with an empty
+/// `type`, so the renderer reads the CONTENT (product/category slugs,
+/// images, titles) instead of trusting the label. Unknown shapes render as
+/// a promo strip rather than vanishing.
+String sectionKind(StorefrontSection section) {
+  final declared = section.type.trim().toUpperCase();
+  if (declared == 'HERO' ||
+      declared == 'BANNER' ||
+      declared == 'PRODUCT_ROW' ||
+      declared == 'CATEGORY_GRID' ||
+      declared == 'RICH_TEXT' ||
+      declared == 'IMAGE_GALLERY') {
+    return declared;
+  }
+  final items = section.items;
+  if (items.any((i) => (i.productSlug ?? '').isNotEmpty)) {
+    return 'PRODUCT_ROW';
+  }
+  if (items.any((i) => (i.categorySlug ?? '').isNotEmpty)) {
+    return 'CATEGORY_GRID';
+  }
+  if (items.any((i) => (i.image ?? '').isNotEmpty)) return 'BANNER';
+  if ((section.title ?? '').isNotEmpty ||
+      (section.subtitle ?? '').isNotEmpty) {
+    return 'PROMO';
+  }
+  if ((section.image ?? '').isNotEmpty) return 'BANNER';
+  return 'SKIP';
+}
+
 class _HomeContent extends StatelessWidget {
   const _HomeContent({
     required this.render,
@@ -153,6 +183,8 @@ class _HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasProductRows =
+        render.sections.any((s) => sectionKind(s) == 'PRODUCT_ROW');
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: SingleChildScrollView(
@@ -163,12 +195,7 @@ class _HomeContent extends StatelessWidget {
             if (render.ticker != null && render.ticker!.items.isNotEmpty)
               _TickerLine(text: render.ticker!.items.first),
             for (final section in render.sections)
-              if (section.type == 'BANNER' || section.type == 'HERO')
-                _BannerCarousel(
-                  key: ValueKey('carousel-${section.id}'),
-                  section: section,
-                  hero: section.type == 'HERO',
-                ),
+              _SectionBody(section: section),
             if (categories.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -180,14 +207,167 @@ class _HomeContent extends StatelessWidget {
               ),
               _CategoryGrid(categories: categories),
             ],
-            for (final section in render.sections)
-              if (section.type == 'PRODUCT_ROW') _ProductRail(section: section),
-            for (final section in render.sections)
-              if (section.type == 'RICH_TEXT') _StoryBlock(section: section),
+            // The storefront carries no product rows on this backend: fall
+            // back to catalog rails so Home always shows products.
+            if (!hasProductRows) ...[
+              _FallbackRail(
+                title: 'Hot sales',
+                provider: hotSalesProvider,
+              ),
+              _FallbackRail(
+                title: 'Top rated',
+                provider: topRatedProvider,
+              ),
+              _FallbackRail(
+                title: 'New arrivals',
+                provider: newArrivalsProvider,
+              ),
+            ],
             const SizedBox(height: AppSpace.xxl),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Dispatches one section to its renderer. CATEGORY_GRID sections defer to
+/// the API-driven category track above (never duplicated).
+class _SectionBody extends StatelessWidget {
+  const _SectionBody({required this.section});
+
+  final StorefrontSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (sectionKind(section)) {
+      case 'HERO':
+        return _BannerCarousel(
+          key: ValueKey('carousel-${section.id}'),
+          section: section,
+          hero: true,
+        );
+      case 'BANNER':
+      case 'IMAGE_GALLERY':
+        return _BannerCarousel(
+          key: ValueKey('carousel-${section.id}'),
+          section: section,
+        );
+      case 'PRODUCT_ROW':
+        return _ProductRail(section: section);
+      case 'RICH_TEXT':
+        return _StoryBlock(section: section);
+      case 'PROMO':
+        return _PromoStrip(section: section);
+      case 'CATEGORY_GRID':
+      case 'SKIP':
+        return const SizedBox.shrink();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+}
+
+/// Title-led promo strip for typeless sale sections (e.g. DIWALI SALE).
+class _PromoStrip extends StatelessWidget {
+  const _PromoStrip({required this.section});
+
+  final StorefrontSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).freshColors;
+    String caption = section.subtitle ?? '';
+    if (caption.isEmpty) {
+      for (final item in section.items) {
+        if ((item.caption ?? '').isNotEmpty) {
+          caption = item.caption!;
+          break;
+        }
+      }
+    }
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+          AppSpace.lg, AppSpace.lg, AppSpace.lg, 0),
+      padding: const EdgeInsets.all(AppSpace.xl),
+      decoration: BoxDecoration(
+        color: colors.primaryTint,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(section.title ?? '',
+              style: AppTypography.sectionHeadline(scheme.onSurface)),
+          if (caption.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.xs),
+            Text(caption,
+                style: AppTypography.label(colors.marigold, size: 14)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Catalog-driven rail used only when the storefront has no product rows.
+/// Loading → skeleton, error/empty → hidden (never an error wall on Home).
+class _FallbackRail extends ConsumerWidget {
+  const _FallbackRail({required this.title, required this.provider});
+
+  final String title;
+  final FutureProvider<CatalogPage> provider;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(provider);
+    return page.when(
+      loading: () => const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                AppSpace.lg, AppSpace.xl, AppSpace.lg, AppSpace.sm),
+            child: SkeletonRail(count: 4),
+          ),
+        ],
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (rows) {
+        if (rows.results.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpace.lg, AppSpace.xl, AppSpace.lg, AppSpace.sm),
+              child: SectionHeader(title: title),
+            ),
+            SizedBox(
+              height: 336,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+                itemCount: rows.results.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpace.md),
+                itemBuilder: (_, i) {
+                  final product = rows.results[i];
+                  return ProductCard(
+                    product: product,
+                    density: ProductDensity.rail,
+                    width: 148,
+                    onTap: () =>
+                        context.push('/product/${product.slug}'),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
