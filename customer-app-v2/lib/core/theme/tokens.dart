@@ -62,6 +62,7 @@ class AppRadii {
   static const double image = 14;
   static const double button = 16;
   static const double input = 14;
+  static const double snackbar = 14;
   static const double sheet = 24;
   static const double pill = 999;
 }

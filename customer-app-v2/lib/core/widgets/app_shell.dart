@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_typography.dart';
-import '../theme/tokens.dart';
 import 'app_bar.dart';
 import 'bottom_nav.dart';
+import 'eta_pill.dart';
 import 'search_bar.dart';
 
 /// The persistent shell every tab renders inside: body swaps per branch,
@@ -46,7 +46,12 @@ class EasyGetTabScaffold extends StatelessWidget {
       appBar: EasyGetAppBar(
         title: home ? null : title,
         addressRow: home ? const _AddressRow() : null,
-        etaPill: home ? const _EtaPill() : null,
+        etaPill: home
+            ? const KeyedSubtree(
+                key: Key('home-eta-pill'),
+                child: EtaPill(minutes: 12),
+              )
+            : null,
         bottom: showSearch ? const AppSearchBar() : null,
       ),
       body: KeyedSubtree(
@@ -97,33 +102,6 @@ class _AddressRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Home-tab ETA pill (marigold wash, timer icon, tabular minutes).
-class _EtaPill extends StatelessWidget {
-  const _EtaPill();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).freshColors;
-    return Container(
-      key: const Key('home-eta-pill'),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: colors.marigoldWash,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.timer_outlined, size: 16, color: colors.marigold),
-          const SizedBox(width: 4),
-          Text('12 min',
-              style: AppTypography.label(colors.marigold, size: 12)),
-        ],
-      ),
     );
   }
 }
