@@ -10,6 +10,7 @@ import '../../features/auth/presentation/register_screen.dart';
 import '../../features/browse/presentation/browse_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/search/presentation/search_screen.dart';
 import '../widgets/app_shell.dart';
 
 const Set<String> _publicRoutes = {'/login', '/register'};
@@ -87,8 +88,7 @@ final _shellBranches = <StatefulShellBranch>[
     routes: [
       GoRoute(
         path: '/search',
-        builder: (_, _) =>
-            const EasyGetTabScaffold(route: 'search', title: 'Search'),
+        builder: (_, _) => const SearchScreen(),
       ),
     ],
   ),

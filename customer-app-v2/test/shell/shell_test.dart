@@ -6,6 +6,7 @@ import 'package:easyget/features/auth/data/auth_repository.dart';
 import 'package:easyget/features/cart/data/cart_repository.dart';
 import 'package:easyget/features/catalog/data/catalog_repository.dart';
 import 'package:easyget/features/engagement/data/analytics_repository.dart';
+import 'package:easyget/features/search/data/search_repository.dart';
 import 'package:easyget/main.dart';
 import 'package:easyget/models/cart_models.dart';
 import 'package:easyget/models/catalog_models.dart';
@@ -103,8 +104,18 @@ class _EmptyCatalogRepo implements CatalogRepository {
       throw UnimplementedError();
 }
 
-class _NoopAnalytics implements AnalyticsRepository {
+/// Empty search backend: the Search tab renders its hint state in shell tests.
+class _EmptySearchRepo implements SearchRepository {
   @override
+  Future<List<String>> suggestions(String query,
+          {Object? cancelToken}) async =>
+      const [];
+  @override
+  Future<CatalogPage> results(String query, {int page = 1}) async =>
+      const CatalogPage(results: [], total: 0, page: 1);
+}
+
+class _NoopAnalytics implements AnalyticsRepository {  @override
   Future<void> track({
     required String eventType,
     Map<String, dynamic> properties = const {},
@@ -128,6 +139,7 @@ Future<ProviderContainer> _pumpApp(
     analyticsRepositoryProvider.overrideWithValue(_NoopAnalytics()),
     cartRepositoryProvider.overrideWithValue(_FakeCartRepo(cartItems)),
     catalogRepositoryProvider.overrideWithValue(_EmptyCatalogRepo()),
+    searchRepositoryProvider.overrideWithValue(_EmptySearchRepo()),
   ]);
   addTearDown(container.dispose);
 
@@ -201,6 +213,6 @@ void main() {
     await tester.tap(find.byKey(const Key('app-search-bar')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('placeholder-search')), findsOneWidget);
+    expect(find.text('Search the store'), findsOneWidget);
   });
 }

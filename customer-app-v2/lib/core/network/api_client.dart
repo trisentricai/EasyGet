@@ -50,8 +50,11 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? query,
     T Function(dynamic json)? decode,
+    CancelToken? cancelToken,
   }) =>
-      _run(() => _dio.get<dynamic>(path, queryParameters: query),
+      _run(
+          () => _dio.get<dynamic>(path,
+              queryParameters: query, cancelToken: cancelToken),
           decode: decode);
 
   Future<T> post<T>(
