@@ -71,7 +71,7 @@ GET   /search/suggestions/?q=   (min 2 chars) → [strings]
 GET   /cart/                 → { id, store, items[{ id, variant{}, quantity,
                                  line_total, tenant_id, seller_name }], total_items, subtotal }
 POST  /cart/items/           { variant_id, quantity }   (upsert-increment)
-PATCH/DELETE /cart/items/:id/  { quantity }
+DELETE /cart/items/:id/      (qty rewrite = DELETE + re-POST; PATCH 405s live, probed 2026-10-11)
 POST  /cart/merge/           { session_key }   (guest cart → user cart)
 DELETE /cart/clear/
 ```

@@ -92,14 +92,27 @@ void main() {
     expect(seen.single.data, {'variant_id': 5, 'quantity': 2});
   });
 
-  test('updateQty PATCHes {quantity} at the line path', () async {
-    repo = build((_) async => _json(_cartJson));
+  test('updateQty rewrites via DELETE + re-POST (PATCH 405s live)', () async {
+    repo = build((options) async {
+      if (options.method == 'GET') return _json(_cartJson);
+      return _json('', 204);
+    });
 
     await repo.updateQty(31, 4);
 
-    expect(seen.single.method, 'PATCH');
+    expect(seen.map((o) => o.method).toList(), ['GET', 'DELETE', 'POST']);
+    expect(seen[1].path, '/cart/items/31/');
+    expect(seen[2].path, '/cart/items/');
+    expect(seen[2].data, {'variant_id': 5, 'quantity': 4});
+  });
+
+  test('updateQty to zero just DELETEs', () async {
+    repo = build((_) async => _json('', 204));
+
+    await repo.updateQty(31, 0);
+
+    expect(seen.single.method, 'DELETE');
     expect(seen.single.path, '/cart/items/31/');
-    expect(seen.single.data, {'quantity': 4});
   });
 
   test('remove DELETEs the line', () async {

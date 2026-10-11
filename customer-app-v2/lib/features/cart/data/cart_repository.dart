@@ -40,12 +40,24 @@ class HttpCartRepository implements CartRepository {
     );
   }
 
+  /// Qty rewrite. NOTE: `PATCH /cart/items/:id/` 405s on the deployed
+  /// backend (`Method "PATCH" not allowed`, probed 2026-10-11), so a rewrite
+  /// is DELETE + re-POST with the same semantics (server re-validates).
   @override
   Future<void> updateQty(int itemId, int quantity) async {
-    await _api.patch<dynamic>(
-      ApiEndpoints.cartItem('$itemId'),
-      body: {'quantity': quantity},
-    );
+    if (quantity <= 0) {
+      await remove(itemId);
+      return;
+    }
+    final cart = await fetchCart();
+    CartItem? line;
+    for (final item in cart.items) {
+      if (item.id == itemId) line = item;
+    }
+    final target = line;
+    if (target == null) return;
+    await _api.delete<dynamic>(ApiEndpoints.cartItem('$itemId'));
+    await addItem(variantId: target.variantId, quantity: quantity);
   }
 
   @override
