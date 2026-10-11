@@ -18,6 +18,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 ProductDetail _detail(String slug) {
   final variantCount = slug == 'atta-5kg' ? 4 : 2;
+  final unrated = slug == 'unrated';
   return ProductDetail(
       id: 1,
       name: slug == 'related-1' ? 'Related Product' : 'Amul Butter',
@@ -26,8 +27,8 @@ ProductDetail _detail(String slug) {
       mrp: 349,
       basePrice: 289,
       discountPercent: 17,
-      ratingAvg: 4.3,
-      ratingCount: 212,
+      ratingAvg: unrated ? 0 : 4.3,
+      ratingCount: unrated ? 0 : 212,
       description: 'Creamy farm butter.',
       images: const [
         ProductImage(url: 'https://example.com/b1.jpg', isPrimary: true),
@@ -510,8 +511,7 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('related rail opens the related product', (tester) async {
-    await _pumpPdp(
+  testWidgets('related rail opens the related product', (tester) async {    await _pumpPdp(
       tester,
       catalog: _FakeCatalogRepo(),
       reviews: _FakeReviewsRepo(),
@@ -523,5 +523,19 @@ void main() {
     await tester.tap(find.text('Related Product'));
     await tester.pumpAndSettle();
     expect(find.text('Related Product'), findsOneWidget);
+  });
+
+  testWidgets('unrated products never show a 0.0 pill', (tester) async {
+    await _pumpPdp(
+      tester,
+      catalog: _FakeCatalogRepo(),
+      reviews: _FakeReviewsRepo(),
+      wishlist: _FakeWishlistRepo(),
+      cart: _FakeCartRepo(),
+      slug: 'unrated',
+    );
+
+    expect(find.text('No ratings yet'), findsWidgets);
+    expect(find.text('0.0'), findsNothing);
   });
 }

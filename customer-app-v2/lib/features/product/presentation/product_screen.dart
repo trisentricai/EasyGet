@@ -153,9 +153,10 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                                     .colorScheme
                                     .onSurfaceVariant)),
                       if (selected != null) const SizedBox(width: AppSpace.sm),
-                      RatingPill(
-                          rating: detail.ratingAvg,
-                          count: detail.ratingCount),
+                      _RatingSummary(
+                        rating: detail.ratingAvg,
+                        count: detail.ratingCount,
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpace.sm),
@@ -620,6 +621,27 @@ class _DeliveryRowState extends ConsumerState<_DeliveryRow> {
   }
 }
 
+/// Rating summary that never shows a "0.0" pill: unrated products get a
+/// quiet label instead.
+class _RatingSummary extends StatelessWidget {
+  const _RatingSummary({required this.rating, required this.count});
+
+  final double rating;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) {
+      return Text(
+        'No ratings yet',
+        style: AppTypography.caption(
+            Theme.of(context).colorScheme.onSurfaceVariant),
+      );
+    }
+    return RatingPill(rating: rating, count: count);
+  }
+}
+
 /// Reviews: summary + list + collapsible post form (409 → already-reviewed).
 class _ReviewsBlock extends ConsumerWidget {
   const _ReviewsBlock({
@@ -669,7 +691,7 @@ class _ReviewsBlock extends ConsumerWidget {
                   style: AppTypography.productName(scheme.onSurface,
                           size: 17)
                       .copyWith(fontWeight: FontWeight.w700)),
-              RatingPill(rating: ratingAvg, count: ratingCount),
+              _RatingSummary(rating: ratingAvg, count: ratingCount),
             ],
           ),
           const SizedBox(height: AppSpace.sm),
