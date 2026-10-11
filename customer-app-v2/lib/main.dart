@@ -6,6 +6,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/account/presentation/account_providers.dart';
 import 'features/engagement/data/order_watcher.dart';
+import 'features/engagement/presentation/update_gate.dart';
 
 void main() {
   runApp(ProviderScope(
@@ -48,13 +49,15 @@ class _EasyGetAppState extends ConsumerState<EasyGetApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'EasyGet',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ref.watch(themeModeProvider),
-      routerConfig: ref.watch(routerProvider),
+    return UpdateGate(
+      child: MaterialApp.router(
+        title: 'EasyGet',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ref.watch(themeModeProvider),
+        routerConfig: ref.watch(routerProvider),
+      ),
     );
   }
 }
