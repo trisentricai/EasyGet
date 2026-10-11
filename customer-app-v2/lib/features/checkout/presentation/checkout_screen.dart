@@ -25,8 +25,7 @@ const _windows = ['9 AM – 12 PM', '12 – 3 PM', '3 – 6 PM', '6 – 9 PM'];
 /// S9 · Checkout (`/checkout`, auth): steps header → address list (+ shared
 /// add/edit sheet) → local slot picker → COD/UPI rows → server bill →
 /// bottom CTA with double-tap guard. Order first, payment second (COD skips
-/// payment); success clears the cart and lands on `/orders` (S11 upgrades
-/// the target to `/order/:id`).
+/// payment); success clears the cart and lands on `/order/:id`.
 class CheckoutScreen extends ConsumerWidget {
   const CheckoutScreen({super.key});
 
@@ -536,7 +535,7 @@ class _PlaceBar extends ConsumerWidget {
     if (order == null) return;
     unawaited(HapticFeedback.mediumImpact());
     showAppSnackbar(context, 'Order placed — thank you!');
-    context.go('/orders');
+    context.go('/order/${order.id}');
   }
 }
 

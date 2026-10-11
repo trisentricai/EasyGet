@@ -12,6 +12,7 @@ import '../../features/cart/presentation/cart_screen.dart';
 import '../../features/checkout/presentation/checkout_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/orders/presentation/order_detail_screen.dart';
 import '../../features/orders/presentation/orders_screen.dart';
 import '../../features/product/presentation/product_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
@@ -124,6 +125,14 @@ final _routes = <RouteBase>[
     branches: _shellBranches,
   ),
   GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
+  GoRoute(
+    path: '/order/:id',
+    builder: (context, state) {
+      final id = int.tryParse(state.pathParameters['id'] ?? '');
+      if (id == null) return _placeholder('/order/unknown');
+      return OrderDetailScreen(key: ValueKey(id), orderId: id);
+    },
+  ),
   GoRoute(path: '/account', builder: (_, _) => _placeholder('/account')),
   GoRoute(
     path: '/product/:slug',

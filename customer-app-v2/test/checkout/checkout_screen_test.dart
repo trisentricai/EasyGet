@@ -200,6 +200,11 @@ Future<void> _pumpCheckout(
         builder: (_, _) =>
             const Scaffold(key: Key('orders-page'), body: Text('ORDERS')),
       ),
+      GoRoute(
+        path: '/order/:id',
+        builder: (_, _) => const Scaffold(
+            key: Key('order-detail-page'), body: Text('DETAIL')),
+      ),
     ],
   );
   await tester.pumpWidget(
@@ -340,10 +345,10 @@ void main() {
         discount: 0,
         total: 528));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('orders-page')), findsOneWidget);
+    expect(find.byKey(const Key('order-detail-page')), findsOneWidget);
   });
 
-  testWidgets('success clears the cart and lands on orders', (tester) async {
+  testWidgets('success clears the cart and lands on the detail', (tester) async {
     final cart = _FakeCartRepo();
     await _pumpCheckout(
       tester,
@@ -357,7 +362,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(cart.cleared, isTrue);
-    expect(find.byKey(const Key('orders-page')), findsOneWidget);
+    expect(find.byKey(const Key('order-detail-page')), findsOneWidget);
   });
 
   testWidgets('add-address sheet creates and selects', (tester) async {

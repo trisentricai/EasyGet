@@ -13,6 +13,7 @@ import '../../../core/widgets/states.dart';
 import '../../../core/widgets/status_pill.dart';
 import '../../../models/order_models.dart';
 import '../data/orders_repository.dart';
+import 'cancel_order_sheet.dart';
 import 'orders_providers.dart';
 
 /// S10 · Orders (`/orders`, tab 5): Active/Past segmented tabs → order cards
@@ -164,8 +165,7 @@ class _OrderCard extends ConsumerWidget {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   key: Key('order-cancel-${order.id}'),
-                  onPressed: () =>
-                      _CancelSheet.show(context, ref, order.id),
+                  onPressed: () => _confirmCancel(context, ref),
                   style: TextButton.styleFrom(
                     foregroundColor: scheme.error,
                     visualDensity: VisualDensity.compact,
@@ -179,161 +179,25 @@ class _OrderCard extends ConsumerWidget {
       ),
     );
   }
-}
 
-/// Cancel confirm sheet with an editable reason (the API requires one).
-class _CancelSheet extends ConsumerStatefulWidget {
-  const _CancelSheet({required this.orderId});
-
-  final int orderId;
-
-  static Future<void> show(
-      BuildContext context, WidgetRef ref, int orderId) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadii.sheet)),
-      ),
-      builder: (_) => _CancelSheet(orderId: orderId),
-    );
-  }
-
-  @override
-  ConsumerState<_CancelSheet> createState() => _CancelSheetState();
-}
-
-class _CancelSheetState extends ConsumerState<_CancelSheet> {
-  late final TextEditingController _reason =
-      TextEditingController(text: 'Changed my mind');
-  bool _busy = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _reason.dispose();
-    super.dispose();
-  }
-
-  Future<void> _confirm() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+  Future<void> _confirmCancel(BuildContext context, WidgetRef ref) async {
+    final reason = await CancelOrderSheet.show(context, order.id);
+    if (reason == null || !context.mounted) return;
     try {
-      await ref
-          .read(ordersRepositoryProvider)
-          .cancel(widget.orderId, _reason.text.trim());
+      await ref.read(ordersRepositoryProvider).cancel(order.id, reason);
       ref.invalidate(ordersListProvider);
-      if (!mounted) return;
-      // Snackbar first (the sheet context is still valid), then pop to
-      // reveal the refreshed list.
-      showAppSnackbar(context, 'Order cancelled.');
-      Navigator.of(context).pop();
+      if (context.mounted) {
+        showAppSnackbar(context, 'Order cancelled.');
+      }
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = e is ApiException ? e.message : 'Could not cancel.';
-      });
+      if (context.mounted) {
+        showAppSnackbar(
+            context,
+            e is ApiException
+                ? e.message
+                : 'Could not cancel the order.');
+      }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final colors = Theme.of(context).freshColors;
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-              AppSpace.lg,
-              AppSpace.md,
-              AppSpace.lg,
-              AppSpace.lg + MediaQuery.of(context).viewInsets.bottom),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.faint,
-                    borderRadius:
-                        BorderRadius.circular(AppRadii.pill),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpace.lg),
-              Text('Cancel this order?',
-                  style:
-                      AppTypography.screenTitle(scheme.onSurface)),
-              const SizedBox(height: AppSpace.xs),
-              Text('This cannot be undone.',
-                  style: AppTypography.body(
-                      scheme.onSurfaceVariant)),
-              const SizedBox(height: AppSpace.md),
-              SizedBox(
-                height: 52,
-                child: TextField(
-                  key: const Key('cancel-reason'),
-                  controller: _reason,
-                  textCapitalization:
-                      TextCapitalization.sentences,
-                  style: AppTypography.body(scheme.onSurface),
-                  decoration: InputDecoration(
-                    hintText: 'Reason',
-                    contentPadding:
-                        const EdgeInsets.symmetric(
-                            horizontal: AppSpace.lg),
-                    border: OutlineInputBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppRadii.input),
-                      borderSide:
-                          BorderSide(color: colors.faint),
-                    ),
-                  ),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: AppSpace.xs),
-                Text(_error!,
-                    style:
-                        AppTypography.caption(scheme.error)),
-              ],
-              const SizedBox(height: AppSpace.md),
-              SizedBox(
-                height: 52,
-                width: double.infinity,
-                child: FilledButton(
-                  key: const Key('cancel-confirm'),
-                  onPressed: _busy ? null : _confirm,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: scheme.error,
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppRadii.button),
-                    ),
-                  ),
-                  child: _busy
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2),
-                        )
-                      : const Text('Confirm cancel'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
