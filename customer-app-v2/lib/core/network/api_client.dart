@@ -68,9 +68,11 @@ class ApiClient {
   }) =>
       _run(() => _dio.patch<dynamic>(path, data: body), decode: decode);
 
-  Future<void> delete(String path) async {
+  Future<T?> delete<T>(String path, {T Function(dynamic json)? decode}) async {
     try {
-      await _dio.delete<dynamic>(path);
+      final res = await _dio.delete<dynamic>(path);
+      if (decode != null) return decode(res.data);
+      return null;
     } on DioException catch (e) {
       throw ApiException.fromDio(e);
     }

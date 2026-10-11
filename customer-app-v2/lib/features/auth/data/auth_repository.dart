@@ -110,14 +110,14 @@ class HttpAuthRepository implements AuthRepository {
 
   @override
   Future<void> mergeGuestCart() async {
-    final guest = await _tokens.readGuestToken();
+    final guest = await _tokens.readGuestSessionKey();
     if (guest == null || guest.isEmpty) return;
     try {
       await _api.post<dynamic>(
         ApiEndpoints.cartMerge,
-        body: {'guest_token': guest},
+        body: {'session_key': guest},
       );
-      await _tokens.clearGuestToken();
+      await _tokens.clearGuestSessionKey();
     } on ApiException {
       // Server cart is truth (DESIGN §14); a failed merge never blocks sign-in.
     }

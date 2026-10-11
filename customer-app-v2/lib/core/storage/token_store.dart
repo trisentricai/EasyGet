@@ -13,9 +13,11 @@ abstract class TokenStore {
   Future<void> saveAccess(String access);
   Future<void> clear();
 
-  Future<String?> readGuestToken();
-  Future<void> saveGuestToken(String token);
-  Future<void> clearGuestToken();
+  /// Guest session cart key (server session_key), folded into the user cart on
+  /// sign-in via `POST /cart/merge/` (DESIGN §14).
+  Future<String?> readGuestSessionKey();
+  Future<void> saveGuestSessionKey(String key);
+  Future<void> clearGuestSessionKey();
 }
 
 class InMemoryTokenStore implements TokenStore {
@@ -47,13 +49,13 @@ class InMemoryTokenStore implements TokenStore {
   }
 
   @override
-  Future<String?> readGuestToken() async => _map[_guestKey];
+  Future<String?> readGuestSessionKey() async => _map[_guestKey];
 
   @override
-  Future<void> saveGuestToken(String token) async => _map[_guestKey] = token;
+  Future<void> saveGuestSessionKey(String key) async => _map[_guestKey] = key;
 
   @override
-  Future<void> clearGuestToken() async => _map.remove(_guestKey);
+  Future<void> clearGuestSessionKey() async => _map.remove(_guestKey);
 }
 
 class SecureTokenStore implements TokenStore {
@@ -89,14 +91,14 @@ class SecureTokenStore implements TokenStore {
   }
 
   @override
-  Future<String?> readGuestToken() => _storage.read(key: _guestKey);
+  Future<String?> readGuestSessionKey() => _storage.read(key: _guestKey);
 
   @override
-  Future<void> saveGuestToken(String token) =>
-      _storage.write(key: _guestKey, value: token);
+  Future<void> saveGuestSessionKey(String key) =>
+      _storage.write(key: _guestKey, value: key);
 
   @override
-  Future<void> clearGuestToken() => _storage.delete(key: _guestKey);
+  Future<void> clearGuestSessionKey() => _storage.delete(key: _guestKey);
 }
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
