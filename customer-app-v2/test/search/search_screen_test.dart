@@ -38,10 +38,25 @@ class _FakeSearchRepo implements SearchRepository {
 
   @override
   Future<CatalogPage> results(String query, {int page = 1}) async {
-    resultCalls.add(query);
+    resultCalls.add('$query p$page');
     if (failResults) throw Exception('boom');
     if (query == 'zzz') {
       return const CatalogPage(results: [], total: 0, page: 1);
+    }
+    if (query == 'big') {
+      const total = 45;
+      const size = 20;
+      final start = (page - 1) * size;
+      final count = (total - start).clamp(0, size);
+      return CatalogPage(
+        results: [
+          for (var i = 0; i < count; i++)
+            _product(100 + start + i, 'Big ${start + i + 1}'),
+        ],
+        total: total,
+        page: page,
+        pageSize: size,
+      );
     }
     return CatalogPage(
       results: [_product(1, '$query Item'), _product(2, '$query Other')],
@@ -198,7 +213,7 @@ void main() {
     await tester.tap(find.text('app one'));
     await tester.pumpAndSettle();
 
-    expect(repo.resultCalls, ['app one']);
+    expect(repo.resultCalls, ['app one p1']);
     expect(find.text('2 results'), findsOneWidget);
     expect(find.text('app one Item'), findsOneWidget);
   });
@@ -213,7 +228,7 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
 
-    expect(repo.resultCalls, ['atta']);
+    expect(repo.resultCalls, ['atta p1']);
     expect(find.text('atta Item'), findsOneWidget);
     expect(container.read(searchHistoryProvider), ['atta']);
   });
@@ -239,8 +254,7 @@ void main() {
     expect(find.byKey(const Key('product-page')), findsOneWidget);
   });
 
-  testWidgets('empty results offer Clear search', (tester) async {
-    await _pumpSearch(tester, searchRepo: _FakeSearchRepo());
+  testWidgets('empty results offer Clear search', (tester) async {    await _pumpSearch(tester, searchRepo: _FakeSearchRepo());
 
     await tester.enterText(find.byKey(const Key('search-field')), 'zzz');
     await tester.testTextInput.receiveAction(TextInputAction.search);
@@ -265,5 +279,30 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(find.text('atta Item'), findsOneWidget);
+  });
+
+  testWidgets('show-more pages to the end with progress + end marker',
+      (tester) async {
+    final repo = _FakeSearchRepo();
+    await _pumpSearch(tester, searchRepo: repo);
+
+    await tester.enterText(find.byKey(const Key('search-field')), 'big');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Big 1'), findsOneWidget);
+    expect(find.text('Show more · 20 of 45'), findsOneWidget);
+
+    await tester.tap(find.text('Show more · 20 of 45'));
+    await tester.pumpAndSettle();
+    expect(repo.resultCalls.last, 'big p2');
+    expect(find.text('Show more · 40 of 45'), findsOneWidget);
+
+    await tester.tap(find.text('Show more · 40 of 45'));
+    await tester.pumpAndSettle();
+    expect(repo.resultCalls.last, 'big p3');
+    expect(find.text('Show more · 45 of 45'), findsNothing);
+    expect(
+        find.text('You have seen all 45 products'), findsOneWidget);
   });
 }

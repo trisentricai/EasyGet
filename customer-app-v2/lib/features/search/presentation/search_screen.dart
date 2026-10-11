@@ -238,20 +238,17 @@ class _EmptyMode extends ConsumerWidget {
           if (cats.isNotEmpty) ...[
             const _RowLabel(label: 'Browse categories'),
             const SizedBox(height: AppSpace.sm),
-            SizedBox(
-              height: 108,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: cats.length > 8 ? 8 : cats.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: AppSpace.md),
-                itemBuilder: (_, i) => CategoryTile(
-                  category: cats[i],
-                  onTap: () =>
-                      context.go('/browse?category=${cats[i].slug}'),
-                ),
+            // Full vertical browser: big image rows, top to bottom, every
+            // category (never a cramped chip strip).
+            for (var i = 0; i < cats.length; i++) ...[
+              CategoryListTile(
+                category: cats[i],
+                onTap: () =>
+                    context.go('/browse?category=${cats[i].slug}'),
               ),
-            ),
+              if (i != cats.length - 1)
+                const SizedBox(height: AppSpace.sm),
+            ],
             const SizedBox(height: AppSpace.xl),
           ],
           if (views.isNotEmpty) ...[
@@ -421,18 +418,8 @@ class _ResultsView extends ConsumerWidget {
                 crossAxisSpacing: AppSpace.md,
                 childAspectRatio: ProductCard.gridAspect(width),
               ),
-              itemCount:
-                  state.results.length + (state.hasMore ? 1 : 0),
+              itemCount: state.results.length,
               itemBuilder: (_, i) {
-                if (i >= state.results.length) {
-                  return const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                }
                 final product = state.results[i];
                 return ProductCard(
                   product: product,
@@ -445,7 +432,63 @@ class _ResultsView extends ConsumerWidget {
             ),
           ),
         ),
+        _ResultsFooter(state: state),
       ],
+    );
+  }
+}
+
+/// End-of-list truth: explicit Show-more while items remain, a spinner
+/// while loading, and an end marker when everything is on screen — the
+/// list can never end silently at 20 again.
+class _ResultsFooter extends ConsumerWidget {
+  const _ResultsFooter({required this.state});
+
+  final SearchState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget body;
+    if (state.loadingMore) {
+      body = Row(
+        key: const Key('search-loading-more'),
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Text('Loading more…',
+              style:
+                  AppTypography.body(scheme.onSurfaceVariant)),
+        ],
+      );
+    } else if (state.hasMore) {
+      body = TextButton(
+        key: const Key('search-show-more'),
+        onPressed: () =>
+            ref.read(searchControllerProvider.notifier).loadMore(),
+        child: Text(
+          'Show more · ${state.results.length} of ${state.total}',
+          style: AppTypography.label(scheme.primary, size: 14),
+        ),
+      );
+    } else if (state.total > state.pageSize) {
+      body = Text(
+        key: const Key('search-end'),
+        'You have seen all ${state.total} products',
+        style: AppTypography.caption(scheme.onSurfaceVariant),
+      );
+    } else {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg, AppSpace.xs, AppSpace.lg, AppSpace.sm),
+      child: Center(child: body),
     );
   }
 }

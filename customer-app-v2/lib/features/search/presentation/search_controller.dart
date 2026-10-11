@@ -19,6 +19,7 @@ class SearchState {
     this.results = const [],
     this.page = 0,
     this.total = 0,
+    this.pageSize = 20,
     this.hasMore = false,
     this.loadingResults = false,
     this.loadingMore = false,
@@ -32,6 +33,7 @@ class SearchState {
   final List<CatalogProduct> results;
   final int page;
   final int total;
+  final int pageSize;
   final bool hasMore;
   final bool loadingResults;
   final bool loadingMore;
@@ -48,6 +50,7 @@ class SearchState {
     List<CatalogProduct>? results,
     int? page,
     int? total,
+    int? pageSize,
     bool? hasMore,
     bool? loadingResults,
     bool? loadingMore,
@@ -61,6 +64,7 @@ class SearchState {
         results: results ?? this.results,
         page: page ?? this.page,
         total: total ?? this.total,
+        pageSize: pageSize ?? this.pageSize,
         hasMore: hasMore ?? this.hasMore,
         loadingResults: loadingResults ?? this.loadingResults,
         loadingMore: loadingMore ?? this.loadingMore,
@@ -68,6 +72,12 @@ class SearchState {
             resultsError == null ? this.resultsError : resultsError(),
       );
 }
+
+/// Defensive "more available": trusts the server flag, but ALSO treats a
+/// shortfall (shown < total) as more — unless the last page came back empty,
+/// which always terminates the chain.
+bool _hasMore(CatalogPage res, int accumulated) =>
+    (res.hasMore || accumulated < res.total) && res.results.isNotEmpty;
 
 class SearchController extends Notifier<SearchState> {
   static const debounce = Duration(milliseconds: 300);
@@ -139,7 +149,8 @@ class SearchController extends Notifier<SearchState> {
         results: res.results,
         page: res.page,
         total: res.total,
-        hasMore: res.hasMore,
+        pageSize: res.pageSize ?? res.results.length,
+        hasMore: _hasMore(res, res.results.length),
         loadingResults: false,
       );
     } catch (e) {
@@ -157,11 +168,13 @@ class SearchController extends Notifier<SearchState> {
       final res = await ref
           .read(searchRepositoryProvider)
           .results(state.query, page: state.page + 1);
+      final accumulated = [...state.results, ...res.results];
       state = state.copyWith(
-        results: [...state.results, ...res.results],
+        results: accumulated,
         page: res.page,
         total: res.total,
-        hasMore: res.hasMore,
+        pageSize: res.pageSize ?? state.pageSize,
+        hasMore: _hasMore(res, accumulated.length),
         loadingMore: false,
       );
     } catch (_) {
