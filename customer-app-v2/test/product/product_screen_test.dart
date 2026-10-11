@@ -256,6 +256,11 @@ Future<void> _pumpPdp(
           return ProductScreen(key: ValueKey(s), slug: s);
         },
       ),
+      GoRoute(
+        path: '/cart',
+        builder: (_, _) =>
+            const Scaffold(key: Key('cart-page'), body: Text('CART')),
+      ),
     ],
   );
   await tester.pumpWidget(
@@ -409,11 +414,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(cart.calls, ['add 11 x2']);
     expect(withinSticky(find.text('2')), findsOneWidget);
+    expect(
+        find.text('Added 2 × Amul Butter (₹398)'), findsOneWidget);
 
     // Live edits still apply straight to the server cart.
     await tester.tap(withinSticky(find.byKey(const Key('qty-minus'))));
     await tester.pumpAndSettle();
     expect(cart.calls.last, 'update 1 x1');
+
+    await tester.tap(find.text('View cart'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('cart-page')), findsOneWidget);
   });
 
   testWidgets('backing the picker to zero returns to Add', (tester) async {

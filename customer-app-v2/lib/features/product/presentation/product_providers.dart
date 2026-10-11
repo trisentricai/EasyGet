@@ -93,6 +93,7 @@ class PdpCartController extends Notifier<PdpCartState> {
           for (final item in cart.items) item.variantId: item.quantity,
         },
       );
+      ref.invalidate(cartCountProvider);
     } catch (_) {
       // Best-effort seed: the stepper still works, ops surface their errors.
     }

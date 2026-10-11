@@ -76,6 +76,8 @@ class CartController extends Notifier<CartViewState> {
         loading: false,
         coupon: state.coupon,
       );
+      // The shell badge reads its own provider: refresh it on every load.
+      ref.invalidate(cartCountProvider);
     } catch (e) {
       state = CartViewState(error: e, loading: false, coupon: state.coupon);
     }

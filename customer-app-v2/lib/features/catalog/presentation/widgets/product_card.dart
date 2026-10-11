@@ -32,6 +32,7 @@ class ProductCard extends StatelessWidget {
     this.onOpenVariants,
     this.trailing,
     this.onHearted,
+    this.onQuickAdd,
   });
 
   static const double imageAspect = 1.25; // 4:5
@@ -56,6 +57,11 @@ class ProductCard extends StatelessWidget {
 
   /// Fires with the new heart state after a successful card-heart toggle.
   final ValueChanged<bool>? onHearted;
+
+  /// Card Add pipeline (MNC workflow): when set, grid/rail cards show a
+  /// single-shot Add pill that runs the pipeline instead of a decorative
+  /// stepper. Null keeps the legacy controlled stepper.
+  final Future<void> Function()? onQuickAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +146,14 @@ class ProductCard extends StatelessWidget {
         onChanged: onChanged ?? (_) {},
       );
 
+  /// Single-shot Add pill for the quick-add pipeline (grid/rail only; the
+  /// line density keeps its controlled stepper via [trailing]).
+  Widget _quickAddControl() {
+    final quickAdd = onQuickAdd;
+    if (quickAdd == null) return _addControl();
+    return _QuickAddPill(onAdd: quickAdd);
+  }
+
   Widget _grid(BuildContext context) {
     return GestureDetector(
       key: const Key('product-card'),
@@ -158,7 +172,7 @@ class ProductCard extends StatelessWidget {
             const SizedBox(height: AppSpace.xs),
             _priceSlot(),
             const SizedBox(height: AppSpace.sm),
-            _addControl(),
+            _quickAddControl(),
           ],
         ),
       ),
@@ -183,7 +197,7 @@ class ProductCard extends StatelessWidget {
             const SizedBox(height: AppSpace.xs),
             _priceSlot(),
             const SizedBox(height: AppSpace.sm),
-            _addControl(),
+            _quickAddControl(),
           ],
         ),
       ),
@@ -316,3 +330,57 @@ class ProductCard extends StatelessWidget {
 
 String _rupees(double value) =>
     value == value.roundToDouble() ? value.toInt().toString() : value.toStringAsFixed(2);
+
+/// Single-shot Add pill (40dp, primary outline — same footprint as the
+/// stepper's Add state so rows never jump). Runs the quick-add pipeline on
+/// tap and shows a spinner while the server call is in flight.
+class _QuickAddPill extends StatefulWidget {
+  const _QuickAddPill({required this.onAdd});
+
+  final Future<void> Function() onAdd;
+
+  @override
+  State<_QuickAddPill> createState() => _QuickAddPillState();
+}
+
+class _QuickAddPillState extends State<_QuickAddPill> {
+  bool _busy = false;
+
+  Future<void> _tap() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await widget.onAdd();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 40,
+      child: OutlinedButton(
+        onPressed: _busy ? null : _tap,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(72, 40),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+          side: BorderSide(color: scheme.primary),
+          foregroundColor: scheme.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.button),
+          ),
+          textStyle: AppTypography.label(scheme.primary),
+        ),
+        child: _busy
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Add'),
+      ),
+    );
+  }
+}

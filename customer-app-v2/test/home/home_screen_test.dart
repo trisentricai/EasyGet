@@ -144,10 +144,12 @@ class _FakeCatalogRepo implements CatalogRepository {
     bool? isFeatured,
     String? sort,
     int? page,
-  }) async =>
-      CatalogPage(
+  }) async {
+    // Sorted/featured calls feed the fallback rails (single row each).
+    if (isFeatured == true || sort != null) {
+      return const CatalogPage(
         results: [
-          const CatalogProduct(
+          CatalogProduct(
               id: 7,
               name: 'Fallback Find',
               slug: 'fallback-find',
@@ -159,6 +161,26 @@ class _FakeCatalogRepo implements CatalogRepository {
         page: 1,
         pageSize: 10,
       );
+    }
+    // Plain calls feed All-products: bare 20/page backend shape.
+    final p = page ?? 1;
+    final count = p == 1 ? 20 : 5;
+    final base = p == 1 ? 0 : 20;
+    return CatalogPage(
+      results: [
+        for (var i = 0; i < count; i++)
+          CatalogProduct(
+              id: 100 + base + i,
+              name: 'HomeItem ${base + i + 1}',
+              slug: 'home-${base + i + 1}',
+              brand: 'Acme',
+              mrp: 120,
+              basePrice: 99),
+      ],
+      total: count,
+      page: 1,
+    );
+  }
   @override
   Future<ProductDetail> product(String slug) => throw UnimplementedError();
   @override
@@ -325,5 +347,26 @@ void main() {
     expect(find.text('Top rated'), findsOneWidget);
     expect(find.text('New arrivals'), findsOneWidget);
     expect(find.text('Fallback Find'), findsWidgets);
+  });
+
+  testWidgets('All products grid pages with an explicit Show more',
+      (tester) async {
+    await _pumpHome(tester, _FakeCatalogRepo());
+
+    expect(find.text('All products'), findsOneWidget);
+    expect(find.text('HomeItem 1'), findsOneWidget);
+    expect(find.text('Show more · 20 shown'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('all-products-more')),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('all-products-more')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Show more · 20 shown'), findsNothing);
+    expect(find.text('You have seen all 25 products'), findsOneWidget);
   });
 }

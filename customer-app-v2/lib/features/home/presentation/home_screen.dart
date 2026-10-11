@@ -16,6 +16,7 @@ import '../../../models/catalog_models.dart';
 import '../../../models/storefront_models.dart';
 import '../../catalog/presentation/widgets/category_tile.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
+import '../../catalog/presentation/quick_add.dart';
 import 'home_providers.dart';
 
 /// S4 · Home (`/home`, tab 1): offer ticker → banner carousel → category
@@ -250,6 +251,7 @@ class _HomeContent extends StatelessWidget {
                 provider: newArrivalsProvider,
               ),
             ],
+            const _AllProducts(),
             const SizedBox(height: AppSpace.xxl),
           ],
         ),
@@ -388,6 +390,8 @@ class _FallbackRail extends ConsumerWidget {
                     width: 148,
                     onTap: () =>
                         context.push('/product/${product.slug}'),
+                    onQuickAdd: () =>
+                        quickAddFromCard(context, product),
                   );
                 },
               ),
@@ -395,6 +399,128 @@ class _FallbackRail extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// "All products" (Amazon-style): the whole catalog as a paged 2-col grid
+/// with an explicit Show-more footer. Always rendered, rails or not.
+class _AllProducts extends ConsumerWidget {
+  const _AllProducts();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(allProductsProvider);
+    final notifier = ref.read(allProductsProvider.notifier);
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget footer() {
+      if (state.loadingMore) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSpace.lg),
+          child: Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      }
+      if (state.hasMore) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg, AppSpace.sm, AppSpace.lg, 0),
+          child: SizedBox(
+            height: 52,
+            width: double.infinity,
+            child: OutlinedButton(
+              key: const Key('all-products-more'),
+              onPressed: notifier.loadMore,
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                    color: Theme.of(context).freshColors.faint),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppRadii.button),
+                ),
+              ),
+              child: Text(
+                'Show more · ${state.items.length} shown',
+                style: AppTypography.label(scheme.primary, size: 14),
+              ),
+            ),
+          ),
+        );
+      }
+      if (state.items.length > AllProductsController.serverPageSize) {
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpace.md),
+          child: Center(
+            child: Text(
+              'You have seen all ${state.items.length} products',
+              style: AppTypography.caption(scheme.onSurfaceVariant),
+            ),
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    }
+
+    final width =
+        (MediaQuery.sizeOf(context).width - AppSpace.lg * 2 - AppSpace.md) / 2;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(
+              AppSpace.lg, AppSpace.xl, AppSpace.lg, AppSpace.sm),
+          child: SectionHeader(title: 'All products'),
+        ),
+        if (state.loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpace.lg),
+            child: SkeletonGrid(count: 4),
+          )
+        else if (state.error != null)
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+            child: OutlinedButton(
+              onPressed: notifier.refresh,
+              child: const Text('Retry'),
+            ),
+          )
+        else ...[
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpace.lg),
+            gridDelegate:
+                SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: AppSpace.md,
+              crossAxisSpacing: AppSpace.md,
+              childAspectRatio: ProductCard.gridAspect(width),
+            ),
+            itemCount: state.items.length,
+            itemBuilder: (_, i) {
+              final product = state.items[i];
+              return ProductCard(
+                product: product,
+                density: ProductDensity.grid,
+                width: width,
+                onTap: () =>
+                    context.push('/product/${product.slug}'),
+                onQuickAdd: () =>
+                    quickAddFromCard(context, product),
+              );
+            },
+          ),
+          footer(),
+        ],
+      ],
     );
   }
 }
@@ -618,22 +744,26 @@ class _ProductRail extends StatelessWidget {
             itemCount: items.length,
             separatorBuilder: (_, _) =>
                 const SizedBox(width: AppSpace.md),
-            itemBuilder: (_, i) {
-              final item = items[i];
-              return ProductCard(
-                product: CatalogProduct(
+              itemBuilder: (_, i) {
+                final item = items[i];
+                final product = CatalogProduct(
                   id: item.id,
                   name: item.caption ?? '',
                   slug: item.productSlug!,
                   mrp: item.productPrice,
                   basePrice: item.productPrice,
                   primaryImage: item.image,
-                ),
-                density: ProductDensity.rail,
-                width: 148,
-                onTap: () => context.push('/product/${item.productSlug}'),
-              );
-            },
+                );
+                return ProductCard(
+                  product: product,
+                  density: ProductDensity.rail,
+                  width: 148,
+                  onTap: () =>
+                      context.push('/product/${item.productSlug}'),
+                  onQuickAdd: () =>
+                      quickAddFromCard(context, product),
+                );
+              },
           ),
         ),
       ],

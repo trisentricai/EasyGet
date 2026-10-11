@@ -19,6 +19,7 @@ import '../../../models/review_model.dart';
 import '../../cart/data/cart_repository.dart';
 import '../../catalog/presentation/widgets/price_block.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
+import '../../catalog/presentation/quick_add.dart';
 import '../../catalog/presentation/widgets/qty_stepper.dart';
 import '../../catalog/presentation/widgets/rating_pill.dart';
 import '../../catalog/presentation/widgets/variant_sheet.dart';
@@ -218,6 +219,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
         // Keyed per variant so a pending selection never leaks across
         // variant switches.
         key: ValueKey('sticky-${selected?.id}'),
+        productName: detail.name,
         price: price,
         mrp: detail.mrp,
         discountPercent: detail.discountPercent,
@@ -902,6 +904,8 @@ class _RelatedRail extends ConsumerWidget {
                   width: 148,
                   onTap: () =>
                       context.push('/product/${rows[i].slug}'),
+                  onQuickAdd: () =>
+                      quickAddFromCard(context, rows[i]),
                 ),
               ),
             ),
@@ -919,12 +923,14 @@ class _RelatedRail extends ConsumerWidget {
 class _StickyBar extends ConsumerStatefulWidget {
   const _StickyBar({
     super.key,
+    required this.productName,
     required this.price,
     required this.mrp,
     required this.discountPercent,
     required this.variantId,
   });
 
+  final String productName;
   final double price;
   final double mrp;
   final int discountPercent;
@@ -1090,10 +1096,17 @@ class _StickyBarState extends ConsumerState<_StickyBar> {
           .addItem(variantId: variantId, quantity: _pending);
       await ref.read(pdpCartControllerProvider.notifier).refresh();
       if (!mounted) return;
+      final units = _pending;
       setState(() {
         _confirming = false;
         _selecting = false;
       });
+      showAppSnackbar(
+        context,
+        'Added $units × ${widget.productName} (₹${_rupees(widget.price * units)})',
+        actionLabel: 'View cart',
+        onAction: () => context.push('/cart'),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _confirming = false);

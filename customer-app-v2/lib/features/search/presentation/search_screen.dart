@@ -13,6 +13,7 @@ import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
 import '../../catalog/presentation/widgets/category_tile.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
+import '../../catalog/presentation/quick_add.dart';
 import '../data/search_repository.dart';
 import '../data/voice_search.dart';
 import 'search_controller.dart';
@@ -352,6 +353,8 @@ class _EmptyMode extends ConsumerWidget {
                   width: 148,
                   onTap: () =>
                       context.push('/product/${views[i].slug}'),
+                  onQuickAdd: () =>
+                      quickAddFromCard(context, views[i]),
                 ),
               ),
             ),
@@ -512,6 +515,8 @@ class _ResultsView extends ConsumerWidget {
                   width: width,
                   onTap: () =>
                       context.push('/product/${product.slug}'),
+                  onQuickAdd: () =>
+                      quickAddFromCard(context, product),
                 );
               },
             ),
@@ -621,6 +626,8 @@ class _ViewsRail extends ConsumerWidget {
                 width: 132,
                 onTap: () =>
                     context.push('/product/${views[i].slug}'),
+                onQuickAdd: () =>
+                    quickAddFromCard(context, views[i]),
               ),
             ),
           ),

@@ -11,6 +11,7 @@ import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/states.dart';
 import '../../../models/catalog_models.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
+import '../../catalog/presentation/quick_add.dart';
 import '../../catalog/presentation/widgets/sort_sheet.dart';
 import 'browse_filter_sheet.dart';
 import 'browse_providers.dart';
@@ -308,44 +309,54 @@ class _Grid extends ConsumerWidget {
 
     final width =
         (MediaQuery.sizeOf(context).width - AppSpace.lg * 2 - AppSpace.md) / 2;
-    return RefreshIndicator(
-      onRefresh: () => ref.read(browseItemsProvider.notifier).refresh(),
-      child: GridView.builder(
-        controller: controller,
-        padding: const EdgeInsets.fromLTRB(
-            AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.xxl),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: AppSpace.md,
-          crossAxisSpacing: AppSpace.md,
-          // Derived from the card's fixed anatomy so rows align and nothing
-          // overflows at any column width.
-          childAspectRatio: ProductCard.gridAspect(width),
-        ),
-              itemCount:
-                  items.items.length + (items.loadingMore ? 1 : 0),
+    return Column(
+      children: [
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () =>
+                ref.read(browseItemsProvider.notifier).refresh(),
+            child: GridView.builder(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.md),
+              gridDelegate:
+                  SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: AppSpace.md,
+                crossAxisSpacing: AppSpace.md,
+                // Derived from the card's fixed anatomy so rows align and
+                // nothing overflows at any column width.
+                childAspectRatio: ProductCard.gridAspect(width),
+              ),
+              itemCount: items.items.length,
               itemBuilder: (_, i) {
-                // Centered loading tile, mounted ONLY while a page is in
-                // flight — never an idle perpetual spinner.
-                if (i >= items.items.length) {
-            return const Center(
-              key: Key('browse-loading-more'),
+                final product = items.items[i];
+                return ProductCard(
+                  product: product,
+                  density: ProductDensity.grid,
+                  width: width,
+                  onTap: () =>
+                      context.push('/product/${product.slug}'),
+                  onQuickAdd: () =>
+                      quickAddFromCard(context, product),
+                );
+              },
+            ),
+          ),
+        ),
+        // Full-width centered loading footer (never a left-column tile).
+        if (items.loadingMore)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpace.lg),
+            child: Center(
               child: SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
-            );
-          }
-          final product = items.items[i];
-          return ProductCard(
-            product: product,
-            density: ProductDensity.grid,
-            width: width,
-            onTap: () => context.push('/product/${product.slug}'),
-          );
-        },
-      ),
+            ),
+          ),
+      ],
     );
   }
 }

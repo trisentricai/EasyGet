@@ -10,6 +10,7 @@ import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
 import '../../../models/catalog_models.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
+import '../../catalog/presentation/quick_add.dart';
 import '../data/wishlist_repository.dart';
 import 'wishlist_controller.dart';
 
@@ -106,10 +107,12 @@ class _Grid extends ConsumerWidget {
                   width: width,
                   onTap: () =>
                       context.push('/product/${product.slug}'),
-                  // No variant data on a saved row: Add detours to the PDP
-                  // where the confirm pipeline lives.
+                  // No variant data on a saved row: Add runs the shared
+                  // quick-add pipeline (sheet when variants exist).
                   onChanged: (_) =>
                       context.push('/product/${product.slug}'),
+                  onQuickAdd: () =>
+                      quickAddFromCard(context, product),
                   onHearted: (nowHearted) {
                     if (nowHearted) return;
                     // The container outlives this row: Undo must survive
