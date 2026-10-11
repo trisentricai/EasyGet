@@ -9,6 +9,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/browse/presentation/browse_screen.dart';
 import '../../features/cart/presentation/cart_screen.dart';
+import '../../features/checkout/presentation/checkout_screen.dart';
 import '../../features/engagement/data/analytics_repository.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/product/presentation/product_screen.dart';
@@ -122,7 +123,7 @@ final _routes = <RouteBase>[
         EasyGetShell(navigationShell: navigationShell),
     branches: _shellBranches,
   ),
-  GoRoute(path: '/checkout', builder: (_, _) => _placeholder('/checkout')),
+  GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
   GoRoute(path: '/account', builder: (_, _) => _placeholder('/account')),
   GoRoute(
     path: '/product/:slug',
