@@ -176,6 +176,22 @@ void main() {
       expect(d.offers.single.discountType, 'PERCENT');
       expect(d.offers.single.discountValue, 10.0);
     });
+
+    test('decodes the live image shape (image key + percent align)',
+        () async {
+      const live = '''
+{"id":1,"name":"X","slug":"x","brand":"B","mrp":"20.00","base_price":"20.00",
+"images":[{"id":25,"image":"products/p.webp","caption":"","is_primary":true,
+"sort_order":1,"align_x":50,"align_y":50,"zoom":1.0,"effect":"none"}]}''';
+      repo = build((_) async => _json(live));
+
+      final d = await repo.product('x');
+
+      expect(d.images.single.url, 'products/p.webp');
+      expect(d.images.single.isPrimary, isTrue);
+      expect(d.images.single.alignX, 0.5);
+      expect(d.images.single.alignY, 0.5);
+    });
   });
 
   group('categories + brands', () {

@@ -227,15 +227,26 @@ class ProductImage {
   final String? effect;
   final int? transitionMs;
 
-  factory ProductImage.fromJson(Map<String, dynamic> json) => ProductImage(
-        url: (json['url'] ?? '') as String,
-        isPrimary: json['is_primary'] == true,
-        alignX: numToDouble(json['align_x'], 0.5),
-        alignY: numToDouble(json['align_y'], 0.5),
-        zoom: numToDouble(json['zoom'], 1),
-        effect: json['effect'] as String?,
-        transitionMs: numToIntOrNull(json['transition_ms']),
-      );
+  factory ProductImage.fromJson(Map<String, dynamic> json) {
+    // Live backend names the file key `image` (probed 2026-10-11); older
+    // fixtures use `url`. Alignment arrives as percent (50) or fraction.
+    final url = (json['image'] ?? json['url'] ?? '') as String;
+    double align(Object? value, double fallback) {
+      final parsed = numToDouble(value, fallback);
+      if (parsed > 1) return (parsed / 100).clamp(0.0, 1.0);
+      return parsed;
+    }
+
+    return ProductImage(
+      url: url,
+      isPrimary: json['is_primary'] == true,
+      alignX: align(json['align_x'], 0.5),
+      alignY: align(json['align_y'], 0.5),
+      zoom: numToDouble(json['zoom'], 1),
+      effect: json['effect'] as String?,
+      transitionMs: numToIntOrNull(json['transition_ms']),
+    );
+  }
 }
 
 /// Full PDP payload.

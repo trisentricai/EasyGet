@@ -312,7 +312,9 @@ class _Gallery extends StatelessWidget {
 
   List<String> get _urls {
     if (detail.images.isNotEmpty) {
-      return detail.images.map((i) => i.url).toList();
+      final rows =
+          detail.images.map((i) => i.url).where((u) => u.isNotEmpty).toList();
+      if (rows.isNotEmpty) return rows;
     }
     if ((detail.primaryImage ?? '').isNotEmpty) return [detail.primaryImage!];
     return const [];
