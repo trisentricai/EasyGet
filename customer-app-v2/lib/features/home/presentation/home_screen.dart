@@ -6,9 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
-import '../../../core/widgets/eta_pill.dart';
 import '../../../core/widgets/search_bar.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../delivery/presentation/delivery_eta.dart';
 import '../../engagement/presentation/notifications_providers.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/states.dart';
@@ -44,7 +44,7 @@ class HomeScreen extends ConsumerWidget {
         addressRow: const _HomeAddressRow(),
         etaPill: const KeyedSubtree(
           key: Key('home-eta-pill'),
-          child: EtaPill(minutes: 12),
+          child: DeliveryEtaPill(),
         ),
         actions: [
           const _BellAction(),
@@ -93,41 +93,53 @@ class _BellAction extends ConsumerWidget {
 }
 
 /// Home-tab delivery address row (chevron → address sheet in S13).
-class _HomeAddressRow extends StatelessWidget {  const _HomeAddressRow();
+/// Delivery address row: the shopper's own default address (label · city),
+/// or a "Set location" prompt when none exists. Taps open /addresses —
+/// nothing here is hardcoded.
+class _HomeAddressRow extends ConsumerWidget {
+  const _HomeAddressRow();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    return Row(
-      key: const Key('home-address-row'),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.location_on_outlined, size: 20, color: scheme.primary),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Deliver to',
-                  style: AppTypography.caption(scheme.onSurfaceVariant)),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text('Home · Bengaluru',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodyMedium(scheme.onSurface)),
-                  ),
-                  Icon(Icons.keyboard_arrow_down,
-                      size: 18, color: scheme.onSurfaceVariant),
-                ],
-              ),
-            ],
+    final address = ref.watch(deliveryAddressProvider).value;
+    final line = address == null
+        ? 'Set location'
+        : '${address.label} · ${address.city}';
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      onTap: () => context.push('/addresses'),
+      child: Row(
+        key: const Key('home-address-row'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.location_on_outlined, size: 20, color: scheme.primary),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Deliver to',
+                    style: AppTypography.caption(scheme.onSurfaceVariant)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(line,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.bodyMedium(scheme.onSurface)),
+                    ),
+                    Icon(Icons.keyboard_arrow_down,
+                        size: 18, color: scheme.onSurfaceVariant),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

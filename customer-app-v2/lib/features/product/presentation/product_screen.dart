@@ -219,6 +219,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
         // Keyed per variant so a pending selection never leaks across
         // variant switches.
         key: ValueKey('sticky-${selected?.id}'),
+        productSlug: detail.slug,
         productName: detail.name,
         price: price,
         mrp: detail.mrp,
@@ -925,6 +926,7 @@ class _RelatedRail extends ConsumerWidget {
 class _StickyBar extends ConsumerStatefulWidget {
   const _StickyBar({
     super.key,
+    required this.productSlug,
     required this.productName,
     required this.price,
     required this.mrp,
@@ -932,6 +934,7 @@ class _StickyBar extends ConsumerStatefulWidget {
     required this.variantId,
   });
 
+  final String productSlug;
   final String productName;
   final double price;
   final double mrp;
@@ -1096,6 +1099,10 @@ class _StickyBarState extends ConsumerState<_StickyBar> {
       await ref
           .read(cartRepositoryProvider)
           .addItem(variantId: variantId, quantity: _pending);
+      // Card grids read this map to render live steppers after a PDP add.
+      ref
+          .read(cardAdditionsProvider.notifier)
+          .record(widget.productSlug, variantId);
       await ref.read(pdpCartControllerProvider.notifier).refresh();
       if (!mounted) return;
       final units = _pending;

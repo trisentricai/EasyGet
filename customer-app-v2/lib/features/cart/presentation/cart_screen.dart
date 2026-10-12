@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
-import '../../../core/widgets/eta_pill.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
@@ -15,6 +14,7 @@ import '../../../models/cart_models.dart';
 import '../../../models/catalog_models.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
 import '../../catalog/presentation/widgets/qty_stepper.dart';
+import '../../delivery/presentation/delivery_eta.dart';
 import 'cart_controller.dart';
 
 /// S8 · Cart (`/cart`, tab 4): ETA row → coupon row (validate sheet) → line
@@ -36,7 +36,11 @@ class CartScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: const EasyGetAppBar(title: 'Your cart'),
+      appBar: EasyGetAppBar(
+        title: state.totalItems > 0
+            ? 'Your cart (${state.totalItems})'
+            : 'Your cart',
+      ),
       body: _Body(state: state),
       bottomNavigationBar:
           state.loading || state.error != null || state.items.isEmpty
@@ -97,7 +101,7 @@ class _Body extends ConsumerWidget {
             const Padding(
               padding: EdgeInsets.fromLTRB(
                   AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
-              child: EtaPill(minutes: 12),
+              child: DeliveryEtaPill(),
             ),
             _CouponRow(state: state),
             for (final item in state.items)
@@ -107,9 +111,67 @@ class _Body extends ConsumerWidget {
                 child: _LineCard(item: item),
               ),
             _BillBlock(state: state),
+            const _TrustRows(),
             const SizedBox(height: AppSpace.xxl),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Store promises, straight from the platform ticker (free delivery, returns,
+/// COD) — real backend copy, never hardcoded marketing.
+class _TrustRows extends ConsumerWidget {
+  const _TrustRows();
+
+  static const _icons = {
+    'delivery': Icons.local_shipping_outlined,
+    'return': Icons.undo,
+    'cash': Icons.money,
+    'cod': Icons.money,
+    'offer': Icons.local_offer_outlined,
+    'price': Icons.tag_outlined,
+  };
+
+  IconData _iconFor(String text) {
+    final lower = text.toLowerCase();
+    for (final entry in _icons.entries) {
+      if (lower.contains(entry.key)) return entry.value;
+    }
+    return Icons.verified_outlined;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ticker =
+        ref.watch(cartTickerProvider).value ?? const [];
+    if (ticker.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg, AppSpace.lg, AppSpace.lg, 0),
+      child: Column(
+        children: [
+          for (final line in ticker.take(3))
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: Row(
+                children: [
+                  Icon(_iconFor(line),
+                      size: 18, color: scheme.primary),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Text(line,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.body(
+                            scheme.onSurfaceVariant)),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

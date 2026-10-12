@@ -2,11 +2,14 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../models/catalog_models.dart';
+import '../../../product/presentation/product_providers.dart';
 import '../../../wishlist/presentation/card_heart.dart';
+import '../quick_add.dart';
 import 'price_block.dart';
 import 'qty_stepper.dart';
 import 'rating_pill.dart';
@@ -170,7 +173,11 @@ class ProductCard extends StatelessWidget {
   Widget _quickAddControl({bool obsidian = false}) {
     final quickAdd = onQuickAdd;
     if (quickAdd == null) return _addControl();
-    return _QuickAddPill(onAdd: quickAdd, obsidian: obsidian);
+    return _CardAddControl(
+      product: product,
+      obsidian: obsidian,
+      onQuickAdd: quickAdd,
+    );
   }
 
   Widget _grid(BuildContext context) {
@@ -359,9 +366,51 @@ class ProductCard extends StatelessWidget {
 String _rupees(double value) =>
     value == value.roundToDouble() ? value.toInt().toString() : value.toStringAsFixed(2);
 
-/// Single-shot Add pill (40dp, primary outline — same footprint as the
-/// stepper's Add state so rows never jump). Runs the quick-add pipeline on
-/// tap and shows a spinner while the server call is in flight.
+/// Card add zone: an Add pill until the product's variant is known this
+/// session, then a LIVE stepper bound to the server cart (+ → addItem,
+/// − → PATCH-by-rewrite). This is what answers "how much did I add" on
+/// every card, instead of a dead pill.
+class _CardAddControl extends ConsumerWidget {
+  const _CardAddControl({
+    required this.product,
+    required this.obsidian,
+    required this.onQuickAdd,
+  });
+
+  final CatalogProduct product;
+  final bool obsidian;
+  final Future<void> Function() onQuickAdd;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final variantId =
+        ref.watch(cardAdditionsProvider)[product.slug];
+    final qty = variantId == null
+        ? 0
+        : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ??
+            0);
+    if (variantId != null && qty > 0) {
+      return QtyStepper(
+        quantity: qty,
+        compact: true,
+        onChanged: (next) {
+          final cart =
+              ref.read(pdpCartControllerProvider.notifier);
+          if (next > qty) {
+            cart.increment(variantId);
+          } else {
+            cart.decrement(variantId);
+          }
+        },
+      );
+    }
+    return _QuickAddPill(onAdd: onQuickAdd, obsidian: obsidian);
+  }
+}
+
+/// Single-shot Add pill (40dp — same footprint as the stepper's Add state
+/// so rows never jump). Primary outline, or obsidian fill on champagne
+/// cards. Shows a spinner while the pipeline runs.
 class _QuickAddPill extends StatefulWidget {
   const _QuickAddPill({required this.onAdd, this.obsidian = false});
 

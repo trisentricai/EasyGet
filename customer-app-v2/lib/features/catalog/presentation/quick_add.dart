@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/widgets/snackbar.dart';
 import '../../../models/catalog_models.dart';
 import '../../cart/data/cart_repository.dart';
+import '../../product/presentation/product_providers.dart';
 import '../data/catalog_repository.dart';
 import 'widgets/variant_sheet.dart';
 
@@ -66,6 +67,12 @@ Future<void> quickAddFromCard(
   Future<void> commit(int variantId, String name, double price) async {
     try {
       await cart.addItem(variantId: variantId, quantity: 1);
+      container
+          .read(cardAdditionsProvider.notifier)
+          .record(product.slug, variantId);
+      await container
+          .read(pdpCartControllerProvider.notifier)
+          .refresh();
       container.invalidate(cartCountProvider);
       if (!context.mounted) return;
       showAppSnackbar(
@@ -77,10 +84,28 @@ Future<void> quickAddFromCard(
         onAction: () => context.go('/cart'),
       );
     } catch (_) {
+      container
+          .read(cardAdditionsProvider.notifier)
+          .forget(product.slug);
       if (context.mounted) {
         showAppSnackbar(context, 'Could not add that right now.');
       }
     }
+  }
+
+  // Known variant (added before, this session): skip resolve + sheet and
+  // commit one more unit straight away.
+  final known = container.read(cardAdditionsProvider)[product.slug];
+  if (known != null) {
+    final detail = await _detailOrNull(catalog, product.slug);
+    var price = product.basePrice;
+    if (detail != null) {
+      for (final v in detail.variants) {
+        if (v.id == known) price = v.price;
+      }
+    }
+    await commit(known, product.name, price);
+    return;
   }
 
   switch (outcome.kind) {
@@ -101,7 +126,42 @@ Future<void> quickAddFromCard(
   }
 }
 
+/// Best-effort detail fetch for price display; null when offline.
+Future<ProductDetail?> _detailOrNull(
+    CatalogRepository repo, String slug) async {
+  try {
+    return await repo.product(slug);
+  } catch (_) {
+    return null;
+  }
+}
+
 String _rupees(double value) =>
     value == value.roundToDouble()
         ? value.toInt().toString()
         : value.toStringAsFixed(2);
+
+/// Remembers which variant backs each card (slug → variantId) so cards can
+/// show LIVE cart quantities after the first add, instead of a dead pill.
+/// Written by quick-add commits and PDP confirms; keyed by slug, so it is
+/// strictly session memory (server truth stays on PDP/cart).
+class CardAdditionsController extends Notifier<Map<String, int>> {
+  @override
+  Map<String, int> build() => const {};
+
+  void record(String slug, int variantId) {
+    if (state[slug] == variantId) return;
+    state = {...state, slug: variantId};
+  }
+
+  void forget(String slug) {
+    if (!state.containsKey(slug)) return;
+    final next = {...state}..remove(slug);
+    state = next;
+  }
+}
+
+final cardAdditionsProvider =
+    NotifierProvider<CardAdditionsController, Map<String, int>>(
+  CardAdditionsController.new,
+);

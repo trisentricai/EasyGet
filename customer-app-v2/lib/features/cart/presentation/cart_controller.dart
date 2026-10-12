@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../models/cart_models.dart';
+import '../../catalog/data/catalog_repository.dart';
 import '../data/cart_repository.dart';
 import '../data/coupon_repository.dart';
 
@@ -163,3 +164,15 @@ final cartControllerProvider =
     NotifierProvider<CartController, CartViewState>(
   CartController.new,
 );
+
+/// Platform ticker lines for the cart trust rows. Empty on any failure —
+/// the rows simply hide instead of showing invented promises.
+final cartTickerProvider = FutureProvider<List<String>>((ref) async {
+  try {
+    final render =
+        await ref.watch(catalogRepositoryProvider).platformStorefront();
+    return render.ticker?.items ?? const [];
+  } catch (_) {
+    return const [];
+  }
+});
