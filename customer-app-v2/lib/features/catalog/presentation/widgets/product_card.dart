@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -111,14 +113,30 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
           ),
-          if (product.ratingCount > 0)
+          if (product.ratingCount > 0 ||
+              product.discountPercent > 0)
             Positioned(
               top: AppSpace.sm,
               left: AppSpace.sm,
-              child: RatingPill(
-                rating: product.ratingAvg,
-                count: product.ratingCount,
-                compact: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (product.ratingCount > 0)
+                    RatingPill(
+                      rating: product.ratingAvg,
+                      count: product.ratingCount,
+                      compact: true,
+                    ),
+                  if (product.ratingCount > 0 &&
+                      product.discountPercent > 0)
+                    const SizedBox(width: 6),
+                  if (product.discountPercent > 0)
+                    _GlassPill(
+                      key: Key(
+                          'card-discount-${product.slug}'),
+                      label: '−${product.discountPercent}%',
+                    ),
+                ],
               ),
             ),
           // Hearts on browsable cards (rail/grid). Line cards (cart) and
@@ -148,32 +166,42 @@ class ProductCard extends StatelessWidget {
 
   /// Single-shot Add pill for the quick-add pipeline (grid/rail only; the
   /// line density keeps its controlled stepper via [trailing]).
-  Widget _quickAddControl() {
+  /// Grid cards render it in obsidian (Champagne Minimalist law).
+  Widget _quickAddControl({bool obsidian = false}) {
     final quickAdd = onQuickAdd;
     if (quickAdd == null) return _addControl();
-    return _QuickAddPill(onAdd: quickAdd);
+    return _QuickAddPill(onAdd: quickAdd, obsidian: obsidian);
   }
 
   Widget _grid(BuildContext context) {
+    final colors = Theme.of(context).freshColors;
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
       onTap: _handleTap,
       child: SizedBox(
         width: width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _image(context, aspect: 4 / 5),
-            const SizedBox(height: AppSpace.sm),
-            _nameSlot(context),
-            _brandSlot(context),
-            const SizedBox(height: AppSpace.xs),
-            _priceSlot(),
-            const SizedBox(height: AppSpace.sm),
-            _quickAddControl(),
-          ],
+        child: Container(
+          padding: const EdgeInsets.all(AppSpace.sm),
+          decoration: BoxDecoration(
+            color: colors.champagne,
+            borderRadius: BorderRadius.circular(AppRadii.card),
+            border: Border.all(color: colors.champagneDeep),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _image(context, aspect: 4 / 5),
+              const SizedBox(height: AppSpace.sm),
+              _nameSlot(context),
+              _brandSlot(context),
+              const SizedBox(height: AppSpace.xs),
+              _priceSlot(),
+              const SizedBox(height: AppSpace.sm),
+              _quickAddControl(obsidian: true),
+            ],
+          ),
         ),
       ),
     );
@@ -335,9 +363,10 @@ String _rupees(double value) =>
 /// stepper's Add state so rows never jump). Runs the quick-add pipeline on
 /// tap and shows a spinner while the server call is in flight.
 class _QuickAddPill extends StatefulWidget {
-  const _QuickAddPill({required this.onAdd});
+  const _QuickAddPill({required this.onAdd, this.obsidian = false});
 
   final Future<void> Function() onAdd;
+  final bool obsidian;
 
   @override
   State<_QuickAddPill> createState() => _QuickAddPillState();
@@ -359,6 +388,10 @@ class _QuickAddPillState extends State<_QuickAddPill> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).freshColors;
+    final fill = widget.obsidian ? colors.obsidian : null;
+    final ink =
+        widget.obsidian ? colors.champagneInk : scheme.primary;
     return SizedBox(
       height: 40,
       child: OutlinedButton(
@@ -366,12 +399,14 @@ class _QuickAddPillState extends State<_QuickAddPill> {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(72, 40),
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-          side: BorderSide(color: scheme.primary),
-          foregroundColor: scheme.primary,
+          backgroundColor: fill,
+          side: BorderSide(
+              color: widget.obsidian ? colors.obsidian : scheme.primary),
+          foregroundColor: ink,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.button),
           ),
-          textStyle: AppTypography.label(scheme.primary),
+          textStyle: AppTypography.label(ink),
         ),
         child: _busy
             ? const SizedBox(
@@ -380,6 +415,34 @@ class _QuickAddPillState extends State<_QuickAddPill> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Text('Add'),
+      ),
+    );
+  }
+}
+
+/// Obsidian Glass pill: frosted dark chip for badges over imagery.
+class _GlassPill extends StatelessWidget {
+  const _GlassPill({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).freshColors;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.sm, vertical: 3),
+          color: colors.obsidianGlass,
+          child: Text(
+            label,
+            style: AppTypography.tabularSmall(colors.champagneInk,
+                size: 11),
+          ),
+        ),
       ),
     );
   }

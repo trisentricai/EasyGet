@@ -26,6 +26,15 @@ class AppColors {
   static const Color warning = Color(0xFFB45309);
   static const Color danger = Color(0xFFB91C1C);
 
+  // Champagne Minimalist (grid cards) + Obsidian Glass (overlays)
+  static const Color champagne = Color(0xFFF7EFDD);
+  static const Color champagneDeep = Color(0xFFEFE0C2);
+  static const Color darkChampagne = Color(0xFF2A241B);
+  static const Color darkChampagneDeep = Color(0xFF38301F);
+  static const Color obsidian = Color(0xFF141210);
+  static const Color obsidianGlass = Color(0xB3141210);
+  static const Color champagneInk = Color(0xFFF7EFDD);
+
   // Dark — Warm Charcoal (never pure #000)
   static const Color darkCanvas = Color(0xFF12110F);
   static const Color darkSurface = Color(0xFF1B1A17);
@@ -93,6 +102,15 @@ abstract class FreshMarketColorTokens {
   Color get danger;
   Color get warning;
   Color get onPrimary;
+
+  /// Champagne Minimalist card surface (+ deeper edge for borders).
+  Color get champagne;
+  Color get champagneDeep;
+
+  /// Obsidian Glass overlay (frosted dark pills, badges, Add).
+  Color get obsidian;
+  Color get obsidianGlass;
+  Color get champagneInk;
 }
 
 /// Light color extension for brand/marigold tokens not in ColorScheme.
@@ -136,6 +154,16 @@ class FreshMarketLightColors extends ThemeExtension<FreshMarketLightColors>
   Color get warning => AppColors.warning;
   @override
   Color get onPrimary => Colors.white;
+  @override
+  Color get champagne => AppColors.champagne;
+  @override
+  Color get champagneDeep => AppColors.champagneDeep;
+  @override
+  Color get obsidian => AppColors.obsidian;
+  @override
+  Color get obsidianGlass => AppColors.obsidianGlass;
+  @override
+  Color get champagneInk => AppColors.champagneInk;
 }
 
 /// Dark color extension.
@@ -179,6 +207,16 @@ class FreshMarketDarkColors extends ThemeExtension<FreshMarketDarkColors>
   Color get warning => AppColors.warning;
   @override
   Color get onPrimary => Colors.white;
+  @override
+  Color get champagne => AppColors.darkChampagne;
+  @override
+  Color get champagneDeep => AppColors.darkChampagneDeep;
+  @override
+  Color get obsidian => AppColors.obsidian;
+  @override
+  Color get obsidianGlass => AppColors.obsidianGlass;
+  @override
+  Color get champagneInk => AppColors.champagneInk;
 }
 
 /// Convenience extension to access custom colors.

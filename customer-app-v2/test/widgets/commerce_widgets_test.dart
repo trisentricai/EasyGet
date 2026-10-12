@@ -150,6 +150,8 @@ void main() {
       expect(find.text('₹289'), findsOneWidget);
       expect(find.byKey(const Key('qty-add')), findsOneWidget);
       expect(find.byKey(const Key('rating-pill')), findsOneWidget);
+      // Obsidian glass discount badge on the image.
+      expect(find.text('−17%'), findsOneWidget);
     });
 
     testWidgets('exposes a semantics label for the product', (tester) async {
