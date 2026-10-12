@@ -3,15 +3,18 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// EasyGet Fresh Market — normative typography tokens (DESIGN.md §10.4).
 /// Product names NEVER use serif. EVERY number uses tabular figures.
+/// Display serif is Zodiak (Fontshare, bundled in assets/fonts); body stays
+/// Inter via google_fonts (runtime-cached).
 class AppTypography {
-  static TextStyle _fraunces({
+  static TextStyle _zodiak({
     required double fontSize,
     required FontWeight weight,
     required Color color,
     double letterSpacing = -0.5,
     double height = 1.15,
   }) =>
-      GoogleFonts.fraunces(
+      TextStyle(
+        fontFamily: 'Zodiak',
         fontSize: fontSize,
         fontWeight: weight,
         letterSpacing: letterSpacing,
@@ -37,13 +40,13 @@ class AppTypography {
       );
 
   // Display / Hero
-  static TextStyle displayHero(Color color) => _fraunces(
+  static TextStyle displayHero(Color color) => _zodiak(
         fontSize: 28,
         weight: FontWeight.w600,
         color: color,
       );
 
-  static TextStyle sectionHeadline(Color color) => _fraunces(
+  static TextStyle sectionHeadline(Color color) => _zodiak(
         fontSize: 24,
         weight: FontWeight.w500,
         color: color,
