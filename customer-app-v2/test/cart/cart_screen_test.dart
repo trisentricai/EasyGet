@@ -1,9 +1,15 @@
 import 'package:easyget/core/network/api_exception.dart';
 import 'package:easyget/core/theme/app_theme.dart';
+import 'package:easyget/features/addresses/data/address_repository.dart';
 import 'package:easyget/features/cart/data/cart_repository.dart';
 import 'package:easyget/features/cart/data/coupon_repository.dart';
 import 'package:easyget/features/cart/presentation/cart_screen.dart';
+import 'package:easyget/features/catalog/data/catalog_repository.dart';
+import 'package:easyget/models/address_model.dart';
 import 'package:easyget/models/cart_models.dart';
+import 'package:easyget/models/catalog_models.dart';
+import 'package:easyget/models/pincode_model.dart';
+import 'package:easyget/models/storefront_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -98,6 +104,8 @@ Future<void> _pumpCart(
   WidgetTester tester, {
   required _FakeCartRepo cart,
   String location = '/cart',
+  AddressRepository? addresses,
+  CatalogRepository? catalog,
 }) async {
   final router = GoRouter(
     initialLocation: location,
@@ -120,6 +128,10 @@ Future<void> _pumpCart(
       overrides: [
         cartRepositoryProvider.overrideWithValue(cart),
         couponRepositoryProvider.overrideWithValue(_FakeCouponRepo()),
+        if (addresses != null)
+          addressRepositoryProvider.overrideWithValue(addresses),
+        if (catalog != null)
+          catalogRepositoryProvider.overrideWithValue(catalog),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
@@ -130,12 +142,87 @@ Future<void> _pumpCart(
   await tester.pumpAndSettle();
 }
 
+class _FakeAddressRepo implements AddressRepository {
+  @override
+  Future<List<Address>> list() async => const [
+        Address(
+          id: 1,
+          label: 'Home',
+          line1: '12 MG Road',
+          city: 'Bengaluru',
+          state: 'KA',
+          postalCode: '560001',
+          country: 'India',
+          phone: '9876543210',
+          isDefault: true,
+        ),
+      ];
+  @override
+  Future<Address> create(AddressDraft draft) => throw UnimplementedError();
+  @override
+  Future<Address> update(int id, AddressDraft draft) =>
+      throw UnimplementedError();
+  @override
+  Future<void> delete(int id) async {}
+  @override
+  Future<Address> setDefault(int id) => throw UnimplementedError();
+}
+
+class _FakeCartCatalog implements CatalogRepository {
+  @override
+  Future<PincodeInfo> pincode(String code) async => const PincodeInfo(
+      valid: true,
+      pincode: '560001',
+      city: 'Bengaluru',
+      state: 'KA',
+      etaDays: 2,
+      deliveryFee: 30,
+      freeDeliveryOver: 499);
+  @override
+  Future<StorefrontRender> platformStorefront() async =>
+      const StorefrontRender(
+        store: StoreInfo(id: 1, name: 'EasyGet', slug: 'easyget'),
+        theme: StoreTheme(),
+        ticker: Ticker(items: ['Free delivery over Rs.499']),
+      );
+  @override
+  Future<CatalogPage> products(
+          {String? category,
+          String? brand,
+          double? minPrice,
+          double? maxPrice,
+          double? minDiscount,
+          bool? isFeatured,
+          String? sort,
+          int? page}) async =>
+      const CatalogPage(results: [], total: 0, page: 1);
+  @override
+  Future<ProductDetail> product(String slug) => throw UnimplementedError();
+  @override
+  Future<List<Category>> categories() async => const [];
+  @override
+  Future<List<Brand>> brands() => throw UnimplementedError();
+  @override
+  Future<CatalogPage> search(String query,
+          {String? sort,
+          int page = 1,
+          String? category,
+          double? minPrice,
+          double? maxPrice,
+          bool? isFeatured}) =>
+      throw UnimplementedError();
+  @override
+  Future<StorefrontRender> storefront(String slug) =>
+      throw UnimplementedError();
+}
+
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   testWidgets('renders lines, server bill and checkout CTA', (tester) async {
     await _pumpCart(tester, cart: _FakeCartRepo());
 
+    expect(find.text('Your cart (3)'), findsOneWidget);
     expect(find.text('Amul Butter 200 g'), findsOneWidget);
     expect(find.text('Whole Wheat Atta 5 kg'), findsOneWidget);
     expect(find.text('₹498'), findsWidgets);
@@ -255,5 +342,27 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byKey(const Key('cart-checkout')), findsOneWidget);
+  });
+
+  testWidgets('ETA pill resolves from the default address', (tester) async {
+    await _pumpCart(
+      tester,
+      cart: _FakeCartRepo(),
+      addresses: _FakeAddressRepo(),
+      catalog: _FakeCartCatalog(),
+    );
+
+    expect(find.byKey(const Key('delivery-eta-pill')), findsOneWidget);
+    expect(find.text('2 days'), findsOneWidget);
+  });
+
+  testWidgets('trust rows render ticker promises', (tester) async {
+    await _pumpCart(
+      tester,
+      cart: _FakeCartRepo(),
+      catalog: _FakeCartCatalog(),
+    );
+
+    expect(find.text('Free delivery over Rs.499'), findsOneWidget);
   });
 }

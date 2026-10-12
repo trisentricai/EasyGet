@@ -1,6 +1,8 @@
 import 'package:easyget/core/theme/app_theme.dart';
+import 'package:easyget/features/addresses/data/address_repository.dart';
 import 'package:easyget/features/catalog/data/catalog_repository.dart';
 import 'package:easyget/features/home/presentation/home_screen.dart';
+import 'package:easyget/models/address_model.dart';
 import 'package:easyget/models/catalog_models.dart';
 import 'package:easyget/models/pincode_model.dart';
 import 'package:easyget/models/storefront_models.dart';
@@ -195,13 +197,50 @@ class _FakeCatalogRepo implements CatalogRepository {
           bool? isFeatured}) =>
       throw UnimplementedError();
   @override
-  Future<PincodeInfo> pincode(String code) => throw UnimplementedError();
+  Future<PincodeInfo> pincode(String code) async => const PincodeInfo(
+      valid: true,
+      pincode: '560001',
+      city: 'Bengaluru',
+      state: 'KA',
+      etaDays: 2,
+      deliveryFee: 30,
+      freeDeliveryOver: 499);
   @override
   Future<StorefrontRender> storefront(String slug) =>
       throw UnimplementedError();
 }
 
-Future<void> _pumpHome(WidgetTester tester, _FakeCatalogRepo repo) async {
+class _FakeAddressRepo implements AddressRepository {
+  @override
+  Future<List<Address>> list() async => const [
+        Address(
+          id: 1,
+          label: 'Home',
+          line1: '12 MG Road',
+          city: 'Bengaluru',
+          state: 'KA',
+          postalCode: '560001',
+          country: 'India',
+          phone: '9876543210',
+          isDefault: true,
+        ),
+      ];
+  @override
+  Future<Address> create(AddressDraft draft) => throw UnimplementedError();
+  @override
+  Future<Address> update(int id, AddressDraft draft) =>
+      throw UnimplementedError();
+  @override
+  Future<void> delete(int id) async {}
+  @override
+  Future<Address> setDefault(int id) => throw UnimplementedError();
+}
+
+Future<void> _pumpHome(
+  WidgetTester tester,
+  _FakeCatalogRepo repo, {
+  AddressRepository? addresses,
+}) async {
   final router = GoRouter(
     initialLocation: '/home',
     routes: [
@@ -217,6 +256,11 @@ Future<void> _pumpHome(WidgetTester tester, _FakeCatalogRepo repo) async {
             key: Key('browse-all-page'), body: Text('BROWSE ALL')),
       ),
       GoRoute(
+        path: '/addresses',
+        builder: (_, _) => const Scaffold(
+            key: Key('addresses-page'), body: Text('ADDRESSES')),
+      ),
+      GoRoute(
         path: '/product/:slug',
         builder: (_, _) =>
             const Scaffold(key: Key('product-page'), body: Text('PRODUCT')),
@@ -225,7 +269,11 @@ Future<void> _pumpHome(WidgetTester tester, _FakeCatalogRepo repo) async {
   );
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [catalogRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        catalogRepositoryProvider.overrideWithValue(repo),
+        if (addresses != null)
+          addressRepositoryProvider.overrideWithValue(addresses),
+      ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
         routerConfig: router,
@@ -368,5 +416,24 @@ void main() {
 
     expect(find.text('Show more · 20 shown'), findsNothing);
     expect(find.text('You have seen all 25 products'), findsOneWidget);
+  });
+
+  testWidgets('address row shows the default address and opens it',
+      (tester) async {
+    await _pumpHome(tester, _FakeCatalogRepo(),
+        addresses: _FakeAddressRepo());
+
+    expect(find.text('Home · Bengaluru'), findsOneWidget);
+    expect(find.text('2 days'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('home-address-row')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('addresses-page')), findsOneWidget);
+  });
+
+  testWidgets('no address shows the location prompt', (tester) async {
+    await _pumpHome(tester, _FakeCatalogRepo());
+
+    expect(find.text('Set location'), findsOneWidget);
   });
 }

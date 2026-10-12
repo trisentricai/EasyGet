@@ -68,21 +68,68 @@ class _FakeCatalogRepo implements CatalogRepository {
 
 class _FakeCartRepo implements CartRepository {
   final List<String> calls = [];
+  final lines = <CartItem>[];
+  int _nextId = 1;
+
+  Cart _cart() => Cart(
+        id: 1,
+        items: List.of(lines),
+        totalItems: lines.fold(0, (a, e) => a + e.quantity),
+        subtotal: lines.fold(0.0, (a, e) => a + e.lineTotal),
+      );
 
   @override
-  Future<Cart> fetchCart() async =>
-      const Cart(id: 1, items: [], totalItems: 0, subtotal: 0);
+  Future<Cart> fetchCart() async => _cart();
+
   @override
   Future<void> addItem({required int variantId, int quantity = 1}) async {
     calls.add('add $variantId x$quantity');
+    final at = lines.indexWhere((e) => e.variantId == variantId);
+    if (at >= 0) {
+      final line = lines[at];
+      lines[at] = CartItem(
+          id: line.id,
+          variantId: line.variantId,
+          variantLabel: line.variantLabel,
+          variantName: line.variantName,
+          price: line.price,
+          quantity: line.quantity + quantity,
+          lineTotal: line.price * (line.quantity + quantity));
+    } else {
+      lines.add(CartItem(
+          id: _nextId++,
+          variantId: variantId,
+          variantLabel: 'v$variantId',
+          variantName: 'Variant $variantId',
+          price: 99,
+          quantity: quantity,
+          lineTotal: 99.0 * quantity));
+    }
   }
 
   @override
-  Future<void> updateQty(int itemId, int quantity) async {}
+  Future<void> updateQty(int itemId, int quantity) async {
+    calls.add('update $itemId x$quantity');
+    final at = lines.indexWhere((e) => e.id == itemId);
+    final line = lines[at];
+    lines[at] = CartItem(
+        id: line.id,
+        variantId: line.variantId,
+        variantLabel: line.variantLabel,
+        variantName: line.variantName,
+        price: line.price,
+        quantity: quantity,
+        lineTotal: line.price * quantity);
+  }
+
   @override
-  Future<void> remove(int itemId) async {}
+  Future<void> remove(int itemId) async {
+    calls.add('remove $itemId');
+    lines.removeWhere((e) => e.id == itemId);
+  }
+
   @override
-  Future<void> clear() async {}
+  Future<void> clear() async => lines.clear();
 }
 
 const _cardProduct = CatalogProduct(
@@ -220,6 +267,36 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Unavailable right now.'), findsOneWidget);
+    });
+
+    testWidgets('card shows the live stepper after a quick-add',
+        (tester) async {
+      final cart = _FakeCartRepo();
+      await pumpCard(
+          tester,
+          catalog: _FakeCatalogRepo()..variants = 1,
+          cart: cart);
+
+      // Plain Add pill up front (no stepper yet).
+      expect(find.text('Add'), findsOneWidget);
+      expect(find.byKey(const Key('qty-plus')), findsNothing);
+
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      // Mapped + seeded: the card now mirrors the server qty.
+      expect(find.text('1'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('qty-plus')));
+      await tester.pumpAndSettle();
+      expect(cart.calls, ['add 50 x1', 'add 50 x1']);
+      expect(find.text('2'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('qty-minus')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('qty-minus')));
+      await tester.pumpAndSettle();
+      expect(find.text('Add'), findsOneWidget);
     });
   });
 }
