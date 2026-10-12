@@ -348,5 +348,22 @@ void main() {
       await tester.tap(find.text('View'));
       expect(actioned, 1);
     });
+
+    testWidgets('notices auto-dismiss after 3 seconds', (tester) async {
+      await tester.pumpWidget(_host(Builder(
+        builder: (context) => Center(
+          child: ElevatedButton(
+            onPressed: () => showAppSnackbar(context, 'Added to cart'),
+            child: const Text('go'),
+          ),
+        ),
+      )));
+
+      await tester.tap(find.text('go'));
+      await tester.pump();
+      expect(
+          tester.widget<SnackBar>(find.byType(SnackBar)).duration,
+          const Duration(seconds: 3));
+    });
   });
 }

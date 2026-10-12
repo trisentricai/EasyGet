@@ -284,19 +284,23 @@ void main() {
       await tester.tap(find.text('Add'));
       await tester.pumpAndSettle();
 
-      // Mapped + seeded: the card now mirrors the server qty.
+      // Mapped + seeded: the card now mirrors the server qty, with an
+      // explicit "N in cart" badge over the image.
       expect(find.text('1'), findsOneWidget);
+      expect(find.text('✓ 1 in cart'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('qty-plus')));
       await tester.pumpAndSettle();
       expect(cart.calls, ['add 50 x1', 'add 50 x1']);
       expect(find.text('2'), findsOneWidget);
+      expect(find.text('✓ 2 in cart'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('qty-minus')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('qty-minus')));
       await tester.pumpAndSettle();
       expect(find.text('Add'), findsOneWidget);
+      expect(find.textContaining('in cart'), findsNothing);
     });
   });
 }

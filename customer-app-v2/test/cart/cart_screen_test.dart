@@ -253,6 +253,10 @@ void main() {
     expect(cart.calls, ['remove 1']);
     expect(find.text('Amul Butter 200 g'), findsNothing);
     expect(find.text('Undo'), findsOneWidget);
+    // Undo honors the same 3s notice standard.
+    expect(
+        tester.widget<SnackBar>(find.byType(SnackBar)).duration,
+        const Duration(seconds: 3));
 
     await tester.tap(find.text('Undo'));
     await tester.pumpAndSettle();

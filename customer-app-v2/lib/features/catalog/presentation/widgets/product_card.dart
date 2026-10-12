@@ -23,7 +23,7 @@ import 'rating_pill.dart';
 /// GridView childAspectRatio for any column width.
 enum ProductDensity { rail, grid, line }
 
-class ProductCard extends StatelessWidget {
+class ProductCard extends ConsumerWidget {
   const ProductCard({
     super.key,
     required this.product,
@@ -69,10 +69,18 @@ class ProductCard extends StatelessWidget {
   final Future<void> Function()? onQuickAdd;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Live cart qty for the "✓ N in cart" badge (0 = not added this
+    // session). Server truth; the badge is display-only.
+    final variantId =
+        ref.watch(cardAdditionsProvider)[product.slug];
+    final inCartQty = variantId == null
+        ? 0
+        : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ??
+            0);
     final child = switch (density) {
-      ProductDensity.rail => _rail(context),
-      ProductDensity.grid => _grid(context),
+      ProductDensity.rail => _rail(context, inCartQty),
+      ProductDensity.grid => _grid(context, inCartQty),
       ProductDensity.line => _line(context),
     };
     return Semantics(
@@ -90,7 +98,8 @@ class ProductCard extends StatelessWidget {
     }
   }
 
-  Widget _image(BuildContext context, {required double aspect}) {
+  Widget _image(BuildContext context,
+      {required double aspect, int inCartQty = 0}) {
     final colors = Theme.of(context).freshColors;
     return AspectRatio(
       aspectRatio: aspect,
@@ -155,6 +164,20 @@ class ProductCard extends StatelessWidget {
                 onToggled: onHearted,
               ),
             ),
+          // "✓ N in cart" badge (grid/rail only): the stepper below says
+          // the number, the badge says what it MEANS. Zero layout impact
+          // (overlay), aligned with the top-left pill row.
+          if (density != ProductDensity.line &&
+              product.slug.isNotEmpty &&
+              inCartQty > 0)
+            Positioned(
+              left: AppSpace.sm,
+              bottom: AppSpace.sm,
+              child: _GlassPill(
+                key: Key('card-incart-${product.slug}'),
+                label: '✓ $inCartQty in cart',
+              ),
+            ),
         ],
       ),
     );
@@ -180,7 +203,7 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _grid(BuildContext context) {
+  Widget _grid(BuildContext context, int inCartQty) {
     final colors = Theme.of(context).freshColors;
     return GestureDetector(
       key: const Key('product-card'),
@@ -199,7 +222,7 @@ class ProductCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _image(context, aspect: 4 / 5),
+              _image(context, aspect: 4 / 5, inCartQty: inCartQty),
               const SizedBox(height: AppSpace.sm),
               _nameSlot(context),
               _brandSlot(context),
@@ -214,7 +237,7 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _rail(BuildContext context) {
+  Widget _rail(BuildContext context, int inCartQty) {
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
@@ -225,7 +248,7 @@ class ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _image(context, aspect: 1),
+              _image(context, aspect: 1, inCartQty: inCartQty),
             const SizedBox(height: AppSpace.sm),
             _nameSlot(context),
             _brandSlot(context),

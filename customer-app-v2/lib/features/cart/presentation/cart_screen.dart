@@ -433,6 +433,7 @@ class _LineCard extends ConsumerWidget {
         .removeLine(item);
     if (!context.mounted || removed == null) return;
     final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
     unawaited(
       messenger
           .showSnackBar(
@@ -445,7 +446,8 @@ class _LineCard extends ConsumerWidget {
                     .read(cartControllerProvider.notifier)
                     .undoRemove(removed),
               ),
-              duration: const Duration(seconds: 5),
+              // Same 3s standard as every other cart notice.
+              duration: const Duration(seconds: 3),
             ),
           )
           .closed

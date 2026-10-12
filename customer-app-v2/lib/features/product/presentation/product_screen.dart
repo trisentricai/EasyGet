@@ -995,15 +995,30 @@ class _StickyBarState extends ConsumerState<_StickyBar> {
   Widget _control(BuildContext context, int variantId, int qty) {
     if (qty == 0 && !_selecting) return _addPill(context);
     if (_selecting && qty == 0) return _pendingPicker(context, variantId);
-    return QtyStepper(
-      quantity: qty,
-      onChanged: (next) {
-        if (next > qty) {
-          ref.read(pdpCartControllerProvider.notifier).increment(variantId);
-        } else {
-          ref.read(pdpCartControllerProvider.notifier).decrement(variantId);
-        }
-      },
+    // Live state: the stepper PLUS an explicit "N in cart" caption so the
+    // number is never ambiguous.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        QtyStepper(
+          quantity: qty,
+          onChanged: (next) {
+            if (next > qty) {
+              ref.read(pdpCartControllerProvider.notifier).increment(variantId);
+            } else {
+              ref.read(pdpCartControllerProvider.notifier).decrement(variantId);
+            }
+          },
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '$qty in cart',
+          style: AppTypography.tabularSmall(
+              Theme.of(context).colorScheme.onSurfaceVariant,
+              size: 11),
+        ),
+      ],
     );
   }
 

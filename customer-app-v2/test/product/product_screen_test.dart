@@ -414,6 +414,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(cart.calls, ['add 11 x2']);
     expect(withinSticky(find.text('2')), findsOneWidget);
+    expect(withinSticky(find.text('2 in cart')), findsOneWidget);
     expect(
         find.text('Added 2 × Amul Butter (₹398)'), findsOneWidget);
 
