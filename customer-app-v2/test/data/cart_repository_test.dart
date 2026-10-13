@@ -33,7 +33,9 @@ ResponseBody _json(String body, [int status = 200]) => ResponseBody.fromString(
 const _cartJson = '''
 {"id":9,"store":{"id":1,"slug":"easyget"},"items":[
   {"id":31,
-   "variant":{"id":5,"name":"Aashirvaad Atta 5kg","label":"5 kg","sku":"ATTA-5","price":"289.00"},
+   "variant":{"id":5,"name":"5 kg","label":"5 kg","sku":"ATTA-5","price":"289.00",
+     "product":9,"product_name":"Aashirvaad Atta","product_slug":"aashirvaad-atta",
+     "image":"https://example.com/atta.jpg"},
    "quantity":2,"line_total":"578.00","tenant_id":3,"seller_name":"EASYGET Store"},
   {"id":32,
    "variant":{"id":8,"name":"Tata Salt 1kg","price":"28.00"},
@@ -71,15 +73,22 @@ void main() {
     expect(first.id, 31);
     expect(first.variantId, 5);
     expect(first.variantLabel, '5 kg');
-    expect(first.variantName, 'Aashirvaad Atta 5kg');
+    expect(first.variantName, '5 kg');
     expect(first.price, 289.0);
     expect(first.quantity, 2);
     expect(first.lineTotal, 578.0);
     expect(first.tenantId, 3);
     expect(first.sellerName, 'EASYGET Store');
+    // Live product details ride on the variant (see §18): name, slug, image.
+    expect(first.productName, 'Aashirvaad Atta');
+    expect(first.productSlug, 'aashirvaad-atta');
+    expect(first.imageUrl, 'https://example.com/atta.jpg');
 
-    // Label falls back to name when absent.
+    // Label falls back to name when absent; product details stay null.
     expect(cart.items[1].variantLabel, 'Tata Salt 1kg');
+    expect(cart.items[1].productName, isNull);
+    expect(cart.items[1].productSlug, isNull);
+    expect(cart.items[1].imageUrl, isNull);
   });
 
   test('addItem POSTs {variant_id, quantity}', () async {

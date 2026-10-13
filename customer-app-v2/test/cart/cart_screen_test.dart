@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easyget/core/network/api_exception.dart';
 import 'package:easyget/core/theme/app_theme.dart';
 import 'package:easyget/features/addresses/data/address_repository.dart';
@@ -227,6 +228,42 @@ void main() {
     expect(find.text('Whole Wheat Atta 5 kg'), findsOneWidget);
     expect(find.text('₹498'), findsWidgets);
     expect(find.text('Proceed to checkout · ₹498'), findsOneWidget);
+  });
+
+  testWidgets('line cards show product name, unit, price and image',
+      (tester) async {
+    final cart = _FakeCartRepo();
+    cart.lines.clear();
+    cart.lines.add(CartItem(
+      id: 1,
+      variantId: 11,
+      variantLabel: '200 g',
+      variantName: '200 g',
+      productName: 'Amul Butter',
+      productSlug: 'amul-butter',
+      imageUrl: 'https://example.com/butter.jpg',
+      price: 199,
+      quantity: 2,
+      lineTotal: 398,
+    ));
+    await _pumpCart(tester, cart: cart);
+
+    // Quick format: product name + unit + unit price + line total + thumb —
+    // never a bare unit with a placeholder.
+    expect(find.text('Amul Butter'), findsOneWidget);
+    expect(find.text('200 g'), findsOneWidget);
+    expect(find.text('₹199'), findsOneWidget);
+    final card = find.byKey(const Key('product-card')).first;
+    expect(
+      find.descendant(of: card, matching: find.text('₹398')),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate((w) =>
+          w is CachedNetworkImage &&
+          w.imageUrl == 'https://example.com/butter.jpg'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('stepper edits hit updateQty', (tester) async {

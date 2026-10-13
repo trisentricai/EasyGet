@@ -12,6 +12,9 @@ class CartItem {
     required this.lineTotal,
     this.tenantId,
     this.sellerName,
+    this.productName,
+    this.productSlug,
+    this.imageUrl,
   });
 
   final int id;
@@ -23,6 +26,14 @@ class CartItem {
   final double lineTotal;
   final int? tenantId;
   final String? sellerName;
+
+  /// Live product details riding on the variant (see README §18): the
+  /// variant `name` is often just the unit ("1 L") while the product name,
+  /// slug and image arrive as `product_name` / `product_slug` / `image`.
+  /// Null on older payloads — callers fall back to the variant fields.
+  final String? productName;
+  final String? productSlug;
+  final String? imageUrl;
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
     final variant = (json['variant'] as Map?)?.cast<String, dynamic>() ??
@@ -38,6 +49,9 @@ class CartItem {
       lineTotal: numToDouble(json['line_total']),
       tenantId: numToIntOrNull(json['tenant_id']),
       sellerName: json['seller_name'] as String?,
+      productName: variant['product_name'] as String?,
+      productSlug: variant['product_slug'] as String?,
+      imageUrl: variant['image'] as String?,
     );
   }
 }

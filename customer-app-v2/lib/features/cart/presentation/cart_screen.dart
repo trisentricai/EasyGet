@@ -378,7 +378,10 @@ class _CouponSheetState extends ConsumerState<_CouponSheet> {
   }
 }
 
-/// Line card: 76dp thumb, 3-line middle, stepper + danger remove.
+/// Line card: 76dp thumb, quick "name / unit / price" middle, stepper +
+/// line total + danger remove. The product name, slug and photo come from
+/// the variant's live product fields (null on older payloads → variant
+/// fallbacks), so lines never render as a bare unit with a placeholder.
 class _LineCard extends ConsumerWidget {
   const _LineCard({required this.item});
 
@@ -387,13 +390,23 @@ class _LineCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final title = (item.productName?.isNotEmpty ?? false)
+        ? item.productName!
+        : item.variantName;
+    final unit = item.variantLabel.isNotEmpty && item.variantLabel != title
+        ? item.variantLabel
+        : null;
     return ProductCard(
       product: CatalogProduct(
         id: item.id,
-        name: item.variantName,
-        slug: '',
+        name: title,
+        // Line cards show the variant unit in the brand caption slot —
+        // same 18dp line browsable cards use for the brand.
+        brand: unit,
+        slug: item.productSlug ?? '',
         mrp: item.price,
         basePrice: item.price,
+        primaryImage: item.imageUrl,
       ),
       density: ProductDensity.line,
       trailing: Column(
@@ -412,6 +425,10 @@ class _LineCard extends ConsumerWidget {
                     .setQty(item.id, next);
               }
             },
+          ),
+          Text(
+            '₹${_rupees(item.lineTotal)}',
+            style: AppTypography.tabularPrice(scheme.onSurface, size: 14),
           ),
           TextButton(
             key: Key('line-remove-${item.id}'),
