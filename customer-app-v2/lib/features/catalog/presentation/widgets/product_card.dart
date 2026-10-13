@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_typography.dart';
@@ -390,9 +391,10 @@ String _rupees(double value) =>
     value == value.roundToDouble() ? value.toInt().toString() : value.toStringAsFixed(2);
 
 /// Card add zone: an Add pill until the product's variant is known this
-/// session, then a LIVE stepper bound to the server cart (+ → addItem,
-/// − → PATCH-by-rewrite). This is what answers "how much did I add" on
-/// every card, instead of a dead pill.
+/// session, then an explicit added bar ("✓ N added" + Add-more) bound to the
+/// server cart (+ → addItem, − → decrement). The bar says what the state
+/// MEANS instead of showing a bare number — same 40dp footprint as the pill,
+/// so rows never jump.
 class _CardAddControl extends ConsumerWidget {
   const _CardAddControl({
     required this.product,
@@ -413,21 +415,94 @@ class _CardAddControl extends ConsumerWidget {
         : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ??
             0);
     if (variantId != null && qty > 0) {
-      return QtyStepper(
+      return _AddedBar(
         quantity: qty,
-        compact: true,
-        onChanged: (next) {
-          final cart =
-              ref.read(pdpCartControllerProvider.notifier);
-          if (next > qty) {
-            cart.increment(variantId);
-          } else {
-            cart.decrement(variantId);
-          }
-        },
+        onDecrement: () => ref
+            .read(pdpCartControllerProvider.notifier)
+            .decrement(variantId),
+        onIncrement: () => ref
+            .read(pdpCartControllerProvider.notifier)
+            .increment(variantId),
       );
     }
     return _QuickAddPill(onAdd: onQuickAdd, obsidian: obsidian);
+  }
+}
+
+/// Explicit added bar: "−  ✓ N added  +" in one 40dp pill (primaryTint fill).
+/// The middle says the state out loud; the + control is the "Add more"
+/// affordance (tooltip + semantics). Same footprint as the Add pill, full
+/// card-inner width, tabular figures so the width barely moves as N grows.
+class _AddedBar extends StatelessWidget {
+  const _AddedBar({
+    required this.quantity,
+    required this.onDecrement,
+    required this.onIncrement,
+  });
+
+  final int quantity;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).freshColors;
+    return Semantics(
+      label: '$quantity added in cart',
+      explicitChildNodes: true,
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: colors.primaryTint,
+          borderRadius: BorderRadius.circular(AppRadii.button),
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              key: const Key('qty-minus'),
+              tooltip: 'Remove one',
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                onDecrement();
+              },
+              icon: const Icon(Icons.remove),
+              iconSize: 18,
+              visualDensity: VisualDensity.compact,
+              color: scheme.primary,
+              constraints:
+                  const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: EdgeInsets.zero,
+            ),
+            Expanded(
+              child: Text(
+                '✓ $quantity added',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTypography.tabularNumber(scheme.onSurface,
+                    size: 14),
+              ),
+            ),
+            IconButton(
+              key: const Key('qty-plus'),
+              tooltip: 'Add more',
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                onIncrement();
+              },
+              icon: const Icon(Icons.add),
+              iconSize: 18,
+              visualDensity: VisualDensity.compact,
+              color: scheme.primary,
+              constraints:
+                  const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

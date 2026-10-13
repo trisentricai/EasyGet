@@ -269,7 +269,7 @@ void main() {
       expect(find.text('Unavailable right now.'), findsOneWidget);
     });
 
-    testWidgets('card shows the live stepper after a quick-add',
+    testWidgets('card shows the explicit added state after a quick-add',
         (tester) async {
       final cart = _FakeCartRepo();
       await pumpCard(
@@ -277,22 +277,22 @@ void main() {
           catalog: _FakeCatalogRepo()..variants = 1,
           cart: cart);
 
-      // Plain Add pill up front (no stepper yet).
+      // Plain Add pill up front (no added bar yet).
       expect(find.text('Add'), findsOneWidget);
       expect(find.byKey(const Key('qty-plus')), findsNothing);
 
       await tester.tap(find.text('Add'));
       await tester.pumpAndSettle();
 
-      // Mapped + seeded: the card now mirrors the server qty, with an
-      // explicit "N in cart" badge over the image.
-      expect(find.text('1'), findsOneWidget);
+      // Mapped + seeded: the card mirrors the server qty with an explicit
+      // "✓ N added" bar and a badge over the image.
+      expect(find.text('✓ 1 added'), findsOneWidget);
       expect(find.text('✓ 1 in cart'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('qty-plus')));
       await tester.pumpAndSettle();
       expect(cart.calls, ['add 50 x1', 'add 50 x1']);
-      expect(find.text('2'), findsOneWidget);
+      expect(find.text('✓ 2 added'), findsOneWidget);
       expect(find.text('✓ 2 in cart'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('qty-minus')));
@@ -301,6 +301,33 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Add'), findsOneWidget);
       expect(find.textContaining('in cart'), findsNothing);
+    });
+
+    testWidgets('added state reads "N added" with an Add-more affordance',
+        (tester) async {
+      final cart = _FakeCartRepo();
+      await pumpCard(
+          tester,
+          catalog: _FakeCatalogRepo()..variants = 1,
+          cart: cart);
+
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      // Professional added state: explicit "✓ N added" (not a bare number)
+      // plus an "Add more" affordance on the increment control.
+      expect(find.text('✓ 1 added'), findsOneWidget);
+      expect(find.byTooltip('Add more'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('qty-plus')));
+      await tester.pumpAndSettle();
+      expect(find.text('✓ 2 added'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('qty-minus')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('qty-minus')));
+      await tester.pumpAndSettle();
+      expect(find.text('Add'), findsOneWidget);
     });
   });
 }
