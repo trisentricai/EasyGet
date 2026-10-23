@@ -234,8 +234,11 @@ class _HomeContent extends StatelessWidget {
           children: [
             if (render.ticker != null && render.ticker!.items.isNotEmpty)
               _TickerLine(text: render.ticker!.items.first),
-            for (final section in render.sections)
-              _SectionBody(section: section),
+            for (final entry in render.sections.asMap().entries) ...[
+              if (entry.key > 0)
+                const SizedBox(height: AppSpace.md),
+              _SectionBody(section: entry.value),
+            ],
             if (categories.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(
