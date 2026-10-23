@@ -102,84 +102,87 @@ class ProductCard extends ConsumerWidget {
   Widget _image(BuildContext context,
       {required double aspect, int inCartQty = 0}) {
     final colors = Theme.of(context).freshColors;
-    return AspectRatio(
-      aspectRatio: aspect,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            key: const Key('product-image'),
-            decoration: BoxDecoration(
-              color: colors.sunken,
-              borderRadius: BorderRadius.circular(AppRadii.image),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: product.primaryImage == null
-                ? Icon(Icons.image_outlined, color: colors.faint)
-                : CachedNetworkImage(
-                    imageUrl: product.primaryImage!,
-                    fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(color: colors.sunken),
-                    errorWidget: (_, _, _) => Icon(
-                      Icons.image_not_supported_outlined,
-                      color: colors.faint,
-                    ),
-                  ),
-          ),
-          if (product.ratingCount > 0 ||
-              product.discountPercent > 0)
-            Positioned(
-              top: AppSpace.sm,
-              left: AppSpace.sm,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (product.ratingCount > 0)
-                    RatingPill(
-                      rating: product.ratingAvg,
-                      count: product.ratingCount,
-                      compact: true,
-                    ),
-                  if (product.ratingCount > 0 &&
-                      product.discountPercent > 0)
-                    const SizedBox(width: 6),
-                  if (product.discountPercent > 0)
-                    _GlassPill(
-                      key: Key(
-                          'card-discount-${product.slug}'),
-                      label: '−${product.discountPercent}%',
-                    ),
-                ],
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+      child: AspectRatio(
+        aspectRatio: aspect,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              key: const Key('product-image'),
+              decoration: BoxDecoration(
+                color: colors.sunken,
+                borderRadius: BorderRadius.circular(AppRadii.image),
               ),
+              clipBehavior: Clip.antiAlias,
+              child: product.primaryImage == null
+                  ? Icon(Icons.image_outlined, color: colors.faint)
+                  : CachedNetworkImage(
+                      imageUrl: product.primaryImage!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, _) => Container(color: colors.sunken),
+                      errorWidget: (_, _, _) => Icon(
+                        Icons.image_not_supported_outlined,
+                        color: colors.faint,
+                      ),
+                    ),
             ),
-          // Hearts on browsable cards (rail/grid). Line cards (cart) and
-          // slug-less items never show one.
-          if (density != ProductDensity.line &&
-              product.slug.isNotEmpty)
-            Positioned(
-              top: AppSpace.sm,
-              right: AppSpace.sm,
-              child: CardHeart(
-                key: Key('card-heart-${product.slug}'),
-                slug: product.slug,
-                onToggled: onHearted,
+            if (product.ratingCount > 0 ||
+                product.discountPercent > 0)
+              Positioned(
+                top: AppSpace.sm,
+                left: AppSpace.sm,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (product.ratingCount > 0)
+                      RatingPill(
+                        rating: product.ratingAvg,
+                        count: product.ratingCount,
+                        compact: true,
+                      ),
+                    if (product.ratingCount > 0 &&
+                        product.discountPercent > 0)
+                      const SizedBox(width: 6),
+                    if (product.discountPercent > 0)
+                      _GlassPill(
+                        key: Key(
+                            'card-discount-${product.slug}'),
+                        label: '−${product.discountPercent}%',
+                      ),
+                  ],
+                ),
               ),
-            ),
-          // "✓ N in cart" badge (grid/rail only): the stepper below says
-          // the number, the badge says what it MEANS. Zero layout impact
-          // (overlay), aligned with the top-left pill row.
-          if (density != ProductDensity.line &&
-              product.slug.isNotEmpty &&
-              inCartQty > 0)
-            Positioned(
-              left: AppSpace.sm,
-              bottom: AppSpace.sm,
-              child: _GlassPill(
-                key: Key('card-incart-${product.slug}'),
-                label: '✓ $inCartQty in cart',
+            // Hearts on browsable cards (rail/grid). Line cards (cart) and
+            // slug-less items never show one.
+            if (density != ProductDensity.line &&
+                product.slug.isNotEmpty)
+              Positioned(
+                top: AppSpace.sm,
+                right: AppSpace.sm,
+                child: CardHeart(
+                  key: Key('card-heart-${product.slug}'),
+                  slug: product.slug,
+                  onToggled: onHearted,
+                ),
               ),
-            ),
-        ],
+            // "✓ N in cart" badge (grid/rail only): the stepper below says
+            // the number, the badge says what it MEANS. Zero layout impact
+            // (overlay), aligned with the top-left pill row.
+            if (density != ProductDensity.line &&
+                product.slug.isNotEmpty &&
+                inCartQty > 0)
+              Positioned(
+                left: AppSpace.sm,
+                bottom: AppSpace.sm,
+                child: _GlassPill(
+                  key: Key('card-incart-${product.slug}'),
+                  label: '✓ $inCartQty in cart',
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -213,23 +216,23 @@ class ProductCard extends ConsumerWidget {
       child: SizedBox(
         width: width,
         child: Container(
-          padding: const EdgeInsets.all(AppSpace.sm),
+          padding: const EdgeInsets.all(AppSpace.md),
           decoration: BoxDecoration(
             color: colors.champagne,
             borderRadius: BorderRadius.circular(AppRadii.card),
-            border: Border.all(color: colors.champagneDeep),
+            border: Border.all(color: colors.champagneDeep, width: 1.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               _image(context, aspect: 4 / 5, inCartQty: inCartQty),
-              const SizedBox(height: AppSpace.sm),
+              const SizedBox(height: AppSpace.md),
               _nameSlot(context),
               _brandSlot(context),
-              const SizedBox(height: AppSpace.xs),
-              _priceSlot(),
               const SizedBox(height: AppSpace.sm),
+              _priceSlot(),
+              const SizedBox(height: AppSpace.md),
               _quickAddControl(obsidian: true),
             ],
           ),
@@ -239,25 +242,34 @@ class ProductCard extends ConsumerWidget {
   }
 
   Widget _rail(BuildContext context, int inCartQty) {
+    final colors = Theme.of(context).freshColors;
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
       onTap: _handleTap,
       child: SizedBox(
         width: width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: Container(
+          padding: const EdgeInsets.all(AppSpace.md),
+          decoration: BoxDecoration(
+            color: colors.champagne,
+            borderRadius: BorderRadius.circular(AppRadii.card),
+            border: Border.all(color: colors.champagneDeep, width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
               _image(context, aspect: 1, inCartQty: inCartQty),
-            const SizedBox(height: AppSpace.sm),
-            _nameSlot(context),
-            _brandSlot(context),
-            const SizedBox(height: AppSpace.xs),
-            _priceSlot(),
-            const SizedBox(height: AppSpace.sm),
-            _quickAddControl(),
-          ],
+              const SizedBox(height: AppSpace.md),
+              _nameSlot(context),
+              _brandSlot(context),
+              const SizedBox(height: AppSpace.sm),
+              _priceSlot(),
+              const SizedBox(height: AppSpace.md),
+              _quickAddControl(),
+            ],
+          ),
         ),
       ),
     );
