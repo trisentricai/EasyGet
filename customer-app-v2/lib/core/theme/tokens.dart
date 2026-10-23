@@ -35,6 +35,12 @@ class AppColors {
   static const Color obsidianGlass = Color(0xB3141210);
   static const Color champagneInk = Color(0xFFF7EFDD);
 
+  // Category card wash backgrounds (stable per-category hues when images are null)
+  static const Color categoryWashDanger = Color(0xFFFDECEA);
+  static const Color categoryWashWarning = Color(0xFFFDF3E0);
+  static const Color categoryWashSuccess = Color(0xFFE8F5E9);
+  static const Color categoryWashInfo = Color(0xFFE3F2FD);
+
   // Dark — Warm Charcoal (never pure #000)
   static const Color darkCanvas = Color(0xFF12110F);
   static const Color darkSurface = Color(0xFF1B1A17);
