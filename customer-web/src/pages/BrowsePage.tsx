@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
+import { useHashRoute } from "../hooks/useHashRoute";
 import {
   asArray,
   errText,
@@ -11,11 +12,13 @@ import {
 } from "../services/api";
 import { CardSkeletonGrid, EmptyState, ProductCard } from "../components/ui";
 import { Icon } from "../components/icons";
-export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
+export function BrowsePage() {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
-  const [category, setCategory] = useState(initialCategory ?? "");
+  const route = useHashRoute();
+  const urlCategory = route.query.get("category") ?? "";
+  const [category, setCategory] = useState(urlCategory);
   const [brand, setBrand] = useState("");
   const [discount, setDiscount] = useState("");
   const [sort, setSort] = useState("");
@@ -23,6 +26,25 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
   const [maxPrice, setMaxPrice] = useState("");
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [sideOpen, setSideOpen] = useState(false);
+
+  // The hash is the source of truth on navigation (header/sidebar links).
+  // Adopting it in place — instead of remounting via a key — keeps the other
+  // filters (brand, sort, price) alive across category switches.
+  useEffect(() => {
+    setCategory(urlCategory);
+  }, [urlCategory]);
+
+  // …and the sidebar writes back, so the URL never lies about what is on
+  // screen (it used to keep ?category=… after "All categories" was picked).
+  // replaceState fires no hashchange, so dispatch one for useHashRoute
+  // consumers (e.g. the header's active-category highlight).
+  useEffect(() => {
+    const target = category ? `#/browse?category=${category}` : "#/browse";
+    if (window.location.hash !== target) {
+      history.replaceState(null, "", target);
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }
+  }, [category]);
 
   const baseParams = (): Record<string, string> => {
     const params: Record<string, string> = {};
@@ -108,10 +130,6 @@ export function BrowsePage({ initialCategory }: { initialCategory?: string }) {
     if (isFetchingNextPage) return;
     void fetchNextPage();
   }
-
-  useEffect(() => {
-    if (initialCategory !== undefined) setCategory(initialCategory);
-  }, [initialCategory]);
 
   useEffect(() => {
     listCategories()

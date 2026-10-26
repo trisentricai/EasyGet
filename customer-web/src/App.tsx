@@ -141,7 +141,7 @@ function Shell() {
     if (route.name === "login") return <AuthPage />;
     if (route.name === "home") return <HomePage />;
     if (route.name === "categories") return <CategoriesPage />;
-    if (route.name === "browse") return <BrowsePage key={route.query.get("category") ?? ""} initialCategory={route.query.get("category") ?? undefined} />;
+    if (route.name === "browse") return <BrowsePage />;
     if (route.name === "product") return <ProductPage key={route.params[0]} slug={route.params[0] ?? ""} />;
     if (route.name === "search") return <SearchPage key={route.query.get("q") ?? ""} initialQuery={route.query.get("q") ?? undefined} />;
     if (route.name === "cart") return <CartPage />;
