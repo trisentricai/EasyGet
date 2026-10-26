@@ -2,7 +2,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { navigate } from "../hooks/useHashRoute";
-import { errText, img } from "../services/api";
+import { errText } from "../services/api";
 import { EmptyState, money, Monogram, SignInGate, Spinner } from "../components/ui";
 import { Icon } from "../components/icons";
 
@@ -69,24 +69,19 @@ export function CartPage() {
                   </div>
                   {group.items.map((item) => {
                     const variant = item.variant;
-                    const productName = variant.product_name || variant.name;
-                    const variantLabel = variant.name || variant.sku;
-                    const productImage = img(variant.image ?? null);
+                    // The frozen cart contract carries only variant fields
+                    // (name/sku/price) — no product title or image.
+                    const lineTitle = variant.name || variant.sku;
                     const unitPrice = money(variant.price);
                     const lineTotal = money(item.line_total);
                     return (
                       <div className="cart-line" key={item.id}>
                         <div className="thumb">
-                          {productImage ? (
-                            <img src={productImage} alt={productName} loading="lazy" decoding="async" />
-                          ) : (
-                            <Monogram text={productName} />
-                          )}
+                          <Monogram text={lineTitle} />
                         </div>
                         <div className="grow">
-                          <div className="name">{productName}</div>
-                          <div className="sub">{variantLabel}</div>
-                          <div className="sub">{unitPrice} each</div>
+                          <div className="name">{lineTitle}</div>
+                          <div className="sub">{variant.sku} · {unitPrice} each</div>
                         </div>
                         <div className="qty">
                           <button onClick={() => void setQty(item.id, item.quantity - 1)} aria-label="Decrease">−</button>

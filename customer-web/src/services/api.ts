@@ -569,15 +569,14 @@ export const getSearchSuggestions = (q: string) =>
 /* ---------------- Cart (authed) ---------------- */
 
 export type CartVariant = {
+  /** VariantBriefSerializer contract: no product name/slug/image rides here —
+   *  showing a product-level title in the cart needs a backend serializer
+   *  proposal (backend contract is frozen, README §3.4). */
   id: number;
   name: string;
   sku: string;
   price: string;
   attributes?: Record<string, unknown>;
-  /** Product name, slug and image riding on the variant (live product details). */
-  product_name?: string | null;
-  product_slug?: string | null;
-  image?: string | null;
 };
 
 export type CartItem = {
