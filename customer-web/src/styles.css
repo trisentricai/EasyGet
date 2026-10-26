@@ -683,6 +683,28 @@ button { font-family: inherit; }
 }
 .free-ship::before { content: "✓"; font-weight: 900; }
 
+/* Add to bag button — pinned to bottom of every card for visual alignment */
+.add-btn {
+  margin-top: auto;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: var(--cta, #108910);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+.add-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--cta, #108910) 85%, black); }
+.add-btn:active:not(:disabled) { transform: translateY(1px); }
+.add-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.add-btn.added {
+  background: var(--state-ok, #15803d);
+  color: #fff;
+}
+
 /* rating pill */
 .rating-pill {
   display: inline-flex;

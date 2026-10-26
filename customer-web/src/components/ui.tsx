@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { href } from "../hooks/useHashRoute";
+import { useCart } from "../context/CartContext";
 import {
   addToWishlist,
   getTokens,
@@ -115,10 +116,20 @@ export function WishButton({ slug, className = "" }: { slug: string; className?:
 }
 
 export function ProductCard({ product }: { product: Product }) {
+  const { cart, add } = useCart();
   const image = img(product.primary_image);
   const freeDelivery = Number(product.base_price ?? 0) >= 499;
   const out = product.in_stock === false;
   const hasDiscount = product.mrp && Number(product.mrp) > Number(product.base_price ?? 0);
+  const inCart = cart?.items.some((i) => i.variant.id === product.id);
+  const handleAdd = async () => {
+    if (out) return;
+    try {
+      await add(product.id, 1);
+    } catch {
+      /* add-to-cart errors surface as toasts via CartProvider */
+    }
+  };
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
       <div className="product-thumb-wrap">
@@ -163,6 +174,14 @@ export function ProductCard({ product }: { product: Product }) {
         ) : freeDelivery ? (
           <div className="free-ship">Free delivery</div>
         ) : null}
+        <button
+          className={`add-btn ${inCart ? "added" : ""}`}
+          onClick={handleAdd}
+          disabled={out || inCart}
+          aria-label={inCart ? "Added to bag" : `Add ${product.name} to bag`}
+        >
+          {inCart ? "✓ Added" : "Add to bag"}
+        </button>
       </div>
     </a>
   );
