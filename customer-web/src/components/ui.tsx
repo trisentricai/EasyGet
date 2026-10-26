@@ -118,24 +118,27 @@ export function ProductCard({ product }: { product: Product }) {
   const image = img(product.primary_image);
   const freeDelivery = Number(product.base_price ?? 0) >= 499;
   const out = product.in_stock === false;
+  const hasDiscount = product.mrp && Number(product.mrp) > Number(product.base_price ?? 0);
   return (
     <a className="product-card" href={href(`product/${product.slug}`)}>
-      <div
-        className={`product-thumb ${fxClass(product.primary_image_display)}`}
-        style={fxStyle(product.primary_image_display)}
-      >
-        {image ? (
-          <img
-            src={image}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            width={600}
-            height={600}
-          />
-        ) : (
-          <Monogram text={product.name} />
-        )}
+      <div className="product-thumb-wrap">
+        <div
+          className={`product-thumb ${fxClass(product.primary_image_display)}`}
+          style={fxStyle(product.primary_image_display)}
+        >
+          {image ? (
+            <img
+              src={image}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              width={600}
+              height={600}
+            />
+          ) : (
+            <Monogram text={product.name} />
+          )}
+        </div>
         {out ? (
           <span className="chip chip-out">Out of stock</span>
         ) : (product.discount_percent ?? 0) >= 50 ? (
@@ -147,11 +150,14 @@ export function ProductCard({ product }: { product: Product }) {
       </div>
       <div className="product-body">
         <div className="product-brand">{product.brand || product.category?.name || ""}</div>
-        <div className="product-name" title={product.name}>{product.name}</div>
+        <h3 className="product-name" title={product.name}>{product.name}</h3>
         <div className="product-rate-row">
           <RatingPill avg={product.rating_avg} count={product.rating_count} />
         </div>
-        <Price price={product.base_price} mrp={product.mrp} discount={product.discount_percent} size="sm" />
+        <div className="product-price-row">
+          <Price price={product.base_price} mrp={product.mrp} discount={product.discount_percent} size="sm" />
+          {hasDiscount && <span className="save-note">Save ₹{Number(product.mrp) - Number(product.base_price)}</span>}
+        </div>
         {out ? (
           <div className="free-ship" style={{ color: "var(--danger)" }}>Out of stock</div>
         ) : freeDelivery ? (

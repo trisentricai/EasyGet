@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   errText,
   getPlatformStorefront,
@@ -26,38 +20,28 @@ const StorefrontContext = createContext<Ctx>({
   reload: () => {},
 });
 
+/**
+ * Platform storefront via React Query: cached client-side (staleTime 5 min)
+ * so navigating back to the homepage never refetches, deduped across all
+ * consumers, with a manual `reload()` escape hatch.
+ */
 export function StorefrontProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<StorefrontPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
+  const query = useQuery({
+    queryKey: ["storefront", "platform"],
+    queryFn: getPlatformStorefront,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
 
-  const reload = useCallback(() => setTick((t) => t + 1), []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getPlatformStorefront()
-      .then((payload) => {
-        if (!cancelled) setData(payload);
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setData(null);
-          setError(errText(e, "Storefront not available"));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [tick]);
+  const value: Ctx = {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error ? errText(query.error, "Storefront not available") : null,
+    reload: () => void query.refetch(),
+  };
 
   return (
-    <StorefrontContext.Provider value={{ data, loading, error, reload }}>
+    <StorefrontContext.Provider value={value}>
       {children}
     </StorefrontContext.Provider>
   );

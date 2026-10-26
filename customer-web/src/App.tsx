@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CartProvider, useCart } from "./context/CartContext";
 import { StorefrontProvider, useStorefront } from "./context/StorefrontContext";
 import { ToastProvider } from "./context/ToastContext";
 import { href, navigate, useHashRoute } from "./hooks/useHashRoute";
-import { listCategories, setUnauthorizedHandler, type Category } from "./services/api";
+import { asArray, listCategories, setUnauthorizedHandler, type Category } from "./services/api";
 import { HomePage } from "./pages/HomePage";
 import { AuthPage } from "./pages/AuthPage";
 import { BrowsePage } from "./pages/BrowsePage";
@@ -58,7 +58,14 @@ function Shell() {
   const { data, loading, error } = useStorefront();
   const { user, ready, signOut } = useAuth();
   const { count } = useCart();
-  const [categories, setCategories] = useState<Category[]>([]);
+  // Shared "categories" cache — the marketplace rails and browse filters
+  // reuse this exact key, so the list is fetched once per session visit.
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: listCategories,
+    staleTime: 5 * 60_000,
+  });
+  const categories = asArray(categoriesQuery.data);
 
   // Routes that show personal data — guests are sent to login before
   // anything renders (no cached-viewing window).
@@ -100,24 +107,6 @@ function Shell() {
   useEffect(() => {
     setUnauthorizedHandler(() => signOut());
   }, [signOut]);
-
-  // Category strip under the header (Flipkart-style nav row).
-  // Public: guests browse too, so load it regardless of auth state.
-  useEffect(() => {
-    let cancelled = false;
-    listCategories()
-      .then((d) => {
-        if (cancelled) return;
-        const raw = Array.isArray(d) ? d : (d.results ?? []);
-        setCategories(raw);
-      })
-      .catch(() => {
-        if (!cancelled) setCategories([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Apply the store's theme as CSS variables.
   useEffect(() => {

@@ -574,6 +574,10 @@ export type CartVariant = {
   sku: string;
   price: string;
   attributes?: Record<string, unknown>;
+  /** Product name, slug and image riding on the variant (live product details). */
+  product_name?: string | null;
+  product_slug?: string | null;
+  image?: string | null;
 };
 
 export type CartItem = {

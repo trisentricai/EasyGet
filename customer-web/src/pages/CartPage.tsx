@@ -2,7 +2,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { navigate } from "../hooks/useHashRoute";
-import { errText } from "../services/api";
+import { errText, img } from "../services/api";
 import { EmptyState, money, Monogram, SignInGate, Spinner } from "../components/ui";
 import { Icon } from "../components/icons";
 
@@ -68,26 +68,32 @@ export function CartPage() {
                     Sold by {group.seller}
                   </div>
                   {group.items.map((item) => {
-                    const attrs = item.variant.attributes ?? {};
-                    const attrText = Object.entries(attrs)
-                      .map(([k, v]) => `${k}: ${v}`)
-                      .join(" · ");
+                    const variant = item.variant;
+                    const productName = variant.product_name || variant.name;
+                    const variantLabel = variant.name || variant.sku;
+                    const productImage = img(variant.image ?? null);
+                    const unitPrice = money(variant.price);
+                    const lineTotal = money(item.line_total);
                     return (
                       <div className="cart-line" key={item.id}>
                         <div className="thumb">
-                          <Monogram text={item.variant.name || item.variant.sku} />
+                          {productImage ? (
+                            <img src={productImage} alt={productName} loading="lazy" decoding="async" />
+                          ) : (
+                            <Monogram text={productName} />
+                          )}
                         </div>
                         <div className="grow">
-                          <div className="name">{item.variant.name || item.variant.sku}</div>
-                          {attrText ? <div className="sub">{attrText}</div> : null}
-                          <div className="sub">{money(item.variant.price)} each</div>
+                          <div className="name">{productName}</div>
+                          <div className="sub">{variantLabel}</div>
+                          <div className="sub">{unitPrice} each</div>
                         </div>
                         <div className="qty">
                           <button onClick={() => void setQty(item.id, item.quantity - 1)} aria-label="Decrease">−</button>
                           <span>{item.quantity}</span>
                           <button onClick={() => void setQty(item.id, item.quantity + 1)} aria-label="Increase">+</button>
                         </div>
-                        <div style={{ fontWeight: 700, minWidth: 80, textAlign: "right" }}>{money(item.line_total)}</div>
+                        <div style={{ fontWeight: 700, minWidth: 80, textAlign: "right" }}>{lineTotal}</div>
                         <button className="trash" title="Remove" aria-label="Remove item" onClick={() => void remove(item.id)}>
                           <Icon name="trash" size={17} />
                         </button>
