@@ -593,6 +593,9 @@ button { font-family: inherit; }
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* Card-width container for the price-row height contract below — rails
+     (168px) wrap into a reserved 2nd line, browse cards (≥210px) don't. */
+  container-type: inline-size;
 }
 .product-card:hover {
   box-shadow: var(--shadow-hi);
@@ -640,6 +643,9 @@ button { font-family: inherit; }
   text-transform: uppercase;
   letter-spacing: 0.3px;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .product-name {
   font-weight: 700;
@@ -647,6 +653,9 @@ button { font-family: inherit; }
   line-height: 1.35;
   color: var(--ink);
   margin: 4px 0 6px;
+  /* Reserve both clamped lines so a 1-line title can't lift the price row
+     above the rest of its grid row (every card below aligns to the 2nd line). */
+  min-height: 41px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -656,32 +665,45 @@ button { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 18px;
+  /* 20px, not 18: a rendered rating pill is 19.5px tall — reserving less
+     would drop the price row by that much on rated cards only. */
+  min-height: 20px;
 }
 .product-price-row {
   display: flex;
   align-items: baseline;
   gap: 6px;
   margin-top: 2px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: hidden;
 }
+/* Wide cards (≥200px, the browse grid): keep now/mrp/%-off on one line.
+   Narrow containers (rails 168px, mobile grid) wrap into a reserved
+   two-line block instead — see the container query after .add-btn. */
+.product-price-row .price { flex-wrap: nowrap; }
 .save-note {
   font-size: 11px;
   font-weight: 600;
   color: var(--savings);
   margin-left: auto;
+  white-space: nowrap;
 }
 .product-meta { display: flex; gap: 8px; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
 .product-meta .brand { font-weight: 700; color: color-mix(in srgb, var(--primary) 70%, var(--ink)); }
-.free-ship {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--savings);
+/* Reserved line under the price: always rendered (even when empty) so the
+   Add-to-bag button sits at the same height on every card in a row. */
+.product-stock {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  min-height: 18px;
   margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
 }
-.free-ship::before { content: "✓"; font-weight: 900; }
+.stock-free { color: var(--savings); }
+.stock-free::before { content: "✓ "; font-weight: 900; }
 
 /* Add to bag button — pinned to bottom of every card for visual alignment */
 .add-btn {
@@ -690,19 +712,38 @@ button { font-family: inherit; }
   padding: 10px 14px;
   border: none;
   border-radius: var(--radius-btn);
-  background: var(--cta, #108910);
-  color: #fff;
+  background: var(--color-cta);
+  color: var(--color-cta-fg);
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.05s ease;
 }
-.add-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--cta, #108910) 85%, black); }
+.add-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--color-cta) 85%, var(--color-cta-dark)); }
 .add-btn:active:not(:disabled) { transform: translateY(1px); }
-.add-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.add-btn.added {
-  background: var(--state-ok, #15803d);
-  color: #fff;
+.add-btn:disabled { cursor: not-allowed; }
+.add-btn.added,
+.add-btn.added:hover {
+  background: color-mix(in srgb, var(--color-state-ok) 14%, var(--surface));
+  color: var(--color-state-ok);
+  box-shadow: inset 0 0 0 1px var(--color-state-ok);
+}
+.add-btn.out {
+  background: color-mix(in srgb, var(--muted) 16%, var(--surface));
+  color: var(--muted);
+}
+
+/* Price row height contract, keyed to the CARD width (not the viewport) so
+   the 168px home rails and the 150px mobile grid get the same reserved
+   two-line block, while browse-grid cards (≥210px) keep a single tight line.
+   Requires container-type on .product-card — see the card rule above. */
+@container (max-width: 199px) {
+  .product-price-row {
+    flex-wrap: wrap;
+    min-height: 44px;
+    align-content: flex-start;
+    overflow: visible;
+  }
 }
 
 /* rating pill */

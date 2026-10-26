@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { href } from "../hooks/useHashRoute";
 import { useCart } from "../context/CartContext";
+import { useToast } from "../context/ToastContext";
 import {
   addToWishlist,
+  errText,
+  getProduct,
   getTokens,
   img,
   removeFromWishlist,
@@ -116,18 +119,32 @@ export function WishButton({ slug, className = "" }: { slug: string; className?:
 }
 
 export function ProductCard({ product }: { product: Product }) {
-  const { cart, add } = useCart();
+  const { add } = useCart();
+  const toast = useToast();
   const image = img(product.primary_image);
   const freeDelivery = Number(product.base_price ?? 0) >= 499;
   const out = product.in_stock === false;
   const hasDiscount = product.mrp && Number(product.mrp) > Number(product.base_price ?? 0);
-  const inCart = cart?.items.some((i) => i.variant.id === product.id);
+  // The list payload carries no variants, so the card can't know whether this
+  // product already sits in the cart — `added` is local acknowledgement only.
+  const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState(false);
+
   const handleAdd = async () => {
-    if (out) return;
+    if (out || busy) return;
+    setBusy(true);
     try {
-      await add(product.id, 1);
-    } catch {
-      /* add-to-cart errors surface as toasts via CartProvider */
+      // addToCart needs a VARIANT id; the list endpoint only has the product,
+      // so resolve the first active variant from the detail endpoint.
+      const detail = await getProduct(product.slug);
+      const variant = detail.variants.find((v) => v.is_active) ?? detail.variants[0];
+      if (!variant) throw new Error("No purchasable variant");
+      await add(variant.id, 1);
+      setAdded(true);
+    } catch (e) {
+      toast.push(errText(e, "Could not add to bag"), "err");
+    } finally {
+      setBusy(false);
     }
   };
   return (
@@ -167,20 +184,31 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
         <div className="product-price-row">
           <Price price={product.base_price} mrp={product.mrp} discount={product.discount_percent} size="sm" />
-          {hasDiscount && <span className="save-note">Save ₹{Number(product.mrp) - Number(product.base_price)}</span>}
+          {/* "% off" and "Save ₹x" say the same thing — show one, never both,
+              so the price row always fits a single line on wide cards. */}
+          {hasDiscount && !(product.discount_percent > 0) && (
+            <span className="save-note">Save ₹{Number(product.mrp) - Number(product.base_price)}</span>
+          )}
         </div>
-        {out ? (
-          <div className="free-ship" style={{ color: "var(--danger)" }}>Out of stock</div>
-        ) : freeDelivery ? (
-          <div className="free-ship">Free delivery</div>
-        ) : null}
+        <div className="product-stock">
+          {!out && freeDelivery ? <span className="stock-free">Free delivery</span> : null}
+        </div>
         <button
-          className={`add-btn ${inCart ? "added" : ""}`}
-          onClick={handleAdd}
-          disabled={out || inCart}
-          aria-label={inCart ? "Added to bag" : `Add ${product.name} to bag`}
+          className={`add-btn${added ? " added" : ""}${out ? " out" : ""}`}
+          onClick={(e) => {
+            // The card itself is a link to the PDP — adding must not navigate.
+            e.preventDefault();
+            e.stopPropagation();
+            void handleAdd();
+          }}
+          disabled={out || busy}
+          aria-label={
+            out
+              ? `${product.name} is out of stock`
+              : `Add ${product.name} to bag`
+          }
         >
-          {inCart ? "✓ Added" : "Add to bag"}
+          {out ? "Out of stock" : busy ? "Adding…" : added ? "✓ Added" : "Add to bag"}
         </button>
       </div>
     </a>
