@@ -446,11 +446,11 @@ button { font-family: inherit; }
 .grid { display: grid; gap: 14px; }
 .grid-categories { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
-/* Clean product grid: cards with breathing room, consistent column width,
-   and a gentle gap instead of hairline table rules. */
+/* Clean product grid: regular-sized cards with breathing room, consistent
+   column width, and a gentle gap instead of hairline table rules. */
 .grid-products {
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
 }
 .grid-products > .product-card,
 .grid-products > .card-skeleton {
@@ -459,17 +459,17 @@ button { font-family: inherit; }
 }
 .grid-gallery { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 
-/* Mobile: 2 well-sized columns instead of cramped 150px strips. */
+/* Mobile: 2 compact columns. */
 @media (max-width: 640px) {
   .grid-products {
     grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
+    gap: 12px;
   }
 }
 @media (max-width: 430px) {
   .grid-products {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 12px;
   }
 }
 
@@ -630,7 +630,7 @@ button { font-family: inherit; }
   width: 100%;
   height: 100%;
   object-fit: cover;
-  margin: 10px;
+  margin: 7px;
   filter: saturate(102%);
 }
 .product-card:hover .product-thumb img {
@@ -644,18 +644,18 @@ button { font-family: inherit; }
   opacity: 0.7;
 }
 .product-body {
-  padding: 14px 16px 16px;
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
   flex: 1;
 }
 .product-brand {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -663,11 +663,11 @@ button { font-family: inherit; }
 }
 .product-name {
   font-weight: 700;
-  font-size: 15px;
-  line-height: 1.35;
+  font-size: 14px;
+  line-height: 1.3;
   color: var(--ink);
-  margin: 5px 0 7px;
-  min-height: 41px;
+  margin: 4px 0 6px;
+  min-height: 38px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
