@@ -9,6 +9,20 @@
 
 ---
 
+## 0. LATEST — NotFound screens replace silent fallbacks (2026-10-29)
+
+**Goal hit:** user — "do what Profesional do!" → closed the last open audit gap: unknown-route fallbacks now render **real NotFound screens** instead of silently dumping into Home (customer) / Dashboard (admin).
+
+**What changed:**
+1. **customer-web** — new `pages/NotFoundPage.tsx` (uses existing `EmptyState` + `.page`/`.pagehead`/`.btn`); route fallback `unknown → <NotFoundPage />` (was `<HomePage />`).
+2. **admin-web** — unknown-route fallback now renders `<div className="card not-found">…</div>` with a Back-to-dashboard button (was `<DashboardPage />`); `.not-found` styles added to admin `styles.css`.
+
+**Verification:** both SPAs `tsc --noEmit` (strict incl. `--noUnusedLocals`) + `vite build` green; no backend change.
+
+**Known open edges:** none new — silent fallbacks resolved this round.
+
+---
+
 ## 0. LATEST — Dead-code sweep + screen-routing / screen-content / auth audit round (2026-10-29)
 
 **Goal hit:** user packet — "check screen wiring is gold standard or just same fallback wiring; check each screen content is professional like a pro e-commerce (no crap, only needed for customers); check unwanted codes that reflect no changes are waste of line; auth workflow like Supabase well structured for all db and users!!". Swept both web SPAs (customer-web + admin-web) for dead code, fixed everything hit, re-verified builds.

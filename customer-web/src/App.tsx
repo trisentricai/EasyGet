@@ -16,6 +16,7 @@ import { CheckoutPage } from "./pages/CheckoutPage";
 import { OrderDetailPage, OrdersPage } from "./pages/OrdersPage";
 import { AccountPage } from "./pages/AccountPage";
 import { WishlistPage } from "./pages/WishlistPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { Icon } from "./components/icons";
 import { Spinner, usePopOnChange } from "./components/ui";
 import { Ticker } from "./components/ticker";
@@ -150,7 +151,7 @@ function Shell() {
     if (route.name === "order") return <OrderDetailPage key={routeKey} id={route.params[0] ?? "0"} />;
     if (route.name === "account") return <AccountPage />;
     if (route.name === "wishlist") return <WishlistPage />;
-    return <HomePage />;
+    return <NotFoundPage />;
   })();
 
   return (

@@ -60,7 +60,17 @@ export default function App() {
       {route === "users" && user.role !== "ADMIN" && <DashboardPage />}
       {route === "storefront" && user.role === "ADMIN" && <StorefrontPage />}
       {route === "storefront" && user.role !== "ADMIN" && <DashboardPage />}
-      {!TITLES[route] && <DashboardPage />}
+      {!TITLES[route] && (
+        <div className="card not-found">
+          <div className="empty">
+            <h2>Page not found</h2>
+            <p className="muted">The admin section “{route}” doesn't exist.</p>
+            <button className="btn btn-primary" onClick={() => navigate("dashboard")}>
+              Back to dashboard
+            </button>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }
