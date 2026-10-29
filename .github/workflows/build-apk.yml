@@ -1,0 +1,35 @@
+name: Build customer app APK
+
+on:
+  push:
+    branches: [ "fix/flutter-web-and-ordering", "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: stable
+
+      - working-directory: customer-app-v2
+        run: flutter pub get
+
+      - working-directory: customer-app-v2
+        run: flutter build apk --release
+
+      - name: Create GitHub Release and upload APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd customer-app-v2
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          TAG="apk-${GITHUB_REF_NAME//\//-}-$(date +%Y%m%d-%H%M%S)"
+          gh release create "$TAG" "$APK" \
+            --title "Customer app — $TAG" \
+            --notes "Auto-built from ${GITHUB_REF_NAME} (${GITHUB_SHA::7})" \
+            --target "${GITHUB_SHA}" \
+            --latest
