@@ -13,7 +13,7 @@ import {
   type Address,
   type Order,
 } from "../services/api";
-import { money, SignInGate, Spinner } from "../components/ui";
+import { money, SignInGate } from "../components/ui";
 
 export function CheckoutPage() {
   const { user } = useAuth();

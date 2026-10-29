@@ -6,7 +6,6 @@ import {
   img,
   listCategories,
   listProductsPaged,
-  type Product,
   type StoreSection,
 } from "../services/api";
 import { href } from "../hooks/useHashRoute";

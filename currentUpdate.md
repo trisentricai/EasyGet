@@ -1,11 +1,39 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-09-27
-**Phase in progress:** **Image display controls + designer layout fixes + secret guard DONE** (commits `7887104`+`6e30fce`+`7de905b`; backend **268/268**, both builds green, live display smoke **14/14**) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Last updated:** 2026-10-29
+**Phase in progress:** **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
+
+---
+
+## 0. LATEST — Dead-code sweep + screen-routing / screen-content / auth audit round (2026-10-29)
+
+**Goal hit:** user packet — "check screen wiring is gold standard or just same fallback wiring; check each screen content is professional like a pro e-commerce (no crap, only needed for customers); check unwanted codes that reflect no changes are waste of line; auth workflow like Supabase well structured for all db and users!!". Swept both web SPAs (customer-web + admin-web) for dead code, fixed everything hit, re-verified builds.
+
+**What changed:**
+1. **Dead code removed — both SPAs now pass `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean:**
+   - customer-web `App.tsx` — dropped unread `error` from the `useStorefront()` destructure (only `data`/`loading` consumed).
+   - customer-web `components/marketplace.tsx` — dropped unread `type Product` import.
+   - customer-web `pages/CheckoutPage.tsx` — dropped unread `Spinner` import.
+   - admin-web `App.tsx` — dropped unread `theme` destructure + the now-unused `useTheme` import.
+   - admin-web `pages/InventoryPage.tsx` — dropped the dead first `storesQuery` useQuery (the live one lives in the Add-Stock modal section).
+   - admin-web `pages/LoginPage.tsx` — dropped unread `toggle` from `LoginPage`'s `useTheme()` destructure (ThemeToggle keeps its own).
+   - admin-web `pages/ProductsPage.tsx` — dropped dead `categoryById` useMemo.
+   - admin-web `pages/StorefrontPage.tsx` — dropped unread `type TickerConfig` import.
+2. **Module-level scan** — no fully-unreferenced src modules (only flag-gated design sandbox `preview.tsx` + `components/next/ProductCard.tsx`, wired via `preview.html` + `isNextUi`, intentional).
+
+**Audit verdicts (user packet):**
+1. **Route wiring:** customer hash router covers `#/home`, `#/browse?category=…`, `#/product/<slug>`, `#/search?q=…`, `#/cart`, `#/checkout`, `#/orders`, `#/order/<id>`, `#/account`, `#/wishlist`, `#/categories`, `#/login` with guest guard on personal routes; **fallback** unknown → `<HomePage />`. Admin has explicit 8-route table + fallback unknown → `<DashboardPage />`, and non-admin fallbacks for `users`/`storefront` → Dashboard (nav already adminOnly-gates; deep links still fall through). Fallbacks flagged as "lazy" — product decision pending.
+2. **Screen content:** sampled core customer screens (Wishlist, Auth, PDP incl. OOS, cart) — professional per DESIGN.md gates; zero `console.log`/`debugger`/`TODO`/`FIXME`/`alert` in both SPAs src.
+3. **Unwanted code:** now clean — 8 dead symbols removed this round via strict tsc flags; module scan clean.
+4. **Auth workflow:** Supabase-like structure CONFIRMED — register → OTP verify/resend → login → refresh → logout (blacklist) → Google → `me`; JWT (simplejwt `ROTATE_REFRESH_TOKENS=False`, `BLACKLIST_AFTER_ROTATION=True`), DRF `ScopedRateThrottle` wired (login 5/min, register 3/min, otp 10/min), password validators, roles CUSTOMER/MERCHANT/ADMIN/STORE_MANAGER/DELIVERY_AGENT; both frontends: Bearer + refresh-then-retry + global 401 purge.
+
+**Verification:** both SPAs `tsc --noEmit` green with `--noUnusedLocals --noUnusedParameters`; `npm run build` green for customer-web + admin-web; no backend change this round.
+
+**Known open edges:** unknown-route fallbacks (customer→home, admin→dashboard) pending product decision; register UI copy ("no codes, no waiting") vs backend OTP email path; no password-reset endpoint; Flutter parity for add-stock/in_stock still pending.
 
 ---
 

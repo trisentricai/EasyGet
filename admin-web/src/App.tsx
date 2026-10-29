@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./context/AuthContext";
-import { useTheme } from "./context/ThemeContext";
 import { navigate, useHashRoute } from "./hooks/useHashRoute";
 import { LoginPage, ThemeToggle } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -79,7 +78,6 @@ function Shell({
   onSignOut: () => void;
   children: React.ReactNode;
 }) {
-  const { theme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [now, setNow] = useState(new Date());
 

@@ -41,11 +41,6 @@ export function InventoryPage() {
     queryFn: () => listAllProducts(),
   });
 
-  const storesQuery = useQuery({
-    queryKey: ["admin", "stores"],
-    queryFn: async () => toArray(await listStores()),
-  });
-
   const unstockedProducts = useMemo(() => {
     const rows = productsQuery.data ?? [];
     const q = query.trim().toLowerCase();

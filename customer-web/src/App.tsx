@@ -55,7 +55,7 @@ export default function App() {
 
 function Shell() {
   const route = useHashRoute();
-  const { data, loading, error } = useStorefront();
+  const { data, loading } = useStorefront();
   const { user, ready, signOut } = useAuth();
   const { count } = useCart();
   // Shared "categories" cache — the marketplace rails and browse filters

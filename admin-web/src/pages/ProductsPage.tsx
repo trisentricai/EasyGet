@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createProduct,
@@ -97,11 +97,6 @@ export function ProductsPage() {
     const e = productsQuery.error ?? categoriesQuery.error;
     if (e) push(e?.message ?? "Failed to load products", "err");
   }, [productsQuery.error, categoriesQuery.error, push]);
-
-  const categoryById = useMemo(
-    () => new Map(categories.map((c) => [c.id, c])),
-    [categories],
-  );
 
   function openCreate() {
     setDraft({ ...emptyDraft, category: categories[0]?.id ?? "" });

@@ -26,7 +26,6 @@ import {
   type SectionItem,
   type StoreSection,
   type Theme,
-  type TickerConfig,
 } from "../services/api";
 import ImageDisplayEditor from "../components/ImageDisplayEditor";
 import { useToast } from "../context/ToastContext";
