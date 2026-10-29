@@ -347,15 +347,19 @@ function AddStockModal({
 
   const active = variants.find((v) => v.is_active) ?? variants[0];
   const stores = storesQuery.data ?? [];
-  const effectiveStoreId = storeId ?? stores.find((s) => s.is_platform)?.id ?? stores[0]?.id ?? null;
+  // Single source of truth for storefront stock: the EASYGET platform store.
+  // (fallback to slug match for safety; never blindly take stores[0] — that
+  // could resolve to the legacy demo store.)
+  const platformStore =
+    stores.find((s) => s.is_platform) ?? stores.find((s) => s.slug === "easyget") ?? null;
+  const effectiveStoreId = storeId ?? platformStore?.id ?? null;
   const existing = active
     ? (itemsQuery.data ?? []).some((i) => i.variant?.id === active.id)
     : false;
 
   async function submit() {
     if (!active || busy || existing) return;
-    const store =
-      stores.find((s) => s.id === effectiveStoreId) ?? stores[0] ?? null;
+    const store = stores.find((s) => s.id === effectiveStoreId) ?? platformStore ?? null;
     if (!store) {
       push("Couldn't resolve a store for this product", "err");
       return;
