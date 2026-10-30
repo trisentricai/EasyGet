@@ -1345,8 +1345,8 @@ button { font-family: inherit; }
 }
 .variant-btn.active { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); color: var(--primary); }
 
-/* buy box */
-.buybox { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+/* buy box — sticky within the product-detail grid, stops before Similar products */
+.buybox { position: sticky; top: calc(var(--nav-h) + 24px); align-self: start; z-index: 10; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .buybox-brand { font-size: 13px; color: var(--muted); font-weight: 600; }
 .buybox-price { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
 .buybox-price .now { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
