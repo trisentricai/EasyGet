@@ -1,11 +1,39 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-10-30
-**Phase in progress:** **Ratings & Reviews redesign DONE** (ReviewsSection rebuilt into modern two-column layout — left column shows prominent overall rating score card with star breakdown, right column shows organized review cards or 'Write the first review' prompt; review cards have clean borders, hover lift, verified badges; write-review form with star picker, title/body fields, Post button; responsive single column ≤900px; tsc clean, build green) + **Product cards rebuilt PDP-style DONE** (browse/list cards now read like mini product detail pages — large edge-to-edge hero image, prominent brand → name → price stack, bigger add-to-bag button pinned to bottom, badge pill top-right, wishlist heart top-left, border-first elevation, hover lift; all via EasyGet tokens; tsc clean, build green) + **Browse grid full-width + 6+ cards per row DONE** (`.page` max-width 1280→1600px, side padding 20→12px; `.grid-products` minmax 190→150px, gap 16→12px so large screens show 6+ product cards per row; tsc clean, build green) + **PDP sticky buy box containment DONE** (`.buybox` gets `position: sticky` with `top: calc(var(--nav-h) + 24px)` and `align-self: start` so it stays within the product-details grid and never overlaps the Similar products section; build green) + **SriPon-style product card redesign DONE** (customer-web cards rebuilt to match sreepon.netlify.app aesthetic: square edge-to-edge images, top-right badge pill, top-left wishlist heart, brand→name→price→CTA stack, hover lift + image scale, border-first elevation via EasyGet tokens; `tsc --noUnusedLocals` clean, build green) + **NotFound screens replace silent fallbacks DONE** (commit `68a7120`) + **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Last updated:** 2026-10-31
+**Phase in progress:** **Homepage redesign DONE** (Shopify/Nike/Apple-inspired: full-bleed hero tile with giant headline + single pill CTA; Shop by Category horizontal icon rail; category sidebar with sticky left rail + brand/discount/price filters + mobile drawer; product grid 4 cards per row with PDP-style cards; design docs saved to design-reference/awesome-design-md/ — commit `a3e709f`, tsc clean, build green) + **Product cards rebuilt PDP-style DONE** (browse/list cards now read like mini product detail pages — large edge-to-edge hero image, prominent brand → name → price stack, bigger add-to-bag button pinned to bottom, badge pill top-right, wishlist heart top-left, border-first elevation, hover lift; all via EasyGet tokens; tsc clean, build green) + **Browse grid full-width + 6+ cards per row DONE** (`.page` max-width 1280→1600px, side padding 20→12px; `.grid-products` minmax 190→150px, gap 16→12px so large screens show 6+ product cards per row; tsc clean, build green) + **PDP sticky buy box containment DONE** (`.buybox` gets `position: sticky` with `top: calc(var(--nav-h) + 24px)` and `align-self: start` so it stays within the product-details grid and never overlaps the Similar products section; build green) + **SriPon-style product card redesign DONE** (customer-web cards rebuilt to match sreepon.netlify.app aesthetic: square edge-to-edge images, top-right badge pill, top-left wishlist heart, brand→name→price→CTA stack, hover lift + image scale, border-first elevation via EasyGet tokens; `tsc --noUnusedLocals` clean, build green) + **NotFound screens replace silent fallbacks DONE** (commit `68a7120`) + **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
+
+---
+
+## 0. LATEST — Homepage redesign — Shopify/Nike/Apple-inspired (2026-10-31)
+
+**Goal hit:** user — "i need more changes on complete ui! https://sreepon.netlify.app/ this is one of our website we used to create for another client and i need the design work like this!" + "change some things! 1. The cards of products currently in 6 cards per row! but i need it to be 4 cards! and the left side have no menu!! are routing contents! i will send the repo of github for design make sure which are the design concept that we can add it to our website to look more professionally with extra contents in UI because current state have less content and lower designs!"
+
+**What changed:**
+1. **`customer-web/src/pages/HomePage.tsx`** — rebuilt homepage:
+   - Full-bleed hero tile with giant headline, tagline, and single pill CTA (Shopify cinematic + Apple product-tile-dark)
+   - Shop by Category rail: horizontal scroll of category icon cards with images/monograms (Nike category-icon-card)
+   - Admin-configured sections still render below the rail
+   - DealsRail, RecommendedRail, RecentlyViewedRail, AllProductsGrid all preserved
+2. **`customer-web/src/pages/CategorySidebar.tsx`** — new component:
+   - Left sticky category navigation sidebar (~264px) at desktop
+   - Category tree with radio selection + active state
+   - Filter groups: Brand, Discount, Price with pill chips
+   - Mobile: full-screen filter drawer with overlay backdrop + Apply button
+3. **`customer-web/src/styles.css`** — new CSS:
+   - `.hero-tile` / `.hero-tile-dark` — full-bleed hero with tinted image overlay, giant headline, pill CTA
+   - `.category-rail` / `.cat-icon-card` — horizontal icon card rail with hover lift
+   - `.filter-side` / `.filter-side-mobile` — sticky left sidebar + mobile drawer with overlay
+   - All values via EasyGet tokens; no hardcoded hex/px in new declarations
+4. **`design-reference/awesome-design-md/`** — saved DESIGN.md from shopify, nike, apple for reference
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; pushed to `origin fix/flutter-web-and-ordering` as `a3e709f`
+
+**Known open edges:** none new — homepage redesign complete; next: wire CategorySidebar into BrowsePage, then remaining TODOs (cart stock gate, wishlist OOS badges, search price-filter fix).
 
 ---
 
