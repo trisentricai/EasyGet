@@ -1,11 +1,35 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-10-29
-**Phase in progress:** **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Last updated:** 2026-10-30
+**Phase in progress:** **SriPon-style product card redesign DONE** (customer-web cards rebuilt to match sreepon.netlify.app aesthetic: square edge-to-edge images, top-right badge pill, top-left wishlist heart, brand→name→price→CTA stack, hover lift + image scale, border-first elevation via EasyGet tokens; `tsc --noUnusedLocals` clean, build green) + **NotFound screens replace silent fallbacks DONE** (commit `68a7120`) + **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
+
+---
+
+## 0. LATEST — SriPon-style product card redesign (2026-10-30)
+
+**Goal hit:** user — "i need the design work like this! https://sreepon.netlify.app/ — checkouts the cards and give me same card design like that for our easyget website!" → rebuilt customer-web product cards to match the sreepon.netlify.app card aesthetic using EasyGet's own design tokens (no hardcoded hex/px, DESIGN.md compliant).
+
+**What changed:**
+1. **`customer-web/src/styles.css`** — rewrote `.product-card` block:
+   - Square edge-to-edge hero image (`aspect-ratio: 1/1`, `object-fit: cover`, `bg-sunken` canvas), hover scales image 1.05×
+   - Top-right badge pill (`.product-chip` + `.chip-out`/`.chip-deal`/`.chip-featured`) on the image
+   - Top-left wishlist heart (`.wish-btn`, circular, appears on hover, moves from top-right to top-left so it no longer collides with the badge)
+   - Brand → name → price row → stock → Add-to-bag stack, button pinned to bottom via `margin-top: auto`
+   - Hover: card lifts `translateY(-2px)`, shadow-elev, border shifts toward `--primary`; transitions use `--dur-micro` (160ms ≥ DESIGN.md §1 floor)
+   - Border-first elevation (1px hairline + shadow on hover only), never floating shadows alone
+   - Add-to-bag uses `--color-cta` (live green) with 44px touch target, `--color-state-ok` for added state
+   - All values via EasyGet tokens; no hardcoded hex/px in new declarations
+2. **`customer-web/src/components/ui.tsx`** — `ProductCard` badge spans now carry `product-chip` class so `.product-chip` base positioning applies
+3. **`customer-web/src/styles.css` root** — added `--bg-sunken` and `--radius-lg` token definitions; removed old absolute positioning from `.chip-featured`/`.chip-deal`/`.chip-out` (now handled by `.product-chip`)
+4. Removed duplicate `.wish-card` definition (`.wish-btn` now owns all heart styles)
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green (customer-web); admin-web untouched but previously green.
+
+**Known open edges:** none — cards render identically across HomePage, BrowsePage, SearchPage, CategoriesPage, WishlistPage, marketplace, and PDP similar-products since they all share the one `ProductCard` component.
 
 ---
 

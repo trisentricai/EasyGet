@@ -168,11 +168,11 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         {out ? (
-          <span className="chip chip-out">Out of stock</span>
+          <span className="product-chip chip chip-out">Out of stock</span>
         ) : (product.discount_percent ?? 0) >= 50 ? (
-          <span className="chip chip-deal">{product.discount_percent}% off</span>
+          <span className="product-chip chip chip-deal">{product.discount_percent}% off</span>
         ) : product.is_featured ? (
-          <span className="chip chip-featured">★ Featured</span>
+          <span className="product-chip chip chip-featured">★ Featured</span>
         ) : null}
         <WishButton slug={product.slug} className="wish-card" />
       </div>

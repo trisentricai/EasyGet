@@ -20,8 +20,10 @@
   --savings: #388e3c;
   --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* merchant-overridable */
   --display: "Inter", var(--font);
-  --radius: 6px;
+  --radius: 6px;   /* inputs, tags */
+  --radius-lg: 10px; /* cards */
   --radius-btn: 3px;
+  --bg-sunken: #f2eee9; /* image placeholder canvas */
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.07);
   --shadow-hi: 0 2px 6px rgb(0 0 0 / 0.1), 0 10px 26px rgb(0 0 0 / 0.12);
   --nav-h: 58px;
@@ -591,14 +593,21 @@ button { font-family: inherit; }
   text-align: center;
 }
 
-/* ---------- Product card (marketplace) ---------- */
+/* ---------- Product card (SriPon-style marketplace card) ---------- */
+/* Square hero image, top-right badge + top-left wishlist overlay,
+   brand → name → price → add-to-bag pinned to bottom,
+   hover lift + image scale. Border-first elevation; all values via tokens. */
+
 .product-card {
   display: block;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  transition:
+    transform var(--dur-micro, 0.16s) var(--ease-out, ease),
+    border-color var(--dur-micro, 0.16s) var(--ease-out, ease),
+    box-shadow var(--dur-micro, 0.16s) var(--ease-out, ease);
   text-decoration: none;
   color: inherit;
   display: flex;
@@ -607,15 +616,16 @@ button { font-family: inherit; }
   container-type: inline-size;
 }
 .product-card:hover {
-  box-shadow: var(--shadow-hi);
+  transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
-  transform: translateY(-3px);
+  box-shadow: var(--shadow-hi);
 }
+
+/* Image — edge-to-edge, square */
 .product-thumb-wrap {
   position: relative;
   aspect-ratio: 1 / 1;
   background: var(--bg-sunken);
-  border-bottom: 1px solid var(--border-subtle);
   overflow: hidden;
 }
 .product-thumb {
@@ -624,18 +634,15 @@ button { font-family: inherit; }
   height: 100%;
   display: grid;
   place-items: center;
-  margin: 0;
 }
 .product-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  margin: 7px;
-  filter: saturate(102%);
+  transition: transform var(--dur-micro, 0.16s) var(--ease-out, ease);
 }
 .product-card:hover .product-thumb img {
-  transform: scale(1.03);
-  transition: transform 0.3s ease;
+  transform: scale(1.05);
 }
 .product-thumb .ph {
   font-size: 34px;
@@ -643,19 +650,88 @@ button { font-family: inherit; }
   color: color-mix(in srgb, var(--primary) 55%, var(--ink));
   opacity: 0.7;
 }
+
+/* Badge on image — top-right pill */
+.product-chip {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+.chip-out {
+  background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+.chip-deal {
+  background: var(--ok);
+  color: #fff;
+}
+.chip-featured {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Wishlist heart on image — top-left, appears on hover */
+.wish-card {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--dur-micro, 0.16s) var(--ease-out, ease),
+    color var(--dur-micro, 0.16s) var(--ease-out, ease),
+    transform var(--dur-micro, 0.16s) var(--ease-out, ease);
+}
+.product-card:hover .wish-card,
+.wish-card.on,
+.wish-card:focus-visible {
+  opacity: 1;
+}
+.wish-card:hover {
+  color: var(--danger);
+  transform: scale(1.08);
+}
+@media (hover: none) {
+  .wish-card { opacity: 1; }
+}
+
+/* Body */
 .product-body {
-  padding: 10px 12px 12px;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   flex: 1;
 }
 .product-brand {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.06em;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -663,36 +739,32 @@ button { font-family: inherit; }
 }
 .product-name {
   font-weight: 700;
-  font-size: 14px;
-  line-height: 1.3;
+  font-size: 15px;
+  line-height: 1.35;
   color: var(--ink);
-  margin: 4px 0 6px;
-  min-height: 38px;
+  margin: 3px 0 8px;
+  min-height: 42px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  font-family: var(--font);
 }
 .product-rate-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  /* 20px, not 18: a rendered rating pill is 19.5px tall — reserving less
-     would drop the price row by that much on rated cards only. */
   min-height: 20px;
 }
 .product-price-row {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 7px;
   margin-top: 2px;
   flex-wrap: nowrap;
   white-space: nowrap;
   overflow: hidden;
 }
-/* Wide cards (≥200px, the browse grid): keep now/mrp/%-off on one line.
-   Narrow containers (rails 168px, mobile grid) wrap into a reserved
-   two-line block instead — see the container query after .add-btn. */
 .product-price-row .price { flex-wrap: nowrap; }
 .save-note {
   font-size: 11px;
@@ -714,26 +786,29 @@ button { font-family: inherit; }
   font-size: 12px;
   font-weight: 700;
 }
-.stock-free { color: var(--savings); }
+.stock-free { color: var(--ok); }
 .stock-free::before { content: "✓ "; font-weight: 900; }
 
 /* Add to bag button — pinned to bottom of every card for visual alignment */
 .add-btn {
   margin-top: auto;
   width: 100%;
-  padding: 10px 14px;
+  padding: 11px 14px;
   border: none;
-  border-radius: var(--radius-btn);
+  border-radius: var(--radius-md, var(--radius-lg));
   background: var(--color-cta);
   color: var(--color-cta-fg);
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.05s ease;
+  transition:
+    background var(--dur-micro, 0.15s) var(--ease-out, ease),
+    transform var(--dur-micro, 0.05s) var(--ease-out, ease);
+  min-height: 44px; /* touch target */
 }
 .add-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--color-cta) 85%, var(--color-cta-dark)); }
 .add-btn:active:not(:disabled) { transform: translateY(1px); }
-.add-btn:disabled { cursor: not-allowed; }
+.add-btn:disabled { cursor: not-allowed; opacity: 0.6; }
 .add-btn.added,
 .add-btn.added:hover {
   background: color-mix(in srgb, var(--color-state-ok) 14%, var(--surface));
@@ -745,10 +820,8 @@ button { font-family: inherit; }
   color: var(--muted);
 }
 
-/* Price row height contract, keyed to the CARD width (not the viewport) so
-   the 168px home rails and the 150px mobile grid get the same reserved
-   two-line block, while browse-grid cards (≥210px) keep a single tight line.
-   Requires container-type on .product-card — see the card rule above. */
+/* Price row height contract — narrow cards wrap into a reserved two-line
+   block so the Add-to-bag button stays aligned across a row. */
 @container (max-width: 199px) {
   .product-price-row {
     flex-wrap: wrap;
@@ -774,23 +847,26 @@ button { font-family: inherit; }
 .rating-pill em { font-style: normal; opacity: 0.9; font-weight: 600; }
 .rating-pill-lg { font-size: 13.5px; padding: 3px 9px; border-radius: 4px; }
 
-/* wishlist heart */
+/* wishlist heart — top-left of the card image (badge takes top-right) */
 .wish-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 30px;
-  height: 30px;
+  top: 10px;
+  left: 10px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   color: var(--muted);
   display: grid;
   place-items: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.12s ease, color 0.12s ease, transform 0.12s ease;
-  z-index: 2;
+  transition:
+    opacity var(--dur-micro, 0.16s) var(--ease-out, ease),
+    color var(--dur-micro, 0.16s) var(--ease-out, ease),
+    transform var(--dur-micro, 0.16s) var(--ease-out, ease);
+  z-index: 3;
 }
 .product-card:hover .wish-btn, .wish-btn.on, .wish-btn:focus-visible { opacity: 1; }
 .wish-btn:hover { color: var(--danger); transform: scale(1.08); }
@@ -843,9 +919,9 @@ button { font-family: inherit; }
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
-.chip-featured { position: absolute; top: 12px; right: 12px; background: var(--primary); color: #fff; }
-.chip-deal { position: absolute; top: 12px; right: 12px; background: var(--danger); color: #fff; }
-.chip-out { position: absolute; top: 12px; right: 12px; background: color-mix(in srgb, var(--danger) 12%, var(--surface)); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--surface)); }
+.chip-featured { background: var(--primary); color: #fff; }
+.chip-deal { background: var(--ok); color: #fff; }
+.chip-out { background: color-mix(in srgb, var(--danger) 15%, var(--surface)); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border)); }
 .chip-pending { background: color-mix(in srgb, var(--secondary) 25%, var(--surface)); color: var(--warn-ink); }
 .chip-ok { background: color-mix(in srgb, var(--ok) 15%, var(--surface)); color: var(--ok); }
 .chip-err { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); color: var(--danger); }
