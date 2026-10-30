@@ -125,6 +125,7 @@ export function ProductCard({ product }: { product: Product }) {
   const freeDelivery = Number(product.base_price ?? 0) >= 499;
   const out = product.in_stock === false;
   const hasDiscount = product.mrp && Number(product.mrp) > Number(product.base_price ?? 0);
+  const discount = product.discount_percent ?? 0;
   // The list payload carries no variants, so the card can't know whether this
   // product already sits in the cart — `added` is local acknowledgement only.
   const [busy, setBusy] = useState(false);
@@ -169,8 +170,8 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
         {out ? (
           <span className="product-chip chip chip-out">Out of stock</span>
-        ) : (product.discount_percent ?? 0) >= 50 ? (
-          <span className="product-chip chip chip-deal">{product.discount_percent}% off</span>
+        ) : discount >= 50 ? (
+          <span className="product-chip chip chip-deal">{discount}% off</span>
         ) : product.is_featured ? (
           <span className="product-chip chip chip-featured">★ Featured</span>
         ) : null}
@@ -183,10 +184,8 @@ export function ProductCard({ product }: { product: Product }) {
           <RatingPill avg={product.rating_avg} count={product.rating_count} />
         </div>
         <div className="product-price-row">
-          <Price price={product.base_price} mrp={product.mrp} discount={product.discount_percent} size="sm" />
-          {/* "% off" and "Save ₹x" say the same thing — show one, never both,
-              so the price row always fits a single line on wide cards. */}
-          {hasDiscount && !(product.discount_percent > 0) && (
+          <Price price={product.base_price} mrp={product.mrp} discount={discount} size="md" />
+          {hasDiscount && !(discount > 0) && (
             <span className="save-note">Save ₹{Number(product.mrp) - Number(product.base_price)}</span>
           )}
         </div>

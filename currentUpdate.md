@@ -1,11 +1,38 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-10-30
-**Phase in progress:** **Browse grid full-width + 6+ cards per row DONE** (`.page` max-width 1280→1600px, side padding 20→12px; `.grid-products` minmax 190→150px, gap 16→12px so large screens show 6+ product cards per row; tsc clean, build green) + **PDP sticky buy box containment DONE** (`.buybox` gets `position: sticky` with `top: calc(var(--nav-h) + 24px)` and `align-self: start` so it stays within the product-details grid and never overlaps the Similar products section; build green) + **SriPon-style product card redesign DONE** (customer-web cards rebuilt to match sreepon.netlify.app aesthetic: square edge-to-edge images, top-right badge pill, top-left wishlist heart, brand→name→price→CTA stack, hover lift + image scale, border-first elevation via EasyGet tokens; `tsc --noUnusedLocals` clean, build green) + **NotFound screens replace silent fallbacks DONE** (commit `68a7120`) + **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Phase in progress:** **Product cards rebuilt PDP-style DONE** (browse/list cards now read like mini product detail pages — large edge-to-edge hero image, prominent brand → name → price stack, bigger add-to-bag button pinned to bottom, badge pill top-right, wishlist heart top-left, border-first elevation, hover lift; all via EasyGet tokens; tsc clean, build green) + **Browse grid full-width + 6+ cards per row DONE** (`.page` max-width 1280→1600px, side padding 20→12px; `.grid-products` minmax 190→150px, gap 16→12px so large screens show 6+ product cards per row; tsc clean, build green) + **PDP sticky buy box containment DONE** (`.buybox` gets `position: sticky` with `top: calc(var(--nav-h) + 24px)` and `align-self: start` so it stays within the product-details grid and never overlaps the Similar products section; build green) + **SriPon-style product card redesign DONE** (customer-web cards rebuilt to match sreepon.netlify.app aesthetic: square edge-to-edge images, top-right badge pill, top-left wishlist heart, brand→name→price→CTA stack, hover lift + image scale, border-first elevation via EasyGet tokens; `tsc --noUnusedLocals` clean, build green) + **NotFound screens replace silent fallbacks DONE** (commit `68a7120`) + **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
+
+---
+
+## 0. LATEST — Product cards rebuilt PDP-style (2026-10-30)
+
+**Goal hit:** user — "EACH PRODUCTS CARD LIKE IN DETAIL" — browse/list product cards should look like the product detail page left side, not compact marketplace cards.
+
+**What changed:**
+1. **`customer-web/src/components/ui.tsx`** — `ProductCard` rewritten to read like a mini PDP:
+   - Larger price font (`size="md"` instead of `"sm"`) with tabular numerals
+   - Prominent brand → name → price stack
+   - `added` state tracked locally for "✓ Added" feedback
+   - All existing OOS / discount / featured badge logic preserved
+2. **`customer-web/src/styles.css`** — full card CSS rewrite:
+   - Larger hero image (aspect-ratio 1/1, hover scale 1.04×)
+   - Badge pill top-right, wishlist heart top-left (larger 36px, appears on hover)
+   - Brand name (uppercase, muted), product name (16px, 2-line clamp), rating pill
+   - Price row with larger mono-spaced price, MRP strikethrough, % off
+   - Add-to-bag button pinned to bottom, 48px touch target, PDP buy-box style
+   - Border-first elevation; hover lift + shadow-elev; transitions via `--dur-micro`
+   - All values via EasyGet tokens; no hardcoded hex/px in new declarations
+   - Removed unused `.product-meta` styles
+   - Applied across HomePage, BrowsePage, SearchPage, CategoriesPage, WishlistPage, marketplace, PDP similar-products (single `ProductCard` component)
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; no backend or HTML changes.
+
+**Known open edges:** none — single shared component means the PDP-style card renders everywhere consistently.
 
 ---
 
