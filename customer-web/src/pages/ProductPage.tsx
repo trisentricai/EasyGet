@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -424,6 +424,7 @@ function SimilarCard({ product }: { product: Product }) {
 function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean }) {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const reviewsFormRef = useRef<HTMLDivElement | null>(null);
   const { data, error } = useQuery({
     queryKey: ["reviews", slug],
     queryFn: () => listReviews(slug, 1),
@@ -434,6 +435,10 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [posting, setPosting] = useState(false);
+
+  const scrollToReview = () => {
+    reviewsFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const submit = async () => {
     setPosting(true);
@@ -483,57 +488,89 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
         <Spinner />
       ) : (
         <>
-          <div className="ratings-summary">
-            <div className="ratings-big">
-              <div className="num">{avg ? avg.toFixed(1) : "—"}</div>
-              <div className="outof">{reviews.length} {reviews.length === 1 ? "review" : "reviews"}</div>
-            </div>
-            <div className="ratings-bars">
-              {[5, 4, 3, 2, 1].map((star, i) => (
-                <div className="ratings-bar" key={star}>
-                  <span style={{ width: 12, fontWeight: 700 }}>{star}★</span>
-                  <span className="track">
-                    <span className="fill" style={{ width: `${(dist[i] / maxDist) * 100}%` }} />
+          {/* Two-column layout: rating score card left, reviews right */}
+          <div className="reviews-grid">
+            {/* Left: overall rating score card */}
+            <div className="reviews-score-card">
+              <div className="reviews-score">
+                <span className="reviews-score-num">{avg ? avg.toFixed(1) : "—"}</span>
+                <span className="reviews-score-max"> / 5</span>
+              </div>
+              <div className="reviews-score-stars">
+                {[5, 4, 3, 2, 1].map((s) => (
+                  <span key={s} className={`reviews-star ${avg >= s - 0.5 ? "on" : ""}`}>
+                    ★
                   </span>
-                  <span style={{ width: 24, textAlign: "right" }}>{dist[i]}</span>
+                ))}
+              </div>
+              <div className="reviews-score-count">
+                {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
+              </div>
+              <div className="reviews-breakdown">
+                {[5, 4, 3, 2, 1].map((star, i) => {
+                  const pct = maxDist ? Math.round((dist[i] / maxDist) * 100) : 0;
+                  return (
+                    <div key={star} className="reviews-breakdown-row">
+                      <span className="reviews-breakdown-label">{star}</span>
+                      <div className="reviews-breakdown-track">
+                        <span
+                          className="reviews-breakdown-fill"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="reviews-breakdown-count">{dist[i]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right: review list or add-review prompt */}
+            <div className="reviews-list-wrap">
+              {reviews.length === 0 ? (
+                <div className="reviews-empty">
+                  <span className="reviews-empty-ico">✍️</span>
+                  <h3 className="reviews-empty-title">No reviews yet</h3>
+                  <p className="reviews-empty-text">Be the first to review this product.</p>
+                  {canReview && (
+                    <button className="btn btn-primary" onClick={scrollToReview}>
+                      Write the first review
+                    </button>
+                  )}
                 </div>
-              ))}
+              ) : (
+                <>
+                  {reviews.map((r) => (
+                    <article key={r.id} className="review-card">
+                      <div className="review-head">
+                        <div className="review-rating">{r.rating}.0</div>
+                        <div className="review-meta">
+                          <span className="review-who">{r.reviewer_name}</span>
+                          {r.is_verified_purchase ? (
+                            <span className="verified-badge">✓ Verified Purchase</span>
+                          ) : null}
+                          <span className="review-when">
+                            {new Date(r.created_at).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                      {r.title ? <div className="review-title">{r.title}</div> : null}
+                      {r.body ? <p className="review-body">{r.body}</p> : null}
+                    </article>
+                  ))}
+                </>
+              )}
             </div>
           </div>
-
-          {reviews.length === 0 ? (
-            <p className="muted" style={{ padding: "18px 0" }}>
-              No reviews yet — be the first to review this product.
-            </p>
-          ) : (
-            <div style={{ marginTop: 6 }}>
-              {reviews.map((r) => (
-                <article className="review-card" key={r.id}>
-                  <div className="review-head">
-                    <span className="rating-pill">{r.rating}.0 ★</span>
-                    <span className="review-who">{r.reviewer_name}</span>
-                    {r.is_verified_purchase ? (
-                      <span className="verified-badge">✓ Verified Purchase</span>
-                    ) : null}
-                    <span className="review-when">
-                      {new Date(r.created_at).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  {r.title ? <div className="review-title">{r.title}</div> : null}
-                  {r.body ? <p className="review-body">{r.body}</p> : null}
-                </article>
-              ))}
-            </div>
-          )}
         </>
       )}
 
       {canReview && (
-        <div className="review-form">
+        <div ref={reviewsFormRef} className="review-form">
           <h3>Write a review</h3>
           <div className="star-picker" role="radiogroup" aria-label="Rating">
             {[1, 2, 3, 4, 5].map((n) => (
@@ -570,7 +607,7 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
               placeholder="What did you like or dislike?"
             />
           </div>
-          <button className="btn" disabled={posting} onClick={() => void submit()}>
+          <button className="btn btn-primary" disabled={posting} onClick={() => void submit()}>
             {posting ? "Posting…" : "Post review"}
           </button>
         </div>
