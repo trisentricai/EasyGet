@@ -373,7 +373,7 @@ button { font-family: inherit; }
 .btn-dark { background: var(--ink); color: var(--surface); }
 
 /* ---------- Layout ---------- */
-.page { max-width: 1280px; margin: 0 auto; padding: 22px 20px 60px; }
+.page { max-width: 1600px; margin: 0 auto; padding: 14px 12px 60px; }
 .page-narrow { max-width: 720px; }
 .section { margin: 34px 0; }
 .section-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
@@ -448,11 +448,11 @@ button { font-family: inherit; }
 .grid { display: grid; gap: 14px; }
 .grid-categories { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
-/* Clean product grid: regular-sized cards with breathing room, consistent
-   column width, and a gentle gap instead of hairline table rules. */
+/* Clean product grid: more columns per row on large screens so the catalog
+   utilizes full width; minimum card width keeps cards readable. */
 .grid-products {
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
 }
 .grid-products > .product-card,
 .grid-products > .card-skeleton {

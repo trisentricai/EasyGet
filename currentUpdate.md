@@ -1,11 +1,26 @@
 # CURRENT UPDATE — EASYGET
 
 **Last updated:** 2026-10-30
-**Phase in progress:** **PDP sticky buy box containment DONE** (`.buybox` gets `position: sticky` with `top: calc(var(--nav-h) + 24px)` and `align-self: start` so it stays within the product-details grid and never overlaps the Similar products section; build green) + **SriPon-style product card redesign DONE** (customer-web cards rebuilt to match sreepon.netlify.app aesthetic: square edge-to-edge images, top-right badge pill, top-left wishlist heart, brand→name→price→CTA stack, hover lift + image scale, border-first elevation via EasyGet tokens; `tsc --noUnusedLocals` clean, build green) + **NotFound screens replace silent fallbacks DONE** (commit `68a7120`) + **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
+**Phase in progress:** **Browse grid full-width + 6+ cards per row DONE** (`.page` max-width 1280→1600px, side padding 20→12px; `.grid-products` minmax 190→150px, gap 16→12px so large screens show 6+ product cards per row; tsc clean, build green) + **PDP sticky buy box containment DONE** (`.buybox` gets `position: sticky` with `top: calc(var(--nav-h) + 24px)` and `align-self: start` so it stays within the product-details grid and never overlaps the Similar products section; build green) + **SriPon-style product card redesign DONE** (customer-web cards rebuilt to match sreepon.netlify.app aesthetic: square edge-to-edge images, top-right badge pill, top-left wishlist heart, brand→name→price→CTA stack, hover lift + image scale, border-first elevation via EasyGet tokens; `tsc --noUnusedLocals` clean, build green) + **NotFound screens replace silent fallbacks DONE** (commit `68a7120`) + **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
+
+---
+
+## 0. LATEST — Browse grid full-width + 6+ cards per row (2026-10-30)
+
+**Goal hit:** user — "layout has too much blank space on the left and right, and it's currently showing only 4 product cards per row. update the grid container to display at least 6 products per row on larger screens and reduce the outer container's padding/max-width so the catalog utilizes the full width of the screen better"
+
+**What changed:**
+1. **`customer-web/src/styles.css` `.page`**: `max-width` 1280→1600px, side padding 20→12px — catalog now uses more of the screen width
+2. **`customer-web/src/styles.css` `.grid-products`**: `minmax(190px, 1fr)`→`minmax(150px, 1fr)`, `gap` 16→12px — large screens now fit 6+ product cards per row instead of 4
+3. Mobile breakpoints unchanged (2 columns ≤640px, 1 column ≤430px)
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; no backend or HTML changes.
+
+**Note on "AND STILL THE CARD IS STICKY!!":** the PDP buybox sticky containment from the previous round is working as designed (stuck within `.product-detail`, never overlaps Similar products). If you're seeing sticky behavior on the browse page or want the PDP buybox sticky removed entirely, let me know — that's a separate change.
 
 ---
 
