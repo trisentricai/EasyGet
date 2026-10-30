@@ -448,11 +448,11 @@ button { font-family: inherit; }
 .grid { display: grid; gap: 14px; }
 .grid-categories { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
-/* Clean product grid: more columns per row on large screens so the catalog
-   utilizes full width; minimum card width keeps cards readable. */
+/* Clean product grid: 4 cards per row on large screens so the catalog
+   stays readable and product-focused instead of overly dense. */
 .grid-products {
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
 }
 .grid-products > .product-card,
 .grid-products > .card-skeleton {
