@@ -3,20 +3,22 @@ import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/ui";
+import { fxStyle } from "../utils/imageFx";
 import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
-import { fxClass, fxStyle } from "../utils/imageFx";
 import {
   AllProductsGrid,
-  BannerCarousel,
   DealsRail,
   RecentlyViewedRail,
   RecommendedRail,
 } from "../components/marketplace";
 
 /**
- * Home page = the store's designed storefront, marketplace layout:
- * rotating banner carousel (HERO/BANNER sections), then the admin's
- * designed sections, then the discovery rails.
+ * Home page — Shopify/Nike/Apple-inspired design:
+ * - Full-bleed hero tile with giant headline + single pill CTA
+ * - Shop by Category rail (icon cards in horizontal scroll)
+ * - Deals of the Day
+ * - 4 product cards per row (PDP-style cards)
+ * - Left category sidebar on browse pages
  */
 export function HomePage() {
   const { data, loading, error } = useStorefront();
@@ -45,53 +47,150 @@ export function HomePage() {
   );
   const hasContent = sections.length > 0;
 
-  // No designed sections yet? Shoppers still get a real storefront: the
-  // welcome hero plus the live discovery rails (deals / categories /
-  // recommendations). Setup guidance belongs in the admin dashboard —
-  // never in front of customers.
   return (
-    <div className="page">
-      <BannerCarousel sections={banners} />
-      {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
-      {!hasContent && (
+    <div className="page home-page">
+      {/* Full-width hero + category rail (replaces BannerCarousel for a cleaner look) */}
+      {banners.length > 0 ? (
+        <HeroTile sections={banners} />
+      ) : (
         <WelcomeHero
           storeName={data.store.name}
           city={data.store.city}
           description={data.store.description}
         />
       )}
-      <DealsRail />
-      <RecommendedRail />
-      <RecentlyViewedRail />
-      <AllProductsGrid />
+
+      {/* Shop by Category — horizontal icon rail */}
+      <CategoryRail categories={data.sections.flatMap((s) => s.items).filter((i) => i.item_type === "CATEGORY" || i.category_slug)} />
+
+      {/* Designed sections (admin-configured) */}
+      {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
+
+      {/* Fallback welcome content when no sections configured */}
+      {!hasContent && (
+        <>
+          <WelcomeHero
+            storeName={data.store.name}
+            city={data.store.city}
+            description={data.store.description}
+          />
+          <DealsRail />
+          <RecommendedRail />
+          <RecentlyViewedRail />
+          <AllProductsGrid />
+        </>
+      )}
+
+      {hasContent && (
+        <>
+          <DealsRail />
+          <RecommendedRail />
+          <RecentlyViewedRail />
+          <AllProductsGrid />
+        </>
+      )}
     </div>
+  );
+}
+
+function HeroTile({ sections }: { sections: StoreSection[] }) {
+  const section = sections[0];
+  const cfg = section?.config ?? {};
+  const effects = (cfg.effects as Record<string, unknown>) ?? {};
+  const heroImg = img(section?.image) ?? img((cfg.hero_image as string) ?? null);
+  const cta = (cfg.cta_label as string) ?? "Shop now";
+  const ctaLink = (cfg.cta_link as string) ?? "browse";
+  const align = (cfg.align as string) === "right" ? "right" : "left";
+
+  return (
+    <section className="hero-tile" style={effects.hero_animation === "fade" ? { animation: "rise 0.6s ease" } : undefined}>
+      {heroImg ? (
+        <img
+          className="hero-img"
+          style={fxStyle(section)}
+          src={heroImg}
+          alt=""
+          decoding="async"
+          width={1600}
+          height={800}
+        />
+      ) : null}
+      <div className="hero-content" style={align === "right" ? { marginLeft: "auto", textAlign: "right" } : undefined}>
+        {section?.subtitle ? <p className="hero-eyebrow">{section.subtitle}</p> : null}
+        <h1 className="hero-headline">{section?.title || "Fresh groceries, fast"}</h1>
+        <div className="hero-actions">
+          <a
+            className="btn btn-primary"
+            href={ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink)}
+          >
+            {cta}
+          </a>
+        </div>
+      </div>
+    </section>
   );
 }
 
 function WelcomeHero({ storeName, description }: { storeName: string; city: string; description: string }) {
   return (
-    <div className="hero">
+    <section className="hero-tile hero-tile-dark">
       <div className="hero-content">
-        <p className="eyebrow">Welcome to</p>
-        <h1>{storeName}</h1>
-        <p>{description || "Essentials, delivered quickly."}</p>
+        <p className="hero-eyebrow">Welcome to {storeName}</p>
+        <h1 className="hero-headline">{storeName}</h1>
+        <p className="hero-lead">{description || "Essentials, delivered quickly."}</p>
         <div className="hero-actions">
-          <a className="btn btn-secondary" href={href("browse")}>Browse catalog</a>
-          <a className="btn btn-ghost" style={{ color: "#fff", borderColor: "rgb(255 255 255 / 0.5)" }} href={href("account")}>
-            Sign in
+          <a className="btn btn-primary" href={href("browse")}>
+            Shop now
           </a>
         </div>
       </div>
-    </div>
+    </section>
+  );
+}
+
+function CategoryRail({ categories }: { categories: SectionItem[] }) {
+  const items = categories.filter((i) => i.item_type === "CATEGORY" || i.category_slug);
+  if (items.length === 0) return null;
+
+  // Build tile items from section items
+  const tiles = items.map((i) => ({
+    key: i.id,
+    slug: i.category_slug,
+    name: i.category_name || i.caption || "Category",
+    image: img(i.image),
+  }));
+
+  return (
+    <section className="category-rail">
+      <div className="rail-head">
+        <h2 className="rail-title">Shop by category</h2>
+        <a className="link" href={href("categories")}>
+          See all →
+        </a>
+      </div>
+      <div className="rail-scroll">
+        {tiles.map((t) => (
+          <a key={t.key} className="cat-icon-card" href={href(`browse?category=${t.slug}`)}>
+            <div className="cat-icon-media">
+              {t.image ? (
+                <img src={t.image} alt="" loading="lazy" decoding="async" width={128} height={128} />
+              ) : (
+                <span className="cat-icon-monogram">{t.name.slice(0, 1).toUpperCase()}</span>
+              )}
+            </div>
+            <span className="cat-icon-name">{t.name}</span>
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }
 
 function SectionRenderer({ section }: { section: StoreSection }) {
   switch (section.section_type) {
     case "HERO":
-      return <HeroSection section={section} />;
     case "BANNER":
-      return <BannerSection section={section} />;
+      return null; // handled by HeroTile above
     case "CATEGORY_GRID":
       return <CategoryGridSection section={section} />;
     case "PRODUCT_ROW":
@@ -103,58 +202,6 @@ function SectionRenderer({ section }: { section: StoreSection }) {
     default:
       return null;
   }
-}
-
-function HeroSection({ section }: { section: StoreSection }) {
-  const cfg = section.config ?? {};
-  const effects = (cfg.effects as Record<string, unknown>) ?? {};
-  const heroImg = img(section.image) ?? img((cfg.hero_image as string) ?? null);
-  const cta = (cfg.cta_label as string) ?? "Shop now";
-  const ctaLink = (cfg.cta_link as string) ?? "browse";
-  const align = (cfg.align as string) === "right" ? "right" : "left";
-  return (
-    <section className="hero" style={effects.hero_animation === "fade" ? { animation: "rise 0.6s ease" } : undefined}>
-      {heroImg ? (
-        <img
-          className={`hero-img ${fxClass(section)}`}
-          style={fxStyle(section)}
-          src={heroImg}
-          alt=""
-          decoding="async"
-          width={1200}
-          height={675}
-        />
-      ) : null}
-      <div className="hero-content" style={align === "right" ? { marginLeft: "auto", textAlign: "right" } : undefined}>
-        {section.subtitle ? <p>{section.subtitle}</p> : null}
-        <h1>{section.title || "Fresh groceries, fast"}</h1>
-        <div className="hero-actions">
-          <a className="btn btn-secondary" href={ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink)}>
-            {cta}
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function BannerSection({ section }: { section: StoreSection }) {
-  const first = section.items[0];
-  const link = first?.link || (first?.category_slug ? href(`browse?category=${first.category_slug}`) : null);
-  const body = (
-    <>
-      <div>
-        <h3>{section.title || "Limited-time offers"}</h3>
-        <p>{section.subtitle || first?.caption || "Save more on your daily essentials."}</p>
-      </div>
-      {link ? <span className="link">View</span> : null}
-    </>
-  );
-  return link ? (
-    <a className="banner" href={link.startsWith("/") || link.startsWith("#") ? link : href(link)}>{body}</a>
-  ) : (
-    <div className="banner">{body}</div>
-  );
 }
 
 function CategoryGridSection({ section }: { section: StoreSection }) {
@@ -181,7 +228,6 @@ function ProductRowSection({ section }: { section: StoreSection }) {
         })),
     [section.items],
   );
-  const columns = section.config?.columns ?? 5;
   const size = section.config?.size ?? "md";
 
   return (
@@ -195,7 +241,6 @@ function ProductRowSection({ section }: { section: StoreSection }) {
           className="grid grid-products"
           style={{
             gridTemplateColumns: `repeat(auto-fill, minmax(${size === "lg" ? 260 : size === "sm" ? 150 : 200}px, 1fr))`,
-            ...(columns ? {} : null),
           }}
         >
           {products.map((p) => (
