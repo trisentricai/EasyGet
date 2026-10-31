@@ -9,6 +9,17 @@
 
 ---
 
+## 0. LATEST - SriPon-style card badge/wishlist positions fixed (2026-10-31)
+
+**Goal hit:** user - "i need 4 cards and i need details of the product like this image" (reference: sreepon.netlify.app) — badge top-left, wishlist top-right.
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.product-chip` moved top-left (was top-right); `.wish-card` (as `.wish-btn.wish-card`) moved top-right (was top-left, specificity fix so it beats `.wish-btn`).
+
+**Verification:** `tsc` clean; `npm run build` green; live shows badge top-left (13,13) + wishlist top-right (right 13, top 13) + body = category + name + price; 4 cols, small size.
+
+---
+
 ## 0. LATEST - Product cards rebuilt SriPon-style (details) (2026-10-31)
 
 **Goal hit:** user - "i need 4 cards and i need details of the product like this image" (reference: sreepon.netlify.app product card)
