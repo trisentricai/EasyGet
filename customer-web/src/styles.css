@@ -448,10 +448,11 @@ button { font-family: inherit; }
 .grid { display: grid; gap: 14px; }
 .grid-categories { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
-/* Clean product grid: 4 cards per row on large screens so the catalog
-   stays readable and product-focused instead of overly dense. */
+/* Controlled responsive product grid — uniform multi-column card layout.
+   minmax caps how wide a card can get, so cards never stretch to fill the
+   whole row edge-to-edge (sparse/bulky bug) and stay neat & uniform. */
 .grid-products {
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
 }
 .grid-products > .product-card,
@@ -1076,16 +1077,6 @@ button { font-family: inherit; }
 /* ---------- Auth screen ---------- */
 .auth-wrap { min-height: calc(100vh - var(--nav-h)); display: grid; place-items: center; padding: 30px 16px; }
 .auth-card { width: 100%; max-width: 440px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 30px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
-/* the same awning, small, over the auth card — you're entering the shop */
-.auth-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 12px;
-  background: repeating-linear-gradient(-45deg, var(--primary) 0 10px, var(--secondary) 10px 20px);
-}
 .auth-card h1 { margin: 6px 0 4px; font-family: var(--display); font-size: 22px; letter-spacing: -0.01em; }
 .auth-card .sub { margin: 0 0 20px; font-size: 13.5px; color: var(--muted); }
 .auth-card .field { margin-bottom: 12px; }

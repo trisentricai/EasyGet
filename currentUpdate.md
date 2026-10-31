@@ -9,6 +9,25 @@
 
 ---
 
+## 0. LATEST — Product grid + login card cleanup (2026-10-31)
+
+**Goal hit:** user — "fix a few UI layout and styling issues on the frontend: Product Grid (cards stretching across the entire width / sparse-bulky) ... Sidebar (add a clean, sticky category and filter sidebar on the left side of the product catalog) ... Login Modal (high-contrast 'zebra-crossing' striped pattern — remove stripes, clean solid neutral background card with soft shadow and rounded corners)."
+
+**What changed:**
+1. **`customer-web/src/styles.css`** — `.grid-products`:
+   - Was: `repeat(auto-fill, minmax(340px, 1fr))` (cards could stretch to massive width / sparse-bulky).
+   - Now: `repeat(auto-fill, minmax(240px, 1fr))` — controlled responsive columns, neat uniform multi-column card layout, never full-width stretching.
+2. **`customer-web/src/styles.css`** — `.auth-card`:
+   - Removed the zebra-crossing `.auth-card::before` (`repeating-linear-gradient(-45deg, ...)` striped top strip).
+   - Login screen now renders a clean solid card (`var(--surface)` bg) with soft shadow (`var(--shadow)`) and rounded corners (16px) — professional finish.
+3. **Sidebar:** verified existing clean sticky category + filter sidebar on `/browse` (`.browse-layout` 264px rail + `.filter-side` sticky + mobile drawer) — no code change needed.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; commit follows `827808f` audit round.
+
+**Known open edges:** none new for this round.
+
+---
+
 ## 0. LATEST — Homepage redesign — Shopify/Nike/Apple-inspired (2026-10-31)
 
 **Goal hit:** user — "i need more changes on complete ui! https://sreepon.netlify.app/ this is one of our website we used to create for another client and i need the design work like this!" + "change some things! 1. The cards of products currently in 6 cards per row! but i need it to be 4 cards! and the left side have no menu!! are routing contents! i will send the repo of github for design make sure which are the design concept that we can add it to our website to look more professionally with extra contents in UI because current state have less content and lower designs!"
