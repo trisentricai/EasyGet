@@ -9,6 +9,20 @@
 
 ---
 
+## 0. LATEST - Taller cards + border fix in grids (2026-10-31)
+
+**Goal hit:** user - "cards have more height!! like longvertical!! it was not good! look at the card in this image or this website! https://sreepon.netlify.app/"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.product-body`: info stack roomier (gap `10 -> 12`, padding bottom `20 -> 22`) + `.product-name` min-height `46 -> 52` so product cards read taller with clean vertical rhythm (long-vertical card feel).
+2. **`customer-web/src/styles.css`** - `.grid-products > .product-card, .grid-products > .card-skeleton`: border token light `--border` -> `--color-border-strong` (higher-specificity grid override was silently re-imposing the light token, so the earlier stronger-border fix never applied inside grids).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
 ## 0. LATEST - Taller cards + stronger borders + sidebar on all pages (2026-10-31)
 
 **Goal hit:** user - "1. the card size have more heights 2. the card have light border need more highlight! 3. https://easyget-customer.pages.dev/#/home this screen also need sidebar make sidebar works all pages!"
