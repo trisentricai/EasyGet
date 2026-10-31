@@ -452,8 +452,8 @@ button { font-family: inherit; }
    minmax caps how wide a card can get, so cards never stretch to fill the
    whole row edge-to-edge (sparse/bulky bug) and stay neat & uniform. */
 .grid-products {
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
 }
 .grid-products > .product-card,
 .grid-products > .card-skeleton {

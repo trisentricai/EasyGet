@@ -120,7 +120,7 @@ export function WishButton({ slug, className = "" }: { slug: string; className?:
 
 export function ProductCard({
   product,
-  size = "md",
+  size = "sm",
   effects,
 }: {
   product: Product;
