@@ -118,7 +118,18 @@ export function WishButton({ slug, className = "" }: { slug: string; className?:
   );
 }
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  size = "md",
+  effects,
+}: {
+  product: Product;
+  size?: "sm" | "md" | "lg";
+  effects?: string[];
+}) {
+  const fx = Array.isArray(effects) ? effects : [];
+  const has = (k: string) => fx.includes(k);
+  const fadeClass = has("fade_in") ? "fx-fade-in" : "";
   const { add } = useCart();
   const toast = useToast();
   const image = img(product.primary_image);
@@ -149,7 +160,7 @@ export function ProductCard({ product }: { product: Product }) {
     }
   };
   return (
-    <a className="product-card" href={href(`product/${product.slug}`)}>
+    <a className={`product-card product-card--${size} ${fadeClass}`.trim()} href={href(`product/${product.slug}`)}>
       <div className="product-thumb-wrap">
         <div
           className={`product-thumb ${fxClass(product.primary_image_display)}`}

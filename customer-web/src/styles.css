@@ -817,6 +817,19 @@ button { font-family: inherit; }
   gap: 8px;
   flex: 1;
 }
+
+/* Admin-configurable card density (storefront design: config.size) */
+.product-card--sm .product-body { padding: 10px 12px 12px; gap: 6px; }
+.product-card--sm .product-name { font-size: 14px; min-height: 36px; }
+.product-card--sm .product-brand { font-size: 10px; }
+.product-card--sm .add-btn { padding: 10px 12px; font-size: 13px; min-height: 40px; }
+.product-card--lg .product-body { padding: 18px 16px 20px; gap: 10px; }
+.product-card--lg .product-name { font-size: 17px; min-height: 52px; }
+.product-card--lg .add-btn { padding: 16px 16px; font-size: 16px; min-height: 52px; }
+
+/* Admin-configurable fade-in effect (config.effects includes "fade_in") */
+.product-card.fx-fade-in { animation: cardFadeIn 0.4s var(--ease-out, ease) both; }
+@keyframes cardFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .product-brand {
   font-size: 11px;
   font-weight: 700;

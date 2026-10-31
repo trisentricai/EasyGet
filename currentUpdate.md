@@ -9,6 +9,19 @@
 
 ---
 
+## 0. LATEST - Tighten product card height (2026-10-31)
+
+**Goal hit:** user - "u still not correct card height!" (after reducing from 615 -> 597)
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.product-body`: gap `10 -> 8`, padding `16/16/20 -> 14/16/16` (further tighten info stack -> cards shorter again).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
 ## 0. LATEST - Reduce product card height (2026-10-31)
 
 **Goal hit:** user - "the card have more height reduce the height of all cards of the product!"

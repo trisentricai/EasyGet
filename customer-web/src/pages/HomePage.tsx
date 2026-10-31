@@ -226,7 +226,15 @@ function ProductRowSection({ section }: { section: StoreSection }) {
         })),
     [section.items],
   );
-  const size = section.config?.size ?? "md";
+  const size = (section.config?.size as "sm" | "md" | "lg") ?? "md";
+  const columns = Number(section.config?.columns);
+  const effects = Array.isArray(section.config?.effects)
+    ? (section.config?.effects as string[])
+    : (section.config?.effects && typeof section.config?.effects === "object"
+        ? Object.keys(section.config?.effects as Record<string, unknown>).filter(
+            (k) => (section.config?.effects as Record<string, unknown>)[k],
+          )
+        : []);
 
   return (
     <Section
@@ -238,12 +246,17 @@ function ProductRowSection({ section }: { section: StoreSection }) {
         <div
           className="grid grid-products"
           style={{
-            gridTemplateColumns: `repeat(auto-fill, minmax(${size === "lg" ? 260 : size === "sm" ? 150 : 200}px, 1fr))`,
+            gridTemplateColumns:
+              Number.isInteger(columns) && columns >= 1 && columns <= 6
+                ? `repeat(${columns}, 1fr)`
+                : `repeat(auto-fill, minmax(${size === "lg" ? 260 : size === "sm" ? 150 : 200}px, 1fr))`,
           }}
         >
           {products.map((p) => (
             <ProductCard
               key={p.id}
+              size={size}
+              effects={effects}
               product={{
                 id: p.id,
                 name: p.name,
