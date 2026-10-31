@@ -9,6 +9,22 @@
 
 ---
 
+## 0. LATEST - Admin-configurable product cards (size/columns/effects) (2026-10-31)
+
+**Goal hit:** user - "u still not correct card height! and the banner! you make the card size proper like card of product can be modifed via admin storefront design! make that happen! card style, siz, row cloluum, placement, effect etc.."
+
+**What changed:**
+1. **`customer-web/src/components/ui.tsx`** - `ProductCard` now accepts `size` (sm/md/lg) + `effects` (string[]); applies `product-card--sm/md/lg` density class + `fx-fade-in` when effects includes fade_in.
+2. **`customer-web/src/pages/HomePage.tsx`** - `ProductRowSection` now honors `config.columns` (fixed `repeat(N,1fr)` when 1-6) and passes `config.size` + `config.effects` to ProductCard.
+3. **`customer-web/src/styles.css`** - size density modifiers (sm/md/lg: padding/gap/font/min-height) + fade-in keyframes.
+4. Admin storefront designer already exposes columns/card size/effects/image display (align/zoom/effect/transition) + hero_layout/hero_overlay + drag-reorder placement; customer now actually applies them.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** browse/search global grids remain responsive auto-fill (not section-scoped); effect toggles hover_zoom/shadow_on_hover are base behavior (always on) for now.
+
+---
+
 ## 0. LATEST - Tighten product card height (2026-10-31)
 
 **Goal hit:** user - "u still not correct card height!" (after reducing from 615 -> 597)
