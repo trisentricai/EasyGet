@@ -9,6 +9,19 @@
 
 ---
 
+## 0. LATEST - Reduce product card height (2026-10-31)
+
+**Goal hit:** user - "the card have more height reduce the height of all cards of the product!"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - reverted the just-applied card height increases: `.product-body` gap `12 -> 10`, padding bottom `22 -> 20`, `.product-name` min-height `52 -> 46` (back to clean compact tall-card rhythm; add-to-bag still pinned via flex).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
 ## 0. LATEST - Taller cards + border fix in grids (2026-10-31)
 
 **Goal hit:** user - "cards have more height!! like longvertical!! it was not good! look at the card in this image or this website! https://sreepon.netlify.app/"
