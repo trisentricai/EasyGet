@@ -9,6 +9,21 @@
 
 ---
 
+## 0. LATEST - Taller cards + stronger borders + sidebar on all pages (2026-10-31)
+
+**Goal hit:** user - "1. the card size have more heights 2. the card have light border need more highlight! 3. https://easyget-customer.pages.dev/#/home this screen also need sidebar make sidebar works all pages!"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.product-body`: taller info stack (padding `14/16/16` -> `16/16/20`, gap `8` -> `10`) so product cards read taller.
+2. **`customer-web/src/styles.css`** - `.product-card`: border light `--border` -> `--color-border-strong` for more highlight (design token, border-first elevation kept).
+3. **Sidebar on all catalog pages** - home (`#/home`) now renders the left category sidebar via `CategorySidebar` inside `.browse-layout`; same added to `SearchPage`, `CategoriesPage`, `WishlistPage` (`#/browse` already had it). Sidebar collapse breakpoint fixed earlier (`1024px -> 900px`) so sticky sidebar shows on all widths >900px.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** none new for this round.
+
+---
+
 ## 0. LATEST - Sidebar visibility fix (2026-10-31)
 
 **Goal hit:** user - "Still there is no sidebar on dashboard!"

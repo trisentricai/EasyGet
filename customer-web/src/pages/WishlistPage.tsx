@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { navigate } from "../hooks/useHashRoute";
 import { asArray, errText, listWishlist, type Product } from "../services/api";
 import { EmptyState, ProductCard, SignInGate, Spinner } from "../components/ui";
+import { CategorySidebar } from "./CategorySidebar";
 import { setWishlistCache } from "../utils/history";
 
 export function WishlistPage() {
@@ -36,6 +37,16 @@ export function WishlistPage() {
 
   return (
     <div className="page">
+      <div className="browse-layout">
+        <CategorySidebar
+          activeCategory=""
+          activeBrand=""
+          activeDiscount=""
+          onCategoryChange={(slug) => { if (slug) window.location.hash = `#/browse?category=${encodeURIComponent(slug)}`; }}
+          onBrandChange={() => undefined}
+          onDiscountChange={() => undefined}
+        />
+        <div className="browse-main">
       <div className="pagehead">
         <h1>Your wishlist</h1>
         <p className="muted">Tap the heart on any product to keep it here for later.</p>
@@ -63,6 +74,8 @@ export function WishlistPage() {
           ))}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

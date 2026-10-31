@@ -13,6 +13,7 @@ import {
 } from "../services/api";
 import { href } from "../hooks/useHashRoute";
 import { EmptyState, ProductCard, Section, Spinner } from "../components/ui";
+import { CategorySidebar } from "./CategorySidebar";
 import { CategoryTilesFromCategories } from "../components/category-tiles";
 
 function CategoryShelf({ category }: { category: Category }) {
@@ -70,6 +71,16 @@ export function CategoriesPage() {
 
   return (
     <div className="page">
+      <div className="browse-layout">
+        <CategorySidebar
+          activeCategory=""
+          activeBrand=""
+          activeDiscount=""
+          onCategoryChange={(slug) => { if (slug) window.location.hash = `#/browse?category=${encodeURIComponent(slug)}`; }}
+          onBrandChange={() => undefined}
+          onDiscountChange={() => undefined}
+        />
+        <div className="browse-main">
       <div className="pagehead">
         <h1>All categories</h1>
         <p className="muted">
@@ -82,6 +93,8 @@ export function CategoriesPage() {
       {cats.slice(0, 4).map((c) => (
         <CategoryShelf key={c.slug} category={c} />
       ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   searchWithFallback,
 } from "../services/api";
 import { CardSkeletonGrid, EmptyState, ProductCard, Section } from "../components/ui";
+import { CategorySidebar } from "./CategorySidebar";
 import {
   TRENDING_SEARCHES,
   getRecentSearches,
@@ -52,6 +53,16 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
 
   return (
     <div className="page">
+      <div className="browse-layout">
+        <CategorySidebar
+          activeCategory=""
+          activeBrand=""
+          activeDiscount=""
+          onCategoryChange={(slug) => { if (slug) window.location.hash = `#/browse?category=${encodeURIComponent(slug)}`; }}
+          onBrandChange={() => undefined}
+          onDiscountChange={() => undefined}
+        />
+        <div className="browse-main">
       <div className="pagehead">
         <h1>Search</h1>
         <p className="muted">
@@ -144,6 +155,8 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
           </div>
         </Section>
       ) : null}
+        </div>
+      </div>
     </div>
   );
 }

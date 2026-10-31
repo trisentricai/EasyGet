@@ -4,6 +4,7 @@ import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/ui";
 import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
+import { CategorySidebar } from "./CategorySidebar";
 import { fxStyle } from "../utils/imageFx";
 import {
   AllProductsGrid,
@@ -65,52 +66,65 @@ export function HomePage() {
         />
       )}
 
-      {/* Single Shop by Category section — uses CategoryTiles with cards style for proper styling */}
-      {categoryItems.length > 0 && (
-        <>
-          {(() => {
-            const categorySection: StoreSection = {
-              id: 0,
-              section_type: "CATEGORY_GRID",
-              title: "Shop by category",
-              subtitle: "Everything your home needs, delivered fast",
-              image: null,
-              config: { category_style: "cards" },
-              position: 0,
-              is_active: true,
-              items: categoryItems,
-            } as unknown as StoreSection;
-            return <CategoryGridSection section={categorySection} />;
-          })()}
-        </>
-      )}
+      {/* Left category sidebar + home content — sidebar now on the home screen too */}
+      <div className="browse-layout">
+        <CategorySidebar
+          activeCategory=""
+          activeBrand=""
+          activeDiscount=""
+          onCategoryChange={(slug) => { if (slug) window.location.hash = `#/browse?category=${encodeURIComponent(slug)}`; }}
+          onBrandChange={() => undefined}
+          onDiscountChange={() => undefined}
+        />
+        <div className="browse-main">
+          {/* Single Shop by Category section — uses CategoryTiles with cards style for proper styling */}
+          {categoryItems.length > 0 && (
+            <>
+              {(() => {
+                const categorySection: StoreSection = {
+                  id: 0,
+                  section_type: "CATEGORY_GRID",
+                  title: "Shop by category",
+                  subtitle: "Everything your home needs, delivered fast",
+                  image: null,
+                  config: { category_style: "cards" },
+                  position: 0,
+                  is_active: true,
+                  items: categoryItems,
+                } as unknown as StoreSection;
+                return <CategoryGridSection section={categorySection} />;
+              })()}
+            </>
+          )}
 
-      {/* Designed sections (admin-configured) */}
-      {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
+          {/* Designed sections (admin-configured) */}
+          {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
 
-      {/* Fallback welcome content when no sections configured */}
-      {!hasContent && (
-        <>
-          <WelcomeHero
-            storeName={data.store.name}
-            city={data.store.city}
-            description={data.store.description}
-          />
-          <DealsRail />
-          <RecommendedRail />
-          <RecentlyViewedRail />
-          <AllProductsGrid />
-        </>
-      )}
+          {/* Fallback welcome content when no sections configured */}
+          {!hasContent && (
+            <>
+              <WelcomeHero
+                storeName={data.store.name}
+                city={data.store.city}
+                description={data.store.description}
+              />
+              <DealsRail />
+              <RecommendedRail />
+              <RecentlyViewedRail />
+              <AllProductsGrid />
+            </>
+          )}
 
-      {hasContent && (
-        <>
-          <DealsRail />
-          <RecommendedRail />
-          <RecentlyViewedRail />
-          <AllProductsGrid />
-        </>
-      )}
+          {hasContent && (
+            <>
+              <DealsRail />
+              <RecommendedRail />
+              <RecentlyViewedRail />
+              <AllProductsGrid />
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
