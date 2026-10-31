@@ -78,7 +78,18 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        # participants is read-only: membership changes go through
+        # add_participant/remove_participant (staff-only). perform_create adds
+        # the creator.
+        read_only_fields = ["id", "participants", "created_at", "updated_at"]
+
+    def validate_order(self, value):
+        if value is None:
+            return value
+        request = self.context.get("request")
+        if request and value.user_id != request.user.id and not request.user.is_staff:
+            raise serializers.ValidationError("You are not part of this order.")
+        return value
 
     def get_participant_emails(self, obj):
         return list(obj.participants.values_list("email", flat=True))
@@ -120,6 +131,26 @@ class ChatMessageSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "sender", "created_at", "updated_at"]
+
+    def validate_room(self, value):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            if not request.user.is_staff and not value.participants.filter(
+                id=request.user.id
+            ).exists():
+                raise serializers.ValidationError(
+                    "You are not a participant of this room."
+                )
+        return value
+
+    def validate(self, attrs):
+        room = attrs.get("room")
+        reply_to = attrs.get("reply_to")
+        if room is not None and reply_to is not None and reply_to.room_id != room.id:
+            raise serializers.ValidationError(
+                {"reply_to": "Reply target belongs to a different room."}
+            )
+        return attrs
 
 
 class InventorySubscriptionSerializer(serializers.ModelSerializer):

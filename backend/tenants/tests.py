@@ -326,13 +326,15 @@ class InventoryIsolationTests(TenancyTestBase):
         )
 
         response_a = self.as_user(self.merchant_a).get(TRANSACTIONS_URL)
-        self.assertTrue(response_a.data)
-        for row in response_a.data:
+        rows_a = response_a.data["results"]
+        self.assertTrue(rows_a)
+        for row in rows_a:
             self.assertIn(row["stock_item"], a_items)
 
         response_b = self.as_user(self.merchant_b).get(TRANSACTIONS_URL)
-        self.assertTrue(response_b.data)
-        for row in response_b.data:
+        rows_b = response_b.data["results"]
+        self.assertTrue(rows_b)
+        for row in rows_b:
             self.assertIn(row["stock_item"], b_items)
 
 

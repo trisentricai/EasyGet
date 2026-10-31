@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from products.serializers import VariantBriefSerializer
 from stores.serializers import StoreBriefSerializer
+from tenants.services import is_tenant_member
 
 from .models import InventoryTransaction, StockItem
 
@@ -43,6 +44,16 @@ class StockItemWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         store = validated_data["store"]
         variant = validated_data["variant"]
+        request = self.context.get("request")
+        # IsTenantWriter only proves the caller belongs to *a* tenant — the
+        # store itself must be theirs (or platform/staff-owned). Without this
+        # any merchant could write stock rows into a foreign tenant's store.
+        if (
+            request
+            and not request.user.is_staff
+            and not is_tenant_member(request.user, store.tenant)
+        ):
+            raise serializers.ValidationError({"store": "Store not found."})
         if (
             store.tenant_id
             and variant.product.tenant_id

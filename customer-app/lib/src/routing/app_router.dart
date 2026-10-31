@@ -37,14 +37,30 @@ CustomTransitionPage<void> _page(Widget child, {Object? key}) {
   );
 }
 
+/// Pokes the router whenever auth state changes, WITHOUT rebuilding the
+/// router itself. Recreating GoRouter on every auth change used to wipe the
+/// whole navigation stack mid-flight: the login page remounted (typed input
+/// vanished) and the pending sign-in result was dropped silently.
+class _AuthRefresh extends ChangeNotifier {
+  _AuthRefresh(Ref ref) {
+    ref.listen(authControllerProvider, (_, __) => notifyListeners());
+    ref.listen(authBootProvider, (_, __) => notifyListeners());
+  }
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authControllerProvider);
-  final booted = ref.watch(authBootProvider).value ?? false;
-  final signedIn = auth.value != null;
+  final refresh = _AuthRefresh(ref);
+  ref.onDispose(refresh.dispose);
 
   return GoRouter(
     initialLocation: '/home',
+    refreshListenable: refresh,
     redirect: (context, state) {
+      // Read live state at evaluation time; the provider itself never
+      // rebuilds, so this GoRouter instance (and its navigation stack)
+      // survives sign-in/out transitions.
+      final booted = ref.read(authBootProvider).value ?? false;
+      final signedIn = ref.read(authControllerProvider).value != null;
       final loc = state.matchedLocation;
       const public = ['/login', '/register', '/verify'];
       if (!booted) return null;

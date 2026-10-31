@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.104.0",
     "@vitejs/plugin-react": "latest",
     "react": "latest",
     "react-dom": "latest",

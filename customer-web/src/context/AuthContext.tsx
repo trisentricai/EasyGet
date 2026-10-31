@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { errText, getMe, getTokens, setTokens, type User } from "../services/api";
+import { purgeLocalUserData } from "../utils/history";
 
 type Ctx = {
   user: User | null;
@@ -59,7 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
+    // Full local purge: tokens, wishlist, recents, sessionStorage —
+    // no previous user's data may survive into a guest session.
     setTokens(null);
+    purgeLocalUserData();
     setUser(null);
   }, []);
 

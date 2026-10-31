@@ -1,11 +1,12 @@
 import re
 
 from django.core import mail
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from .models import Address, User
+from .models import Address, OTPCode, User
 
 REGISTER_URL = reverse("register")
 VERIFY_URL = reverse("verify-otp")
@@ -24,6 +25,9 @@ def otp_from_last_email():
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class AuthFlowTests(TestCase):
     def setUp(self):
+        # Scoped auth throttles (login/register/otp) are per-process counters;
+        # reset so tests never trip each other's limits.
+        cache.clear()
         self.client = APIClient()
         self.payload = {
             "email": "customer@example.com",
@@ -46,15 +50,22 @@ class AuthFlowTests(TestCase):
         data = {"email": self.payload["email"], "password": self.payload["password"], **overrides}
         return self.client.post(LOGIN_URL, data, format="json")
 
-    def test_register_creates_customer_and_sends_otp(self):
+    def _unverified_with_otp(self, email=None):
+        """Force an unverified state with a real OTP (covers the dormant
+        verify/resend endpoints without depending on registration mail)."""
+        user = User.objects.get(email=email or self.payload["email"])
+        user.is_email_verified = False
+        user.save(update_fields=["is_email_verified"])
+        return OTPCode.issue(user).code
+
+    def test_register_creates_verified_customer_without_otp(self):
         response = self._register()
         self.assertEqual(response.status_code, 201)
         self.assertTrue(User.objects.filter(email=self.payload["email"]).exists())
         user = User.objects.get(email=self.payload["email"])
         self.assertEqual(user.role, User.Role.CUSTOMER)
-        self.assertFalse(user.is_email_verified)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertTrue(otp_from_last_email().isdigit())
+        self.assertTrue(user.is_email_verified)
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_register_rejects_duplicate_email(self):
         self._register()
@@ -63,26 +74,22 @@ class AuthFlowTests(TestCase):
 
     def test_verify_otp_marks_email_verified(self):
         self._register()
-        response = self._verify()
+        code = self._unverified_with_otp()
+        response = self._verify(code=code)
         self.assertEqual(response.status_code, 200)
         user = User.objects.get(email=self.payload["email"])
         self.assertTrue(user.is_email_verified)
 
     def test_verify_otp_rejects_wrong_code(self):
         self._register()
+        self._unverified_with_otp()
         response = self._verify(code="000000")
         self.assertEqual(response.status_code, 400)
         user = User.objects.get(email=self.payload["email"])
         self.assertFalse(user.is_email_verified)
 
-    def test_login_rejected_before_verification(self):
+    def test_login_works_immediately_after_register(self):
         self._register()
-        response = self._login()
-        self.assertEqual(response.status_code, 400)
-
-    def test_login_returns_tokens_after_verification(self):
-        self._register()
-        self._verify()
         response = self._login()
         self.assertEqual(response.status_code, 200)
         self.assertIn("access", response.data)
@@ -91,14 +98,55 @@ class AuthFlowTests(TestCase):
 
     def test_login_with_wrong_password_fails(self):
         self._register()
-        self._verify()
         response = self._login(password="wrongpassword")
         self.assertEqual(response.status_code, 401)
+
+    def test_register_rejects_short_password(self):
+        response = self._register(password="abc123")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            User.objects.filter(email=self.payload["email"]).exists()
+        )
+
+    def test_register_rejects_all_numeric_password(self):
+        response = self._register(password="12345678901234")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            User.objects.filter(email=self.payload["email"]).exists()
+        )
+
+    def test_verify_unknown_email_returns_same_generic_error(self):
+        self._register()
+        wrong = self._verify(code="000000")
+        ghost = self.client.post(
+            VERIFY_URL, {"email": "ghost@example.com", "code": "123456"}, format="json"
+        )
+        self.assertEqual(wrong.status_code, 400)
+        self.assertEqual(ghost.status_code, 400)
+        # Identical message shape: no way to tell registered vs unregistered.
+        self.assertEqual(str(wrong.data), str(ghost.data))
+
+    def test_resend_otp_never_enumerates_and_sends_nothing_when_verified(self):
+        self._register()
+        resend_url = reverse("resend-otp")
+        for _ in range(3):
+            res = self.client.post(
+                resend_url, {"email": self.payload["email"]}, format="json"
+            )
+            self.assertEqual(res.status_code, 200)
+        # Verified accounts need no codes: same message as ghosts, zero mail.
+        ghost = self.client.post(
+            resend_url, {"email": "ghost@example.com"}, format="json"
+        )
+        self.assertEqual(ghost.status_code, 200)
+        self.assertEqual(ghost.data["message"], res.data["message"])
+        self.assertEqual(len(mail.outbox), 0)
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class LogoutTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         user = User.objects.create_user(
             email="logout@example.com", password="strongpass123", is_email_verified=True
@@ -121,6 +169,7 @@ class LogoutTests(TestCase):
 
 class ProfileAndAddressTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             email="profile@example.com", password="strongpass123", is_email_verified=True
         )

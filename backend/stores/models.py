@@ -43,11 +43,21 @@ class Store(models.Model):
     closing_time = models.TimeField(null=True, blank=True)
 
     is_active = models.BooleanField(default=True)
+    # The single platform-level row that owns EASYGET's customer storefront
+    # (theme/sections). Never an order target, never shown as a seller.
+    is_platform = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_platform"],
+                condition=models.Q(is_platform=True),
+                name="unique_platform_store",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.slug:

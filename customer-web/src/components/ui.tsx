@@ -1,6 +1,14 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { href } from "../hooks/useHashRoute";
-import { img, type Product } from "../services/api";
+import {
+  addToWishlist,
+  getTokens,
+  img,
+  removeFromWishlist,
+  type Product,
+} from "../services/api";
+import { isWished, syncWishlistCache, toggleWishlist } from "../utils/history";
+import { fxClass, fxStyle } from "../utils/imageFx";
 import { Icon, type IconName } from "./icons";
 
 export function money(value: string | number | null | undefined): string {
@@ -41,21 +49,141 @@ export function Price({
   );
 }
 
-export function ProductCard({ product }: { product: Product }) {
-  const image = img(product.primary_image);
+/** Flipkart-style green rating pill: ★ 4.3 (128) */
+export function RatingPill({
+  avg,
+  count,
+  size = "sm",
+}: {
+  avg: number | null | undefined;
+  count: number | undefined;
+  size?: "sm" | "lg";
+}) {
+  if (!avg || !count) return null;
   return (
-    <a className="product-card" href={href(`product/${product.slug}`)}>
-      <div className="product-thumb">
-        {image ? <img src={image} alt={product.name} loading="lazy" /> : <Monogram text={product.name} />}
-        {product.is_featured ? <span className="chip chip-featured">★ Featured</span> : null}
+    <span className={`rating-pill rating-pill-${size}`}>
+      {avg.toFixed(1)}
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.3l7.1-.7z" />
+      </svg>
+      <em>({count > 999 ? `${(count / 1000).toFixed(1)}k` : count})</em>
+    </span>
+  );
+}
+
+export function WishButton({ slug, className = "" }: { slug: string; className?: string }) {
+  const [wished, setWished] = useState(() => isWished(slug));
+  const [busy, setBusy] = useState(false);
+
+  const toggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (busy) return;
+    const next = !wished;
+    setWished(next);
+    if (getTokens()) {
+      // Signed in: server is the source of truth (optimistic, rolls back).
+      setBusy(true);
+      try {
+        const res = next ? await addToWishlist(slug) : await removeFromWishlist(slug);
+        setWished(next);
+        // Keep the offline cache aligned with the server.
+        syncWishlistCache(slug, next);
+        void res;
+      } catch {
+        setWished(!next);
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      toggleWishlist(slug);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className={`wish-btn ${wished ? "on" : ""} ${className}`}
+      aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+      aria-pressed={wished}
+      disabled={busy}
+      onClick={toggle}
+    >
+      <Icon name="heart" size={16} />
+    </button>
+  );
+}
+
+export function ProductCard({
+  product,
+  size = "sm",
+  effects,
+}: {
+  product: Product;
+  size?: "sm" | "md" | "lg";
+  effects?: string[];
+}) {
+  const fx = Array.isArray(effects) ? effects : [];
+  const fadeClass = fx.includes("fade_in") ? "fx-fade-in" : "";
+  const image = img(product.primary_image);
+
+  // Optional multi-image gallery: activates only when the backend exposes
+  // additional images; otherwise renders the single primary_image.
+  const gallery = Array.isArray((product as { images?: string[] }).images)
+    ? ((product as { images?: string[] }).images as string[])
+        .map((u) => img(u))
+        .filter((u): u is string => Boolean(u))
+    : [];
+  const slides = gallery.length ? gallery : image ? [image] : [];
+  const [active, setActive] = useState(0);
+  const slide = slides[active] ?? image;
+
+  const out = product.in_stock === false;
+  const discount = product.discount_percent ?? 0;
+
+  return (
+    <a
+      className={`product-card product-card--${size} ${fadeClass}`.trim()}
+      href={href(`product/${product.slug}`)}
+      onMouseEnter={() => {
+        if (slides.length > 1) setActive((i) => (i + 1) % slides.length);
+      }}
+      onMouseLeave={() => setActive(0)}
+    >
+      <div className="product-thumb-wrap">
+        <div
+          className={`product-thumb ${fxClass(product.primary_image_display)}`}
+          style={fxStyle(product.primary_image_display)}
+        >
+          {slide ? (
+            <img
+              key={slide}
+              src={slide}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              width={600}
+              height={600}
+            />
+          ) : (
+            <Monogram text={product.name} />
+          )}
+        </div>
+        {out ? (
+          <span className="product-chip chip chip-out">Out of stock</span>
+        ) : discount >= 5 ? (
+          <span className="product-chip chip chip-deal">{discount}% off</span>
+        ) : product.is_featured ? (
+          <span className="product-chip chip chip-featured">★ Featured</span>
+        ) : null}
+        <WishButton slug={product.slug} className="wish-card" />
       </div>
       <div className="product-body">
+        <div className="product-brand">{product.category?.name || product.brand || ""}</div>
         <div className="product-name" title={product.name}>{product.name}</div>
-        <div className="product-meta">
-          {product.brand ? <span className="brand">{product.brand}</span> : null}
-          {product.category ? <span className="cat">{product.category.name}</span> : null}
+        <div className="product-price-row">
+          <Price price={product.base_price} mrp={product.mrp} discount={discount} size="md" />
         </div>
-        <Price price={product.base_price} mrp={product.mrp} discount={product.discount_percent} size="sm" />
       </div>
     </a>
   );

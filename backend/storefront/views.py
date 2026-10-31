@@ -19,15 +19,59 @@ from .serializers import (
 )
 
 
+def _product_allowed_for_store(product, store, user):
+    """Section items must not become a cross-tenant read channel: linked
+    product name/slug/price are served publicly by the render endpoint."""
+    if product is None or user.is_staff:
+        return True
+    if store.is_platform:
+        # The platform storefront aggregates the whole marketplace: any
+        # active product from any tenant may be featured there.
+        return bool(product.is_active)
+    if product.tenant_id is None:
+        return True  # platform-level product
+    return product.tenant_id == store.tenant_id
+
+
+class PlatformStorefrontView(APIView):
+    """GET /api/v1/storefront/platform/ — public render of the single
+    platform-level (EASYGET) storefront row. Lookup by flag, not slug, so a
+    rename of the platform row can never break the customer app.
+
+    Cached (Redis, 1h, cache-aside): this is the app's first request on every
+    load; edits invalidate automatically via post_save signals."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from common.cache import get_or_set
+
+        def produce():
+            store = get_object_or_404(Store, is_platform=True, is_active=True)
+            return StorefrontRenderSerializer(
+                store, context={"request": request}
+            ).data
+
+        return Response(get_or_set("storefront", ["platform"], produce))
+
+
 class StorefrontRenderView(APIView):
     """GET /api/v1/storefront/{store_slug}/ — public. One request returns the
-    theme + ordered sections (+ items) that customer-web/Flutter render."""
+    theme + ordered sections (+ items) that customer-web/Flutter render.
+    Cached like the platform render (1h, signal-invalidated)."""
 
     permission_classes = [AllowAny]
 
     def get(self, request, store_slug):
-        store = get_object_or_404(Store, slug=store_slug, is_active=True)
-        return Response(StorefrontRenderSerializer(store).data)
+        from common.cache import get_or_set
+
+        def produce():
+            store = get_object_or_404(Store, slug=store_slug, is_active=True)
+            return StorefrontRenderSerializer(
+                store, context={"request": request}
+            ).data
+
+        return Response(get_or_set("storefront", ["store", store_slug], produce))
 
 
 class StorefrontThemeView(APIView):
@@ -49,12 +93,14 @@ class StorefrontThemeView(APIView):
         theme = getattr(store, "storefront_theme", None)
         if theme is None:
             return Response(None)
-        return Response(StorefrontThemeSerializer(theme).data)
+        return Response(StorefrontThemeSerializer(theme, context={"request": request}).data)
 
     def patch(self, request, store_slug):
         store = self.get_store()
         theme, _ = StorefrontTheme.objects.get_or_create(store=store)
-        serializer = StorefrontThemeSerializer(theme, data=request.data, partial=True)
+        serializer = StorefrontThemeSerializer(
+            theme, data=request.data, partial=True, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
@@ -82,7 +128,9 @@ class SectionListCreateView(APIView):
         )
         if not can_manage_store(request.user, store):
             qs = qs.filter(is_active=True)
-        return Response(StoreSectionSerializer(qs, many=True).data)
+        return Response(
+            StoreSectionSerializer(qs, many=True, context={"request": request}).data
+        )
 
     def post(self, request, store_slug):
         store = self.get_store()
@@ -92,7 +140,10 @@ class SectionListCreateView(APIView):
         section = serializer.save(
             store=store, position=0 if max_pos is None else max_pos + 1
         )
-        return Response(StoreSectionSerializer(section).data, status=201)
+        return Response(
+            StoreSectionSerializer(section, context={"request": request}).data,
+            status=201,
+        )
 
 
 class SectionDetailView(APIView):
@@ -111,7 +162,9 @@ class SectionDetailView(APIView):
         serializer = StoreSectionWriteSerializer(section, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(StoreSectionSerializer(section).data)
+        return Response(
+            StoreSectionSerializer(section, context={"request": request}).data
+        )
 
     def delete(self, request, pk):
         section = self.get_object()
@@ -141,7 +194,9 @@ class SectionReorderView(APIView):
             sections[section_id].position = position
             sections[section_id].save(update_fields=["position", "updated_at"])
         return Response(
-            StoreSectionSerializer(store.storefront_sections.all(), many=True).data
+            StoreSectionSerializer(
+                store.storefront_sections.all(), many=True, context={"request": request}
+            ).data
         )
 
 
@@ -163,15 +218,41 @@ class SectionItemsView(APIView):
 
     def get(self, request, pk):
         section = get_object_or_404(StoreSection, pk=pk)
-        return Response(SectionItemSerializer(section.items.all(), many=True).data)
+        # Unpublished sections are management state — only their store's
+        # managers (or staff) may read them by ID.
+        if not section.is_active:
+            user = request.user
+            if not (
+                user
+                and user.is_authenticated
+                and (user.is_staff or can_manage_store(user, section.store))
+            ):
+                from django.http import Http404
+
+                raise Http404("No StoreSection matches the given query.")
+        return Response(
+            SectionItemSerializer(
+                section.items.all(), many=True, context={"request": request}
+            ).data
+        )
 
     def post(self, request, pk):
         section = self.get_object()
         serializer = SectionItemWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        product = serializer.validated_data.get("product")
+        if product is not None and not _product_allowed_for_store(
+            product, section.store, request.user
+        ):
+            return Response(
+                {"product": "Product does not belong to this store's tenant."},
+                status=400,
+            )
         max_pos = section.items.aggregate(m=Max("position"))["m"]
         item = serializer.save(section=section, position=0 if max_pos is None else max_pos + 1)
-        return Response(SectionItemSerializer(item).data, status=201)
+        return Response(
+            SectionItemSerializer(item, context={"request": request}).data, status=201
+        )
 
 
 class ItemDetailView(APIView):
@@ -189,8 +270,18 @@ class ItemDetailView(APIView):
         item = self.get_object()
         serializer = SectionItemWriteSerializer(item, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        product = serializer.validated_data.get("product")
+        if product is not None and not _product_allowed_for_store(
+            product, item.section.store, request.user
+        ):
+            return Response(
+                {"product": "Product does not belong to this store's tenant."},
+                status=400,
+            )
         serializer.save()
-        return Response(SectionItemSerializer(item).data)
+        return Response(
+            SectionItemSerializer(item, context={"request": request}).data
+        )
 
     def delete(self, request, pk):
         item = self.get_object()
@@ -220,4 +311,8 @@ class ItemReorderView(APIView):
         for position, item_id in enumerate(order):
             items[item_id].position = position
             items[item_id].save(update_fields=["position"])
-        return Response(SectionItemSerializer(section.items.all(), many=True).data)
+        return Response(
+            SectionItemSerializer(
+                section.items.all(), many=True, context={"request": request}
+            ).data
+        )

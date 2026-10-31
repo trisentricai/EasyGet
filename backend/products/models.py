@@ -1,11 +1,58 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 
 from categories.models import Category
 from tenants.models import Tenant
+
+
+class ImageDisplayFields(models.Model):
+    """Display knobs shared by every image we render (product gallery,
+    storefront sections): focal alignment, scale and hover interaction.
+
+    Pure data — clients map it to `object-position`, `transform: scale()`
+    and hover effect classes. Defaults are a no-op so images look exactly
+    the same until someone edits them.
+    """
+
+    class ImageEffect(models.TextChoices):
+        NONE = "none", "None"
+        ZOOM = "zoom", "Zoom on hover"
+        PAN = "pan", "Pan on hover"
+        GRAYSCALE = "grayscale", "Grayscale to color"
+
+    align_x = models.PositiveSmallIntegerField(
+        default=50,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Horizontal focal point, 0-100 (%).",
+    )
+    align_y = models.PositiveSmallIntegerField(
+        default=50,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Vertical focal point, 0-100 (%).",
+    )
+    zoom = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(1.0), MaxValueValidator(3.0)],
+        help_text="Scale multiplier applied over the cover crop (1.0-3.0).",
+    )
+    effect = models.CharField(
+        max_length=16,
+        choices=ImageEffect.choices,
+        default=ImageEffect.NONE,
+        help_text="Interactive hover effect shown on the storefront.",
+    )
+    transition_ms = models.PositiveIntegerField(
+        default=400,
+        validators=[MinValueValidator(0), MaxValueValidator(2000)],
+        help_text="Effect transition duration in milliseconds.",
+    )
+
+    class Meta:
+        abstract = True
 
 
 class Product(models.Model):
@@ -35,6 +82,15 @@ class Product(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
+        indexes = [
+            # Hot paths: every public list filters is_active + category and
+            # orders by created_at/updated_at; is_featured powers "Featured".
+            models.Index(fields=["is_active", "category"]),
+            models.Index(fields=["is_active", "is_featured"]),
+            models.Index(fields=["-updated_at", "-id"]),
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["brand"]),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -86,6 +142,13 @@ class ProductVariant(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        indexes = [
+            # Price aggregation on every product-list query filters
+            # is_active and sorts by price.
+            models.Index(fields=["is_active", "price"]),
+        ]
+
+    class Meta:
         ordering = ["sku"]
 
     def save(self, *args, **kwargs):
@@ -110,7 +173,7 @@ class ProductVariant(models.Model):
         return f"{self.product.name} — {label}"
 
 
-class ProductImage(models.Model):
+class ProductImage(ImageDisplayFields):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="images"
     )
@@ -125,3 +188,77 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"{self.product.name} image #{self.sort_order}"
+
+
+class ProductReview(models.Model):
+    """One review per shopper per product (Flipkart rule): rating 1-5.
+
+    `is_verified_purchase` is set server-side from delivered orders, and
+    product-level aggregates (rating_avg / rating_count) are annotated on
+    product queries rather than denormalized, so they can never drift.
+    """
+
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="reviews"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="product_reviews",
+    )
+    rating = models.PositiveSmallIntegerField()
+    title = models.CharField(max_length=150, blank=True, default="")
+    body = models.TextField(blank=True, default="")
+    is_verified_purchase = models.BooleanField(default=False)
+    is_approved = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "user"], name="one_review_per_user_per_product"
+            ),
+            models.CheckConstraint(
+                check=models.Q(rating__gte=1, rating__lte=5),
+                name="review_rating_1_to_5",
+            ),
+        ]
+
+    @property
+    def reviewer_name(self) -> str:
+        """Masked display name: 'Rahul B.' (Flipkart-style)."""
+        first = (self.user.first_name or "").strip()
+        last = (self.user.last_name or "").strip()
+        if first:
+            return f"{first} {last[:1]}." if last else first
+        return (self.user.email or "Shopper").split("@")[0]
+
+    def __str__(self):
+        return f"{self.product.name} ★{self.rating} by {self.reviewer_name}"
+
+
+class WishlistItem(models.Model):
+    """A shopper's saved product (server-backed wishlist, Flipkart heart)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="wishlist_items",
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="wishlist_items"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "product"], name="one_wishlist_row_per_user_product"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user} ♥ {self.product.name}"

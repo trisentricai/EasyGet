@@ -1,13 +1,13 @@
 /// Central app configuration.
 ///
-/// The API host differs per run target:
-/// - Android emulator: 10.0.2.2 maps to the host loopback
-/// - iOS simulator / desktop / web: host loopback directly
-/// Override with: flutter run --dart-define=API_BASE=http://192.168.1.5:8000/api/v1
+/// Points at the deployed Render API by default so the app works online on
+/// any device. For local development override with:
+/// - Android emulator: flutter run --dart-define=API_BASE=http://10.0.2.2:8000/api/v1
+/// - iOS simulator / desktop: flutter run --dart-define=API_BASE=http://127.0.0.1:8000/api/v1
 class AppConfig {
   static const apiBase = String.fromEnvironment(
     'API_BASE',
-    defaultValue: 'http://10.0.2.2:8000/api/v1',
+    defaultValue: 'https://easyget-api.onrender.com/api/v1',
   );
 
   /// Absolute URL for backend-served media paths (/media/...).
@@ -21,6 +21,6 @@ class AppConfig {
 
   static const storeSlug = String.fromEnvironment(
     'STORE_SLUG',
-    defaultValue: 'rahuls-store',
+    defaultValue: 'easyget',
   );
 }

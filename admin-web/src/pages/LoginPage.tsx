@@ -7,7 +7,7 @@ import { ApiError } from "../services/api";
 export function LoginPage({ onDone }: { onDone: () => void }) {
   const { signIn } = useAuth();
   const { push } = useToast();
-  const { theme, toggle } = useTheme();
+  const { theme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);

@@ -1,22 +1,25 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./context/AuthContext";
-import { useTheme } from "./context/ThemeContext";
 import { navigate, useHashRoute } from "./hooks/useHashRoute";
 import { LoginPage, ThemeToggle } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { ProductsPage } from "./pages/ProductsPage";
+import { ReviewsPage } from "./pages/ReviewsPage";
+import { UsersPage } from "./pages/UsersPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { StorefrontPage } from "./pages/StorefrontPage";
 import { Spinner } from "./components/ui";
 
-const NAV: Array<{ route: string; icon: string; label: string }> = [
+const NAV: Array<{ route: string; icon: string; label: string; adminOnly?: boolean }> = [
   { route: "dashboard", icon: "📊", label: "Dashboard" },
   { route: "orders", icon: "📦", label: "Orders" },
   { route: "categories", icon: "🧩", label: "Categories" },
   { route: "products", icon: "🛍️", label: "Products" },
+  { route: "reviews", icon: "⭐", label: "Reviews" },
   { route: "inventory", icon: "📦", label: "Inventory" },
+  { route: "users", icon: "👥", label: "Users", adminOnly: true },
   { route: "storefront", icon: "🎨", label: "Storefront designer" },
 ];
 
@@ -25,7 +28,9 @@ const TITLES: Record<string, string> = {
   orders: "Orders",
   categories: "Categories",
   products: "Products",
+  reviews: "Reviews & moderation",
   inventory: "Inventory",
+  users: "Users",
   storefront: "Storefront designer",
 };
 
@@ -49,9 +54,23 @@ export default function App() {
       {route === "orders" && <OrdersPage />}
       {route === "categories" && <CategoriesPage />}
       {route === "products" && <ProductsPage />}
+        {route === "reviews" && <ReviewsPage />}
       {route === "inventory" && <InventoryPage />}
-      {route === "storefront" && <StorefrontPage />}
-      {!TITLES[route] && <DashboardPage />}
+      {route === "users" && user.role === "ADMIN" && <UsersPage />}
+      {route === "users" && user.role !== "ADMIN" && <DashboardPage />}
+      {route === "storefront" && user.role === "ADMIN" && <StorefrontPage />}
+      {route === "storefront" && user.role !== "ADMIN" && <DashboardPage />}
+      {!TITLES[route] && (
+        <div className="card not-found">
+          <div className="empty">
+            <h2>Page not found</h2>
+            <p className="muted">The admin section “{route}” doesn't exist.</p>
+            <button className="btn btn-primary" onClick={() => navigate("dashboard")}>
+              Back to dashboard
+            </button>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }
@@ -69,7 +88,6 @@ function Shell({
   onSignOut: () => void;
   children: React.ReactNode;
 }) {
-  const { theme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [now, setNow] = useState(new Date());
 
@@ -88,7 +106,9 @@ function Shell({
             <small>ADMIN</small>
           </div>
         </div>
-        {NAV.map((item) => (
+        {NAV.filter(
+          (item) => (item.route !== "storefront" && !item.adminOnly) || role === "ADMIN",
+        ).map((item) => (
           <button
             key={item.route}
             className={`nav-item ${route === item.route ? "active" : ""}`}

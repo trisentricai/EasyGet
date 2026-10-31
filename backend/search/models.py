@@ -22,6 +22,8 @@ class ProductSearchIndex(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=["updated_at"]),
+            # Search-join safety net when the FTS path can't be used.
+            models.Index(fields=["product"]),
         ]
 
     def __str__(self):
@@ -30,7 +32,7 @@ class ProductSearchIndex(models.Model):
     def update_index(self):
         """Update search vector from product data."""
         from django.contrib.postgres.search import SearchVector
-        from django.db.models import F
+        from django.db import connection
 
         self.search_text = " ".join(filter(None, [
             self.product.name,
@@ -39,10 +41,18 @@ class ProductSearchIndex(models.Model):
             self.product.category.name if self.product.category else "",
             self.product.tags,
         ]))
-        ProductSearchIndex.objects.filter(pk=self.pk).update(
-            document=SearchVector("search_text"),
-            updated_at=timezone.now(),
-        )
+        if connection.vendor == "postgresql":
+            ProductSearchIndex.objects.filter(pk=self.pk).update(
+                document=SearchVector("search_text"),
+                updated_at=timezone.now(),
+            )
+        else:
+            # SQLite (local dev) has no tsvector support; the view falls back
+            # to prefix matching on search_text there, so keep it fresh.
+            ProductSearchIndex.objects.filter(pk=self.pk).update(
+                search_text=self.search_text,
+                updated_at=timezone.now(),
+            )
         self.refresh_from_db()
 
 
@@ -69,6 +79,8 @@ class SearchQueryLog(models.Model):
         indexes = [
             models.Index(fields=["user", "created_at"]),
             models.Index(fields=["query"]),
+            # Popular-search rebuild aggregates per query over recent rows.
+            models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):

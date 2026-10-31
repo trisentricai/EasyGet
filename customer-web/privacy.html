@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EASYGET · Privacy Policy</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #faf8f5;
+        --surface: #ffffff;
+        --ink: #1a1815;
+        --muted: #6b6560;
+        --border: #e8e2db;
+        --accent: #1f3d2f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f0e0d;
+          --surface: #1a1815;
+          --ink: #f5f2ee;
+          --muted: #a39d96;
+          --border: #2a2724;
+          --accent: #2d5a45;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 40px 20px 80px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 28px;
+        text-decoration: none;
+        color: inherit;
+      }
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 800;
+      }
+      .brand-name { font-weight: 800; letter-spacing: 0.02em; }
+      h1 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 500;
+        font-size: clamp(2rem, 5vw, 2.75rem);
+        line-height: 1.15;
+        margin: 0 0 6px;
+      }
+      .updated { color: var(--muted); font-size: 0.875rem; margin: 0 0 28px; }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+        margin: 0 0 16px;
+      }
+      h2 { font-size: 1.125rem; margin: 0 0 8px; }
+      p, li { font-size: 0.9375rem; }
+      p { margin: 0 0 10px; }
+      p:last-child { margin-bottom: 0; }
+      ul { margin: 0 0 10px; padding-left: 20px; }
+      a { color: var(--accent); }
+      footer { margin-top: 32px; color: var(--muted); font-size: 0.8125rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="brand" href="/">
+        <span class="brand-mark">EG</span>
+        <span class="brand-name">EASYGET</span>
+      </a>
+      <h1>Privacy Policy</h1>
+      <p class="updated">Effective 7 October 2026. EASYGET is a curated neighborhood marketplace for groceries and daily essentials.</p>
+
+      <section class="card">
+        <h2>What we collect</h2>
+        <ul>
+          <li><strong>Account details</strong> — name, email address and phone number you provide at signup.</li>
+          <li><strong>Google sign-in</strong> — when you choose Continue with Google, we receive your name, email address and verification status from Google. We never see or store your Google password.</li>
+          <li><strong>Orders and delivery</strong> — delivery addresses, cart contents, order history and payment references needed to fulfill your orders.</li>
+          <li><strong>On-device data</strong> — login tokens kept in your browser's local storage so you stay signed in.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>How we use it</h2>
+        <p>Your information is used to run your account, process and deliver orders, prevent fraud, and communicate about your orders. We do not sell personal information and we do not use it for third-party advertising.</p>
+      </section>
+
+      <section class="card">
+        <h2>Where it lives</h2>
+        <p>Account and order data is stored on our secured database infrastructure (Supabase Postgres, ap-northeast-1 region). Product images are stored in private object storage served over HTTPS. Traffic is encrypted in transit.</p>
+      </section>
+
+      <section class="card">
+        <h2>Your choices</h2>
+        <ul>
+          <li>Sign out any time from Account — this clears the tokens on your device.</li>
+          <li>To correct your details, edit them in Account; to delete your account and data, contact us below and we will action it within 7 days.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Children</h2>
+        <p>EASYGET is not directed at children under 13, and we do not knowingly collect their data.</p>
+      </section>
+
+      <section class="card">
+        <h2>Changes</h2>
+        <p>If this policy changes materially, we will update the effective date above and highlight the change in the app.</p>
+      </section>
+
+      <section class="card">
+        <h2>Contact</h2>
+        <p>Questions or deletion requests: <a href="mailto:privacy@easyget.app">privacy@easyget.app</a>. Tell us the email address on the account so we can find it.</p>
+      </section>
+
+      <footer>© 2026 EASYGET — quick-commerce, beautifully simple.</footer>
+    </main>
+  </body>
+</html>

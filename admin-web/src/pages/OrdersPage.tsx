@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   NEXT_DELIVERY_STATUS,
   NEXT_STATUS,
@@ -11,10 +12,7 @@ import {
   listDeliveries,
   listOrders,
   updateOrderStatus,
-  type DeliveryAgent,
   type DeliveryAssignment,
-  type Order,
-  type OrderDetail,
 } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import { Card, EmptyState, Modal, Spinner } from "../components/ui";
@@ -44,18 +42,24 @@ function statusClass(s: string): string {
 
 export function OrdersPage() {
   const { push } = useToast();
-  const [orders, setOrders] = useState<Order[] | null>(null);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const res = await listOrders();
-    setOrders(toArray(res));
-  }, []);
+  const ordersQuery = useQuery({
+    queryKey: ["admin", "orders"],
+    queryFn: async () => toArray(await listOrders()),
+  });
+
+  const orders = ordersQuery.data ?? null;
 
   useEffect(() => {
-    load().catch((e) => push(errText(e, "Failed to load orders"), "err"));
-  }, [load, push]);
+    if (ordersQuery.error)
+      push(errText(ordersQuery.error, "Failed to load orders"), "err");
+  }, [ordersQuery.error, push]);
+
+  const reloadOrders = () =>
+    queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
 
   const filtered = useMemo(
     () => (orders ?? []).filter((o) => filter === "ALL" || o.status === filter),
@@ -82,7 +86,7 @@ export function OrdersPage() {
           </button>
         ))}
         <div className="spacer" />
-        <button className="btn btn-sm btn-ghost" onClick={() => load()}>
+        <button className="btn btn-sm btn-ghost" onClick={reloadOrders}>
           ↻ Refresh
         </button>
       </div>
@@ -138,7 +142,7 @@ export function OrdersPage() {
         <OrderDetailModal
           id={selectedId}
           onClose={() => setSelectedId(null)}
-          onChanged={load}
+          onChanged={reloadOrders}
         />
       )}
     </div>
@@ -155,37 +159,42 @@ function OrderDetailModal({
   onChanged: () => Promise<void>;
 }) {
   const { push } = useToast();
-  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
-  const [delivery, setDelivery] = useState<DeliveryAssignment | null>(null);
-  const [agents, setAgents] = useState<DeliveryAgent[]>([]);
   const [agentId, setAgentId] = useState("");
 
-  const load = useCallback(async () => {
-    setOrder(await getOrder(id));
-    try {
-      const all = await listDeliveries();
-      const list = Array.isArray(all) ? all : all.results;
-      setDelivery(list.find((d) => d.order === id) ?? null);
-    } catch {
-      setDelivery(null);
-    }
-  }, [id]);
+  const orderQuery = useQuery({
+    queryKey: ["admin", "order", id],
+    queryFn: () => getOrder(id),
+  });
+  const deliveriesQuery = useQuery({
+    queryKey: ["admin", "deliveries"],
+    queryFn: async () => toArray(await listDeliveries()),
+    retry: false,
+  });
+  const agentsQuery = useQuery({
+    queryKey: ["admin", "agents"],
+    queryFn: () => listAgents(),
+    retry: false,
+  });
+
+  const order = orderQuery.data;
+  const delivery =
+    (deliveriesQuery.data ?? []).find((d) => d.order === id) ?? null;
+  const agents = agentsQuery.data ?? [];
 
   useEffect(() => {
-    load().catch((e) => push(errText(e, "Failed to load order"), "err"));
-    listAgents()
-      .then(setAgents)
-      .catch(() => setAgents([]));
-  }, [load, push]);
+    if (orderQuery.error)
+      push(errText(orderQuery.error, "Failed to load order"), "err");
+  }, [orderQuery.error, push]);
 
   async function advance(next: string) {
     setBusy(true);
     try {
       const updated = await updateOrderStatus(id, next);
-      setOrder(updated);
+      queryClient.setQueryData(["admin", "order", id], updated);
       await onChanged();
       push(`Order → ${next.replace(/_/g, " ")}`);
     } catch (e) {
@@ -203,7 +212,7 @@ function OrderDetailModal({
     setBusy(true);
     try {
       const updated = await cancelOrder(id, reason.trim());
-      setOrder(updated);
+      queryClient.setQueryData(["admin", "order", id], updated);
       setCancelling(false);
       await onChanged();
       push("Order cancelled");
@@ -230,7 +239,10 @@ function OrderDetailModal({
     setBusy(true);
     try {
       const created = await assignDelivery(id, Number(agentId));
-      setDelivery(created);
+      queryClient.setQueryData<DeliveryAssignment[]>(
+        ["admin", "deliveries"],
+        (old) => [...(old ?? []), created],
+      );
       await onChanged();
       push(`Assigned to ${created.agent_email}`);
     } catch (e) {
@@ -245,9 +257,12 @@ function OrderDetailModal({
     setBusy(true);
     try {
       const updated = await advanceDelivery(delivery.id, nextStatus);
-      setDelivery(updated);
+      queryClient.setQueryData<DeliveryAssignment[]>(
+        ["admin", "deliveries"],
+        (old) => (old ?? []).map((d) => (d.id === updated.id ? updated : d)),
+      );
       // Delivery progress can move the order itself (e.g. out for delivery).
-      setOrder(await getOrder(id));
+      queryClient.setQueryData(["admin", "order", id], await getOrder(id));
       await onChanged();
       push(`Delivery → ${nextStatus.replace(/_/g, " ").toLowerCase()}`);
     } catch (e) {

@@ -96,6 +96,15 @@ class PaymentCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         order = attrs.get("order")
+        request = self.context.get("request")
+        if (
+            order is not None
+            and request
+            and not request.user.is_staff
+            and order.user_id != request.user.id
+        ):
+            # Same message as a missing order — no existence leak.
+            raise serializers.ValidationError({"order": "Order not found."})
         if hasattr(order, "payment"):
             raise serializers.ValidationError("Order already has a payment")
         if order.total != attrs.get("amount"):
@@ -123,10 +132,12 @@ class RefundSerializer(serializers.ModelSerializer):
 class RefundCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Refund
-        fields = ["payment", "amount", "reason"]
+        fields = ["amount", "reason"]
 
     def validate(self, attrs):
-        payment = attrs.get("payment")
+        payment = self.context.get("payment")
+        if payment is None:
+            raise serializers.ValidationError("Refund context missing payment.")
         if payment.status != Payment.Status.SUCCEEDED:
             raise serializers.ValidationError("Can only refund successful payments")
         if attrs.get("amount") > payment.amount - payment.refunded_amount:

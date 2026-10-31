@@ -1,8 +1,10 @@
+from django.db.models import Prefetch
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from stores.models import Store
 from users.permissions import IsAdminOnly
 
 from .models import Cart, CartItem
@@ -26,7 +28,15 @@ class CartViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = Cart.objects.select_related("store", "tenant").prefetch_related(
-            "items__variant", "items__variant__product"
+            "items__variant",
+            "items__variant__product",
+            Prefetch(
+                "items__variant__product__tenant__stores",
+                queryset=Store.objects.filter(
+                    is_active=True, is_platform=False
+                ).order_by("name"),
+                to_attr="active_stores",
+            ),
         )
         if user.is_staff:
             return qs
@@ -57,23 +67,8 @@ class CartViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         variant = serializer.validated_data["variant"]
         quantity = serializer.validated_data.get("quantity", 1)
-        # Cross-tenant guard (same rule as inventory): a cart bound to a
-        # store may only hold variants from that store's tenant. Variants
-        # inherit their tenant via product. Foreign combinations return
-        # 400, never silently mix catalogs.
-        cart_tenant_id = cart.tenant_id or (
-            cart.store.tenant_id if cart.store else None
-        )
-        variant_tenant_id = variant.product.tenant_id if variant.product else None
-        if (
-            cart_tenant_id
-            and variant_tenant_id
-            and variant_tenant_id != cart_tenant_id
-        ):
-            return Response(
-                {"detail": "Variant does not belong to this store's catalog."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Marketplace cart: sellers may mix freely — the split into
+        # per-seller orders happens at checkout, not at add-to-cart time.
         item, created = CartItem.objects.get_or_create(
             cart=cart, variant=variant, defaults={"quantity": quantity}
         )
@@ -119,18 +114,8 @@ class CartViewSet(viewsets.ModelViewSet):
                 {"detail": "Anonymous cart not found"}, status=status.HTTP_404_NOT_FOUND
             )
         user_cart, _ = Cart.objects.get_or_create(user=request.user)
-        # Refuse to merge carts from different tenants (same 400 rule as items).
-        anon_tenant = anon_cart.tenant_id or (
-            anon_cart.store.tenant_id if anon_cart.store else None
-        )
-        user_tenant = user_cart.tenant_id or (
-            user_cart.store.tenant_id if user_cart.store else None
-        )
-        if anon_tenant and user_tenant and anon_tenant != user_tenant:
-            return Response(
-                {"detail": "Carts belong to different stores and cannot be merged."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Marketplace carts mix sellers freely, so carts from any tenant
+        # (or with no tenant) merge on login.
         user_cart.merge_with(anon_cart)
         return Response(CartSerializer(user_cart).data)
 

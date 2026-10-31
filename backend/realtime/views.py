@@ -63,6 +63,10 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def add_participant(self, request, pk=None):
+        # Managing membership is a moderation action: any participant adding
+        # arbitrary users would let attackers pull victims into rooms.
+        if not request.user.is_staff:
+            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
         room = self.get_object()
         user_id = request.data.get("user_id")
         if not user_id:
@@ -82,6 +86,8 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def remove_participant(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
         room = self.get_object()
         user_id = request.data.get("user_id")
         if not user_id:
@@ -134,6 +140,27 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
+
+    def _author_or_staff(self, message):
+        return message.sender_id == self.request.user.id or self.request.user.is_staff
+
+    def update(self, request, *args, **kwargs):
+        message = self.get_object()
+        if not self._author_or_staff(message):
+            return Response(
+                {"detail": "You can only edit your own messages."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        message = self.get_object()
+        if not self._author_or_staff(message):
+            return Response(
+                {"detail": "You can only delete your own messages."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"])
     def mark_read(self, request, pk=None):

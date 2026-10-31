@@ -42,6 +42,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _google() async {
+    setState(() => _busy = true);
+    final error =
+        await ref.read(authControllerProvider.notifier).signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (error != null) {
+      showSnack(context, error, error: true);
+      return;
+    }
+    // Null error is ambiguous (success or user-cancelled): only navigate
+    // when a session actually exists.
+    if (ref.read(authControllerProvider).maybeWhen(data: (u) => u, orElse: () => null) != null) {
+      context.go('/home');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -140,6 +157,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : const Text('Sign in'),
                     ),
                     const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _google,
+                      icon: Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                        child: Text(
+                          'G',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      label: const Text('Continue with Google'),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

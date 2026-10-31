@@ -1,0 +1,298 @@
+/* =============================================================================
+ * EASYGET — design tokens
+ *
+ * Generated from DESIGN.md §1 (hybrid revision). Every declaration below maps
+ * 1:1 to a token in that file. Do not add values here that DESIGN.md does not
+ * define — if a value is missing, the ticket belongs in DESIGN.md first.
+ *
+ * DESIGN.md §0 synthesis is enforced structurally, not by review:
+ *
+ *   1. serif/sans/mono split ... --font-display (Cormorant Garamond) vs
+ *      --font-ui (Inter) vs --font-mono (Geist Mono, numeric only)
+ *   2. warm grounded palette .... namespace wiped; Tailwind defaults deleted
+ *   3. border-first elevation .... --shadow-elev-* carry the hairline; cards
+ *      never pair a border with a floating shadow (§2: pick one)
+ *
+ * Utilities produced:
+ *   bg-canvas / bg-surface / bg-sunken
+ *   text-ink-strong / text-ink-body / text-ink-muted / text-ink-faint
+ *   bg-accent / text-accent / bg-cta / text-cta / bg-cta-dark
+ *   text-band-ink / border-subtle / border-strong
+ *   bg-action / text-action / text-action-fg / outline-focus
+ *   text-state-ok / text-state-warning / text-state-alert
+ *   font-display (Cormorant Garamond) / font-ui (Inter) / font-mono (Geist Mono)
+ *   text-display / text-h1 / text-h2 / text-h3 / text-body / text-sm / text-xs
+ *   rounded-sm / rounded-md / rounded-lg / rounded-xl / rounded-full
+ *   shadow-elev-1 / shadow-elev-2 / shadow-elev-3
+ *   ease-out / duration-micro / duration-base / duration-editorial
+ *
+ * ========================================================================== */
+
+@theme static {
+  /* --- Namespace wipes -----------------------------------------------------
+   * DESIGN.md §2 forbids Tailwind's default palettes and every default hue. The
+   * `--color-*` wipe does not merely discourage those utilities — it deletes
+   * them, so `text-red-500`, `bg-brand`, `border-blue-500` resolve to an
+   * undefined variable and render nothing. This is enforced by the compiler
+   * rather than by review. `--font-*` / `--text-*` / `--radius-*` /
+   * `--shadow-*` / `--ease-*` are wiped for the same reason: only the §1
+   * scale may be referenced, so no combination of utilities can drift off-spec.
+   * `--tracking-*` / `--leading-*` are wiped because §1 fixes display tracking
+   * and body line-height, and exposing them only offers a way to break §1. */
+  --color-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --ease-*: initial;
+  --tracking-*: initial;
+  --leading-*: initial;
+
+  /* --- Typography (§1) — three families, rigid roles ------------------------
+   * Display is serif-only (hero + section headings); product names stay Inter;
+   * prices, ETAs and order IDs are Geist Mono tabular. A fourth family is a
+   * design defect (§7). */
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* `font-sans` is aliased to Inter rather than left wiped, so the app's base
+   * type resolves to the UI face by default and no component has to opt in. */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Numeric: Geist Mono for prices, ETAs, order IDs (§1). */
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* §1: max 1–2 display weights (400–500) and max 2 UI weights per region. */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  /* --- Type scale (§1) ------------------------------------------------------
+   * Display: weight 400–500, letter-spacing -0.01em, line-height 1.15.
+   * Body: weight 400, line-height 1.6. */
+  --text-display: clamp(2.5rem, 5vw, 4rem);
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.01em;
+  --text-display--font-weight: var(--font-weight-medium);
+  --text-display--font-family: var(--font-display);
+
+  --text-h1: 2.25rem;
+  --text-h1--line-height: 1.15;
+  --text-h1--letter-spacing: -0.01em;
+  --text-h1--font-weight: var(--font-weight-medium);
+  --text-h1--font-family: var(--font-display);
+
+  --text-h2: 1.75rem;
+  --text-h2--line-height: 1.15;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h2--font-weight: var(--font-weight-medium);
+  --text-h2--font-family: var(--font-display);
+
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.2;
+  --text-h3--letter-spacing: -0.01em;
+  --text-h3--font-weight: var(--font-weight-medium);
+  --text-h3--font-family: var(--font-display);
+
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.6; /* §1 body line-height */
+  --text-body--font-weight: var(--font-weight-regular);
+
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.5;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.5;
+
+  /* --- Spacing (§1 — 8pt grid + grocery-density allowances) ---------------- */
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-48: 48px;
+  --spacing-64: 64px;
+  --spacing-80: 80px;
+  --spacing-96: 96px;
+
+  /* --- Radii (§1) — softer than marketplace defaults, never pill-everywhere - */
+  --radius-sm: 6px; /* inputs, tags */
+  --radius-md: 10px; /* cards, buttons */
+  --radius-lg: 14px; /* modals, sheets */
+  --radius-xl: 20px; /* hero cards */
+  --radius-full: 999px; /* pills, avatars */
+
+  /* --- Elevation (§1) — border-first, shadow-last (Instacart pattern).
+   * Product surfaces are largely shadow-free; the 1px hairline does the work.
+   * elev-1 for cards, elev-2 for hover/dropdown, elev-3 for modals only.
+   * §2: never pair a card border with a floating shadow — pick one. */
+  --shadow-elev-1: 0 0 0 1px var(--color-border-subtle);
+  --shadow-elev-2: 0 2px 8px rgb(26 24 21 / 0.04), 0 0 0 1px var(--color-border-subtle);
+  --shadow-elev-3: 0 8px 24px rgb(26 24 21 / 0.06), 0 0 0 1px var(--color-border-subtle);
+
+  /* --- Motion (§1) — calm, never under 150ms (§2: faster feels cheap) ------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 160ms; /* hover, press, toggle */
+  --dur-base: 240ms; /* modal, sheet, dropdown */
+  --dur-editorial: 500ms; /* page transitions, editorial reveals */
+
+  /* --- Color · light (§1) — warm paper, Instacart-inspired greens ----------- */
+  --color-canvas: #faf8f5; /* warm cream */
+  --color-surface: #ffffff;
+  --color-sunken: #f2eee9;
+
+  --color-ink-strong: #1a1815; /* warm near-black, NEVER #000 */
+  --color-ink-body: #1a1815;
+  --color-ink-muted: #6b6560;
+  --color-ink-faint: #a39d96; /* DECORATIVE ONLY — 2.53:1, see below */
+
+  --color-border-subtle: #e8e2db; /* the hairline */
+  --color-border-strong: #d4ccc3;
+
+  /* Brand: one deep accent + one live CTA. */
+  --color-accent: #1f3d2f; /* deep forest — headers, primary brand */
+  --color-accent-fg: #ffffff;
+  --color-cta: #108910; /* Instacart-style live green — Add to cart */
+  --color-cta-fg: #ffffff;
+  --color-cta-dark: #003d29; /* Kale — immersive brand moments */
+  --color-cta-dark-fg: #ffffff;
+
+  /* The primary action block is the live CTA green (§4 PDP: Add to Bag). */
+  --color-action: #108910;
+  --color-action-fg: #ffffff;
+  /* §5: visible focus ring uses --cta. 4.30:1 on light, 4.23:1 on dark. */
+  --color-focus: #108910;
+
+  /* Semantic state — functional, never decorative. */
+  --color-state-ok: #15803d;
+  --color-state-warning: #b45309;
+  --color-state-alert: #b91c1c;
+}
+
+/* =============================================================================
+ * Color · dark — warm near-black, NOT an auto-inverted light mode (§2).
+ *
+ * `html[data-theme=...]` (0,1,1) outranks the `:root` @theme emits (0,1,0),
+ * so this wins on specificity as well as source order. The attribute is set by
+ * the inline script in index.html from the eg-theme key, falling back to the OS
+ * preference — so these tokens follow the existing toggle for free.
+ * ========================================================================== */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #0f0e0d;
+  --color-surface: #1a1815;
+  --color-sunken: #242220;
+
+  --color-ink-strong: #f5f2ee; /* 17.28:1 on canvas — measured */
+  --color-ink-body: #f5f2ee;
+  --color-ink-muted: #a39d96; /* 7.18:1 — clears AA body */
+  --color-ink-faint: #6b6560; /* 3.36:1 — large/UI only, never body */
+
+  /* Borders GAIN contrast in dark: dark surfaces swallow hairlines, so
+     subtle takes the old strong step (1.71:1) and strong steps up. */
+  --color-border-subtle: #3d3a36;
+  --color-border-strong: #4a4640;
+
+  --color-accent: #2d5a45; /* lighter forest for dark mode */
+  --color-accent-fg: #ffffff;
+  --color-cta: #108910;
+  --color-cta-fg: #ffffff;
+  --color-cta-dark: #003d29;
+  --color-cta-dark-fg: #ffffff;
+
+  --color-action: #108910;
+  --color-action-fg: #ffffff;
+  --color-focus: #108910;
+
+  /* State colours MUST be remapped too — the light values are dark inks meant
+   * to sit on cream and would fail AA on near-black. */
+  --color-state-ok: #4ade80; /* 11.07:1 on dark canvas */
+  --color-state-warning: #fbbf24; /* 11.55:1 on dark canvas */
+  --color-state-alert: #f87171; /* 6.97:1 on dark canvas */
+}
+
+/* =============================================================================
+ * Dark variant — keyed to [data-theme], not prefers-color-scheme.
+ * The OS preference is already resolved to the attribute in index.html, which
+ * keeps CSS and the React theme toggle reading from one source of truth.
+ * ========================================================================== */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* =============================================================================
+ * Motion utilities — §1 durations have no built-in Tailwind namespace, so they
+ * are exposed as first-class utilities. Durations below 150ms feel cheap (§2),
+ * which is only enforceable if these three are the only ones to pick from.
+ * ========================================================================== */
+@utility duration-micro {
+  transition-duration: var(--dur-micro);
+}
+
+@utility duration-base {
+  transition-duration: var(--dur-base);
+}
+
+@utility duration-editorial {
+  transition-duration: var(--dur-editorial);
+}
+
+/* =============================================================================
+ * Border colour aliases (§1).
+ *
+ * Tailwind builds a colour utility as `<prefix>-<token-suffix>`, so
+ * `--color-border-subtle` would surface as `border-border-subtle` — and
+ * `bg-border-subtle`, which is meaningless. DESIGN.md §1 names these tokens
+ * `--border-subtle` / `--border-strong`, so the ergonomic spelling is also the
+ * specified one. Aliases publish that spelling without renaming the tokens.
+ * ========================================================================== */
+@utility border-subtle {
+  border-color: var(--color-border-subtle);
+}
+
+@utility border-strong {
+  border-color: var(--color-border-strong);
+}
+
+/* =============================================================================
+ * The hairline (§1 Elevation) — the default frame for every card. Cards are
+ * defined by this line, not by a floating shadow (§2: pick one, prefer border).
+ * ========================================================================== */
+@utility hairline {
+  border: 1px solid var(--color-border-subtle);
+}
+
+/* =============================================================================
+ * Tabular numerals (§1) — prices, order IDs, ETAs, quantities in Geist Mono.
+ * ========================================================================== */
+@utility tabular-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* =============================================================================
+ * The primary action block (§4) — solid --cta green, calm, full-width by
+ * default at the call site. Inter 600, 44px touch target (§3, §5).
+ * ========================================================================== */
+@utility action-block {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px; /* §3 touch target */
+  padding: var(--spacing-12) var(--spacing-32);
+  background-color: var(--color-action);
+  color: var(--color-action-fg);
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--text-sm);
+  transition:
+    opacity var(--dur-micro) var(--ease-out),
+    background-color var(--dur-micro) var(--ease-out);
+}
+
+@utility action-block-hover {
+  opacity: 0.92;
+}

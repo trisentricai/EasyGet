@@ -1,0 +1,31 @@
+/* =============================================================================
+ * EASYGET — theme entry point
+ *
+ * Imported from src/main.tsx immediately before the legacy stylesheet.
+ *
+ * WHY PREFLIGHT IS NOT LOADED
+ * ----------------------------
+ * The default `@import "tailwindcss"` pulls in preflight, which resets margins,
+ * font sizes, list styles and box-sizing across the document. The marketplace
+ * UI that ships today is built on plain CSS classes in src/styles.css and has no
+ * resets of its own — loading preflight would silently reflow every screen and
+ * break the 268-test-backed behaviour that is already verified working.
+ *
+ * So we take only the two halves we need:
+ *   theme.css     → the default scale that utilities resolve against
+ *   utilities.css → the generated utility classes
+ * and skip preflight entirely. DESIGN.md §1's palette wipe in tokens.css then
+ * removes Tailwind's default colors, radii, shadows and type sizes from that
+ * scale, so the net result is utilities backed exclusively by EASYGET tokens.
+ *
+ * The legacy stylesheet keeps loading, so this lands additively: no existing
+ * class changes meaning until the migration to token utilities begins.
+ * ========================================================================== */
+
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@import "./tokens.css";
+@import "./base.css";

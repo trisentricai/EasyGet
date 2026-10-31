@@ -1,4 +1,4 @@
-from rest_framework import status, viewsets
+from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -7,7 +7,12 @@ from rest_framework.views import APIView
 
 from .models import Address, User
 from .permissions import IsAdminOnly, IsVerifiedEmail
-from .serializers import AddressSerializer, UserSerializer
+from .serializers import (
+    AddressSerializer,
+    AdminUserCreateSerializer,
+    AdminUserUpdateSerializer,
+    UserSerializer,
+)
 
 
 class MeView(RetrieveUpdateAPIView):
@@ -47,3 +52,30 @@ class AdminOnlyView(APIView):
 
     def get(self, request):
         return Response({"message": "Admin access granted."}, status=status.HTTP_200_OK)
+
+
+class AdminUserListCreateView(generics.ListCreateAPIView):
+    """GET /api/v1/admin/users/ — every account (where users live).
+    POST — create with any role (admin vouches: verified, no OTP email).
+    Staff only. No DELETE: user rows anchor orders/carts; deactivate instead.
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOnly]
+    queryset = User.objects.all().order_by("-id")
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AdminUserCreateSerializer
+        return UserSerializer
+
+
+class AdminUserUpdateView(generics.RetrieveUpdateAPIView):
+    """PATCH /api/v1/admin/users/<id>/ — role and active status only."""
+
+    permission_classes = [IsAuthenticated, IsAdminOnly]
+    queryset = User.objects.all()
+
+    def get_serializer_class(self):
+        if self.request.method in ("PUT", "PATCH"):
+            return AdminUserUpdateSerializer
+        return UserSerializer

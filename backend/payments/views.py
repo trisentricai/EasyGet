@@ -47,9 +47,15 @@ class PaymentViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in {"create", "list", "retrieve"}:
             return [IsAuthenticated()]
-        if self.action in {"webhook", "refund"}:
+        if self.action == "refund":
             return [IsAdminOrStoreManager()]
+        if self.action == "webhook":
+            # No gateway signature verification exists yet, and the payment
+            # lookup is by attacker-supplied gateway id — staff-only until a
+            # real signed-gateway flow lands.
+            return [IsAdminOnly()]
         return [IsAdminOnly()]
+
 
     def get_queryset(self):
         user = self.request.user
@@ -80,15 +86,21 @@ class PaymentViewSet(viewsets.ModelViewSet):
         # payment.save()
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrStoreManager])
-    def refund(self, request, id=None):
+    def refund(self, request, pk=None):
         payment = self.get_object()
-        serializer = self.get_serializer(data=request.data)
+        # Validate against the URL payment, not a client-supplied one: the old
+        # body-driven `payment` field let callers probe other payments' status
+        # and bypass the amount cap on the URL payment.
+        serializer = RefundCreateSerializer(
+            data=request.data,
+            context={**self.get_serializer_context(), "payment": payment},
+        )
         serializer.is_valid(raise_exception=True)
         refund = serializer.save(payment=payment)
         # Process refund with gateway
         return Response(RefundSerializer(refund).data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["post"], permission_classes=[IsAdminOrStoreManager])
+    @action(detail=False, methods=["post"], permission_classes=[IsAdminOnly])
     def webhook(self, request):
         """Handle payment gateway webhooks."""
         gateway = request.data.get("gateway")

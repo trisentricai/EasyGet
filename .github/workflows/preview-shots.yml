@@ -1,0 +1,66 @@
+name: Preview screenshots (NEXT_UI)
+
+# Visual evidence for the vertical slice: 375/768/1280 x light/dark of the
+# flag-gated preview page against live catalog data, uploaded as the
+# `preview-shots` artifact. Runs on every customer-web push so future
+# components inherit screenshot coverage for free.
+on:
+  push:
+    branches: [fix/flutter-web-and-ordering, main]
+    paths:
+      - "customer-web/**"
+      - ".github/workflows/preview-shots.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: preview-shots
+  cancel-in-progress: false
+
+env:
+  VITE_API_URL: https://easyget-api.onrender.com
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: customer-web/package-lock.json
+
+      - name: Install deps
+        working-directory: customer-web
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: customer-web
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        working-directory: customer-web
+        run: npm run build
+
+      - name: Serve dist
+        working-directory: customer-web
+        run: |
+          (npx vite preview --port 4173 --strictPort --host 127.0.0.1 > /tmp/vite-preview.log 2>&1 &)
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4173/preview.html > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:4173/preview.html > /dev/null || (cat /tmp/vite-preview.log; exit 1)
+
+      - name: Capture 375/768/1280 x light/dark
+        working-directory: customer-web
+        run: npx playwright test --config=screenshots/playwright.config.ts
+
+      - name: Upload shots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-shots
+          path: customer-web/screenshots/shots/
+          if-no-files-found: warn

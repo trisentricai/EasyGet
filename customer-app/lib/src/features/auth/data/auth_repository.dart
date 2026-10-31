@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/token_store.dart';
@@ -50,6 +51,7 @@ class AuthRepository {
     String firstName = '',
     String lastName = '',
     String phone = '',
+    String role = 'CUSTOMER',
   }) async {
     await _api.post<dynamic>('/auth/register/', body: {
       'email': email,
@@ -57,6 +59,7 @@ class AuthRepository {
       if (firstName.isNotEmpty) 'first_name': firstName,
       if (lastName.isNotEmpty) 'last_name': lastName,
       if (phone.isNotEmpty) 'phone': phone,
+      'role': role,
     });
   }
 
@@ -92,7 +95,56 @@ class AuthRepository {
       }
     } finally {
       await _tokens.clear();
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
     }
+  }
+
+  /// Exchange a Google ID token for our access+refresh pair.
+  /// Same response contract as password login; same token storage.
+  /// No Firebase: the ID token goes straight to POST /auth/google/.
+  Future<AppUser> loginWithGoogleToken(String idToken) async {
+    final data = await _api.post<Map<String, dynamic>>(
+      '/auth/google/',
+      body: {'id_token': idToken},
+      decode: (j) => j as Map<String, dynamic>,
+    );
+    await _tokens.save(
+      access: data['access'] as String,
+      refresh: data['refresh'] as String,
+    );
+    return AppUser.fromJson(data['user'] as Map<String, dynamic>);
+  }
+
+  static bool _googleReady = false;
+
+  /// Google sign-in. Returns null when the user cancels the flow.
+  Future<AppUser?> signInWithGoogle() async {
+    try {
+      if (!_googleReady) {
+        await GoogleSignIn.instance.initialize();
+        _googleReady = true;
+      }
+    } catch (_) {
+      // e.g. Chrome/web builds without a web client ID configured.
+      throw Exception('Google sign-in is not available here. Use email login.');
+    }
+    final GoogleSignInAccount account;
+    try {
+      account = await GoogleSignIn.instance.authenticate();
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        return null;
+      }
+      throw Exception('Google sign-in failed. Please try again.');
+    }
+    final googleIdToken = account.authentication.idToken;
+    if (googleIdToken == null || googleIdToken.isEmpty) {
+      throw Exception('Google did not return an ID token.');
+    }
+    return loginWithGoogleToken(googleIdToken);
   }
 
   Future<AppUser?> me() async {

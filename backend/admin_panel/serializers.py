@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from common.serializers import AbsoluteImageField
+
 from .models import AdminAction, Banner, Coupon, ScheduledTask, SystemConfig
 
 
@@ -49,6 +51,9 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
 
 
 class BannerSerializer(serializers.ModelSerializer):
+    # Absolute URL in responses; multipart uploads still behave normally.
+    image = AbsoluteImageField()
+
     class Meta:
         model = Banner
         fields = [
@@ -60,6 +65,8 @@ class BannerSerializer(serializers.ModelSerializer):
 
 
 class BannerPublicSerializer(serializers.ModelSerializer):
+    image = AbsoluteImageField()
+
     class Meta:
         model = Banner
         fields = ["id", "title", "subtitle", "image", "link_url", "link_text", "type", "position"]
@@ -89,3 +96,21 @@ class CouponValidateSerializer(serializers.Serializer):
         except Coupon.DoesNotExist:
             raise serializers.ValidationError("Invalid coupon code")
         return value
+
+class ReviewAdminSerializer(serializers.ModelSerializer):
+    """Moderation payload for the admin Reviews page."""
+
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    product_slug = serializers.CharField(source="product.slug", read_only=True)
+    user_email = serializers.CharField(source="user.email", read_only=True)
+
+    class Meta:
+        from products.models import ProductReview
+
+        model = ProductReview
+        fields = [
+            "id", "product_name", "product_slug", "rating", "title", "body",
+            "reviewer_name", "user_email", "is_verified_purchase", "is_approved",
+            "created_at",
+        ]
+        read_only_fields = [f for f in fields if f != "is_approved"]

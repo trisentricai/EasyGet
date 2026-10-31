@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { navigate } from "../hooks/useHashRoute";
@@ -9,7 +10,6 @@ import {
   getOrder,
   listOrders,
   type Order,
-  type OrderDetail,
 } from "../services/api";
 import { EmptyState, money, SignInGate, Spinner, StatusChip } from "../components/ui";
 
@@ -17,15 +17,13 @@ const CANCELLABLE = new Set(["PENDING", "CONFIRMED", "PREPARING"]);
 
 export function OrdersPage() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    listOrders()
-      .then((d) => setOrders(asArray<Order>(d)))
-      .catch((e) => setError(errText(e)));
-  }, [user]);
+  const { data, error } = useQuery({
+    queryKey: ["orders", user?.id ?? null],
+    queryFn: listOrders,
+    enabled: !!user,
+  });
+  const orders = data ? asArray<Order>(data) : null;
+  const errorMsg = error ? errText(error) : null;
 
   if (!user) return <SignInGate title="Your orders" text="Sign in to track your orders." />;
 
@@ -36,8 +34,8 @@ export function OrdersPage() {
         <p className="muted">Track and manage everything you've ordered.</p>
       </div>
 
-      {error ? (
-        <EmptyState icon="warning" title="Couldn't load orders" text={error} />
+      {errorMsg ? (
+        <EmptyState icon="warning" title="Couldn't load orders" text={errorMsg} />
       ) : orders === null ? (
         <Spinner />
       ) : orders.length === 0 ? (
@@ -53,7 +51,7 @@ export function OrdersPage() {
             <div>
               <div className="num">{o.order_number}</div>
               <div className="meta">
-                {new Date(o.created_at).toLocaleString()} · {o.item_count ?? "—"} item(s) · {o.store_name ?? "Store"}
+                {new Date(o.created_at).toLocaleString()} · {o.item_count ?? "—"} item(s) · Seller: {o.store_name ?? "EASYGET"}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -70,28 +68,19 @@ export function OrdersPage() {
 export function OrderDetailPage({ id }: { id: string }) {
   const { user } = useAuth();
   const toast = useToast();
-  const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const orderKey = ["order", id, user?.id ?? null];
+  const { data: order, error } = useQuery({
+    queryKey: orderKey,
+    queryFn: () => getOrder(id),
+    enabled: !!user,
+  });
   const [cancelling, setCancelling] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    getOrder(id)
-      .then((o) => {
-        if (!cancelled) setOrder(o);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(errText(e, "Order not found"));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, id]);
+  const errorMsg = error ? errText(error, "Order not found") : null;
 
   if (!user) return <SignInGate title="Order details" text="Sign in to view this order." />;
-  if (error) return <div className="page"><EmptyState icon="warning" title="Order not found" text={error} /></div>;
+  if (errorMsg) return <div className="page"><EmptyState icon="warning" title="Order not found" text={errorMsg} /></div>;
   if (!order) return <Spinner />;
 
   const doCancel = async () => {
@@ -101,7 +90,8 @@ export function OrderDetailPage({ id }: { id: string }) {
     setCancelling(false);
     try {
       const updated = await cancelOrder(order.id, reason || "No reason provided");
-      setOrder(updated);
+      queryClient.setQueryData(orderKey, updated);
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       toast.push("Order cancelled", "info");
     } catch (e) {
       toast.push(errText(e, "Could not cancel order"), "err");
@@ -136,6 +126,10 @@ export function OrderDetailPage({ id }: { id: string }) {
             <span>{money(item.line_total)}</span>
           </div>
         ))}
+        <div className="summary-line">
+          <span className="muted">Seller: {order.store_name ?? "EASYGET"}</span>
+          <span />
+        </div>
         <div className="summary-line">
           <span className="muted">Subtotal</span>
           <span>{money(order.subtotal)}</span>

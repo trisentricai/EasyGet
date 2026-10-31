@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -37,6 +38,10 @@ def item_url(pk):
 
 class StorefrontTestBase(TestCase):
     def setUp(self):
+        # The render endpoints are cache-aside (1h) and signals invalidate via
+        # transaction.on_commit, which never fires under TestCase's rollback —
+        # clear so no test ever reads another test's cached payload.
+        cache.clear()
         self.client = APIClient()
         self.owner = User.objects.create_user(
             "owner@example.com", "strongpass123", is_email_verified=True
@@ -89,7 +94,7 @@ class PublicRenderTests(StorefrontTestBase):
         response = self.client.get(RENDER_URL)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["store"]["slug"], "rahuls-store")
-        self.assertEqual(response.data["theme"]["primary_color"], "#1A73E8")
+        self.assertEqual(response.data["theme"]["primary_color"], "#2874F0")
         self.assertEqual(len(response.data["sections"]), 2)
         self.assertEqual(response.data["sections"][0]["title"], "Welcome")
         item_types = {
@@ -179,6 +184,48 @@ class SectionCrudTests(StorefrontTestBase):
             format="json",
         )
         self.assertEqual(response.status_code, 200)
+
+    def test_owner_can_edit_image_display_fields(self):
+        response = self.as_user(self.owner).patch(
+            section_url(self.hero.id),
+            {"align_x": 80, "align_y": 20, "zoom": 1.5, "effect": "zoom",
+             "transition_ms": 600},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.hero.refresh_from_db()
+        self.assertEqual((self.hero.align_x, self.hero.align_y), (80, 20))
+        self.assertEqual(self.hero.zoom, 1.5)
+        self.assertEqual(self.hero.effect, "zoom")
+        self.assertEqual(self.hero.transition_ms, 600)
+
+    def test_display_field_validation_rejects_out_of_range(self):
+        for payload in (
+            {"align_x": 150},
+            {"align_y": -5},
+            {"zoom": 0.5},
+            {"zoom": 4.0},
+            {"effect": "disco"},
+            {"transition_ms": 99999},
+        ):
+            response = self.as_user(self.owner).patch(
+                section_url(self.hero.id), payload, format="json"
+            )
+            self.assertEqual(response.status_code, 400, payload)
+
+    def test_render_includes_image_display(self):
+        self.as_user(self.owner).patch(
+            section_url(self.hero.id),
+            {"zoom": 1.25, "effect": "grayscale", "transition_ms": 250},
+            format="json",
+        )
+        self.client.force_authenticate(user=None)
+        sections = self.client.get(RENDER_URL).data["sections"]
+        hero = next(s for s in sections if s["section_type"] == "HERO")
+        self.assertEqual(hero["zoom"], 1.25)
+        self.assertEqual(hero["effect"], "grayscale")
+        self.assertEqual(hero["transition_ms"], 250)
+        self.assertEqual(hero["align_x"], 50)
 
 
 class ReorderTests(StorefrontTestBase):
@@ -274,7 +321,7 @@ class ThemeTests(StorefrontTestBase):
     def test_public_get_theme(self):
         response = self.client.get(THEME_URL)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["button_style"], "ROUNDED")
+        self.assertEqual(response.data["button_style"], "SQUARE")
 
     def test_owner_updates_theme(self):
         response = self.as_user(self.owner).patch(
@@ -292,3 +339,107 @@ class ThemeTests(StorefrontTestBase):
             THEME_URL, {"primary_color": "#000000"}, format="json"
         )
         self.assertEqual(response.status_code, 403)
+
+
+class ProductTenantSecurityTests(StorefrontTestBase):
+    """Section items must not expose foreign-tenant products or unpublished
+    sections through the public item/render endpoints."""
+
+    def setUp(self):
+        super().setUp()
+        self.other_owner = User.objects.create_user(
+            "other.owner@example.com", "strongpass123", is_email_verified=True
+        )
+        self.other_tenant = provision_tenant(self.other_owner, "Other Tenant")
+        self.foreign_product = Product.objects.create(
+            name="Foreign Product", category=self.category,
+            tenant=self.other_tenant, mrp=Decimal("500.00"), is_active=True,
+        )
+        self.hidden_section = StoreSection.objects.create(
+            store=self.store, section_type=StoreSection.SectionType.HERO,
+            title="Unpublished", position=5, is_active=False,
+        )
+        SectionItem.objects.create(
+            section=self.hidden_section,
+            item_type=SectionItem.ItemType.PRODUCT,
+            product=self.product, position=0,
+        )
+
+    def as_user(self, user):
+        self.client.force_authenticate(user=user)
+        return self.client
+
+    def test_owner_cannot_link_foreign_product(self):
+        response = self.as_user(self.owner).post(
+            items_url(self.grid.id),
+            {"item_type": "PRODUCT", "product": self.foreign_product.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            SectionItem.objects.filter(product=self.foreign_product).exists()
+        )
+
+    def test_inactive_section_items_hidden_from_public(self):
+        self.client.force_authenticate()
+        response = self.client.get(items_url(self.hidden_section.id))
+        self.assertEqual(response.status_code, 404)
+
+    def test_inactive_section_items_visible_to_manager(self):
+        response = self.as_user(self.owner).get(items_url(self.hidden_section.id))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+
+
+class PlatformRouteTests(StorefrontTestBase):
+    PLATFORM_URL = "/api/v1/storefront/platform/"
+
+    def test_platform_route_renders(self):
+        response = self.client.get(self.PLATFORM_URL)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["store"]["slug"], "easyget")
+        self.assertIn("theme", response.data)
+        self.assertIn("sections", response.data)
+
+    def test_platform_route_404_when_missing(self):
+        Store.objects.filter(is_platform=True).delete()
+        response = self.client.get(self.PLATFORM_URL)
+        self.assertEqual(response.status_code, 404)
+
+
+class PlatformSectionGuardTests(StorefrontTestBase):
+    """Spec 4.2: platform links any active product; merchants stay strict."""
+
+    def setUp(self):
+        super().setUp()
+        self.platform = Store.objects.get(is_platform=True)
+        self.foreign_tenant = provision_tenant(self.outsider, "Foreign Tenant")
+        self.foreign_product = Product.objects.create(
+            name="Foreign Apples", category=self.category,
+            tenant=self.foreign_tenant, mrp=Decimal("100.00"), is_active=True,
+        )
+        self.inactive_foreign = Product.objects.create(
+            name="Dead Oranges", category=self.category,
+            tenant=self.foreign_tenant, mrp=Decimal("50.00"), is_active=False,
+        )
+
+    def test_platform_allows_any_active_product(self):
+        from .views import _product_allowed_for_store
+
+        self.assertTrue(
+            _product_allowed_for_store(self.foreign_product, self.platform, self.outsider)
+        )
+
+    def test_platform_rejects_inactive_product(self):
+        from .views import _product_allowed_for_store
+
+        self.assertFalse(
+            _product_allowed_for_store(self.inactive_foreign, self.platform, self.outsider)
+        )
+
+    def test_merchant_store_still_rejects_foreign_product(self):
+        from .views import _product_allowed_for_store
+
+        self.assertFalse(
+            _product_allowed_for_store(self.foreign_product, self.store, self.outsider)
+        )

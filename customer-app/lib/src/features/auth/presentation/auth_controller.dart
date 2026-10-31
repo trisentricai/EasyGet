@@ -19,7 +19,24 @@ class AuthController extends AsyncNotifier<AppUser?> {
       return null;
     } catch (e) {
       state = AsyncData(null);
-      return e.toString();
+      return _clean(e);
+    }
+  }
+
+  /// Strips Dart's `Exception: ` prefix; ApiException already stringifies clean.
+  String _clean(Object e) => e.toString().replaceFirst('Exception: ', '');
+
+  /// Google sign-in. Null error + null session = user cancelled (stay put);
+  /// callers must check the session before navigating.
+  Future<String?> signInWithGoogle() async {
+    state = const AsyncLoading();
+    try {
+      final user = await ref.read(authRepositoryProvider).signInWithGoogle();
+      state = AsyncData(user);
+      return null;
+    } catch (e) {
+      state = AsyncData(null);
+      return _clean(e);
     }
   }
 

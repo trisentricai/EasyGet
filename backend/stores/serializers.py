@@ -18,6 +18,7 @@ class StoreListSerializer(serializers.ModelSerializer):
             "longitude",
             "delivery_radius_km",
             "is_active",
+            "is_platform",
             "distance_km",
         ]
         read_only_fields = fields

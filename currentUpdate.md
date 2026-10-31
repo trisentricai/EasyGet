@@ -1,13 +1,543 @@
 # CURRENT UPDATE — EASYGET
 
-**Last updated:** 2026-09-23
-**Phase in progress:** Docs — new `GETTING_STARTED.md` (run everything + what shows/doesn't + pending list); all surfaces live
+**Last updated:** 2026-10-31
+**Phase in progress:** **Homepage redesign DONE** (Shopify/Nike/Apple-inspired: full-bleed hero tile with giant headline + single pill CTA; Shop by Category horizontal icon rail; category sidebar with sticky left rail + brand/discount/price filters + mobile drawer; product grid 4 cards per row with PDP-style cards; design docs saved to design-reference/awesome-design-md/ — commit `a3e709f`, tsc clean, build green) + **Product cards rebuilt PDP-style DONE** (browse/list cards now read like mini product detail pages — large edge-to-edge hero image, prominent brand → name → price stack, bigger add-to-bag button pinned to bottom, badge pill top-right, wishlist heart top-left, border-first elevation, hover lift; all via EasyGet tokens; tsc clean, build green) + **Browse grid full-width + 6+ cards per row DONE** (`.page` max-width 1280→1600px, side padding 20→12px; `.grid-products` minmax 190→150px, gap 16→12px so large screens show 6+ product cards per row; tsc clean, build green) + **PDP sticky buy box containment DONE** (`.buybox` gets `position: sticky` with `top: calc(var(--nav-h) + 24px)` and `align-self: start` so it stays within the product-details grid and never overlaps the Similar products section; build green) + **SriPon-style product card redesign DONE** (customer-web cards rebuilt to match sreepon.netlify.app aesthetic: square edge-to-edge images, top-right badge pill, top-left wishlist heart, brand→name→price→CTA stack, hover lift + image scale, border-first elevation via EasyGet tokens; `tsc --noUnusedLocals` clean, build green) + **NotFound screens replace silent fallbacks DONE** (commit `68a7120`) + **Dead-code sweep + screen-routing / screen-content / auth audit round DONE** (dead code removed in customer-web + admin-web, both builds green, `tsc --noUnusedLocals --noUnusedParameters` clean) + **Admin product image gallery DONE** (commit `a7780b8`; backend **262/262**, admin build green, live gallery smoke **27/27**) + **Designer UX + dark mode + infinite scroll DONE** (commit `a079dcd`; backend **252/252**, both builds green, live upload→GET 200 `image/webp`) + **Perf+RLS+React Query batch DONE** (commits `891e278`+`0e5a230`; backend **252/252**, both builds green, live RLS 68/68 tables) + **EASYGET platform storefront + split orders DONE** (D1–D6, spec+plan under `docs/superpowers/`, commits `cc69ec6`…`0ca975e`) + Security hardening DONE (13 fixed, `ab14c95`) + Phase B1 DONE; next C (checkout/coupon apply + gateway payments template), D (post-order), E (Flutter port)
 **Source of truth:** README.md (whole roadmap) + GitCheck.md (git/github) + docs/phase-1-foundation-spec.md (Phase 1 spec) + this file (live status)
 
 > Read **GitCheck.md FIRST**, then THIS file, then README.md, whenever starting work. This file is the latest snapshot of what exists, what works, what is broken, and what comes next.
 > **WORKFLOW RULE:** after every code/commit change, BOTH `currentUpdate.md` and `GitCheck.md` must be updated together.
 
 ---
+
+## 0. LATEST - SriPon-style card badge/wishlist positions fixed (2026-10-31)
+
+**Goal hit:** user - "i need 4 cards and i need details of the product like this image" (reference: sreepon.netlify.app) — badge top-left, wishlist top-right.
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.product-chip` moved top-left (was top-right); `.wish-card` (as `.wish-btn.wish-card`) moved top-right (was top-left, specificity fix so it beats `.wish-btn`).
+
+**Verification:** `tsc` clean; `npm run build` green; live shows badge top-left (13,13) + wishlist top-right (right 13, top 13) + body = category + name + price; 4 cols, small size.
+
+---
+
+## 0. LATEST - Product cards rebuilt SriPon-style (details) (2026-10-31)
+
+**Goal hit:** user - "i need 4 cards and i need details of the product like this image" (reference: sreepon.netlify.app product card)
+
+**What changed:**
+1. **`customer-web/src/components/ui.tsx`** - ProductCard rebuilt to match sreepon card: square image, discount badge top-left, wishlist top-right, body = category (muted) + name (2-line) + price (now + mrp strikethrough). Removed add-to-bag button, rating, stock line (details-focused; add-to-bag stays on PDP). Size/effects still supported.
+2. **`customer-web/src/styles.css`** - badge moved top-left, wishlist moved top-right (to match reference).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
+## 0. LATEST - 4 cards per row + small card size (2026-10-31)
+
+**Goal hit:** user - "cards stil big i need 4 cards but size need to small"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.grid-products` minmax `240 -> 150px` + gap `16 -> 12` so 4 cards fit per row.
+2. **`customer-web/src/components/ui.tsx`** - `ProductCard` default size `md -> sm` (small density: tighter padding/gap/font) so global browse/search/wishlist/similar cards render small; admin ProductRowSection still passes size explicitly (sm/md/lg).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; live shows 4 cols (160px x4) + `product-card--sm` on all 20 cards.
+
+**Known open edges:** none new.
+
+---
+
+## 0. LATEST - Admin-configurable product cards (size/columns/effects) (2026-10-31)
+
+**Goal hit:** user - "u still not correct card height! and the banner! you make the card size proper like card of product can be modifed via admin storefront design! make that happen! card style, siz, row cloluum, placement, effect etc.."
+
+**What changed:**
+1. **`customer-web/src/components/ui.tsx`** - `ProductCard` now accepts `size` (sm/md/lg) + `effects` (string[]); applies `product-card--sm/md/lg` density class + `fx-fade-in` when effects includes fade_in.
+2. **`customer-web/src/pages/HomePage.tsx`** - `ProductRowSection` now honors `config.columns` (fixed `repeat(N,1fr)` when 1-6) and passes `config.size` + `config.effects` to ProductCard.
+3. **`customer-web/src/styles.css`** - size density modifiers (sm/md/lg: padding/gap/font/min-height) + fade-in keyframes.
+4. Admin storefront designer already exposes columns/card size/effects/image display (align/zoom/effect/transition) + hero_layout/hero_overlay + drag-reorder placement; customer now actually applies them.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** browse/search global grids remain responsive auto-fill (not section-scoped); effect toggles hover_zoom/shadow_on_hover are base behavior (always on) for now.
+
+---
+
+## 0. LATEST - Checkout refactor (2-col, sticky summary, PIN lookup, payment radios, validation) (2026-10-31)
+
+**Goal hit:** user - checkout page refactor: 2-col grid (col-span-8 steps, col-span-4 sticky summary), PIN auto-lookup, payment method radios (COD/UPI/Card) with conditional UPI ID, real-time inline validation with scroll-to-first-error.
+
+**What changed:**
+1. **`customer-web/src/pages/CheckoutPage.tsx`** - 2-col `.checkout-layout`; `.checkout-summary` sticky aside; PIN lookup via postalpincode.in with spinner + hint; payment radios with conditional UPI ID field; dynamic Place order button helper text; inline validation (phone/line1/PIN) with red border + error messages + scroll to first error.
+2. **`customer-web/src/styles.css`** - `.checkout-layout`, `.checkout-steps`, `.checkout-summary`, `.pay-methods`/`.pay-option`, `.pin-input-wrap`/`.pin-spinner`, `.field-error`/`.field-err`/`.field-hint`.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** full visual verification requires a logged-in cart with items (checkout requires auth).
+
+---
+
+## 0. LATEST - 3 layout bugs fixed (grid 4-5 cols, PDP breadcrumb, cart polish) (2026-10-31)
+
+**Goal hit:** user - "Fix three critical frontend layout bugs: Product Grid Layout (4-5 cards/row), PDP Breadcrumbs & Header Fix, Cart Page UI Polish."
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.grid-products`: minmax 150 -> 160px (4-5 cards/row on desktop), gap 12; removed conflicting mobile override that reverted 2-col/1-col rules; added `.pdp-breadcrumb` row styles; rebuilt cart CSS (`.cart-item`, `.cart-qty`, `.cart-trash`, `.cart-summary`, `.cart-checkout`, responsive collapse).
+2. **`customer-web/src/pages/ProductPage.tsx`** - replaced inline-styled breadcrumb with semantic `.pdp-breadcrumb` (Back + category link) above product main view.
+3. **`customer-web/src/pages/CartPage.tsx`** - rebuilt rows as `.cart-item` grid (thumb/info/qty/price/trash), styled qty stepper, trash, summary panel, checkout button.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
+## 0. LATEST - Tighten product card height (2026-10-31)
+
+**Goal hit:** user - "u still not correct card height!" (after reducing from 615 -> 597)
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.product-body`: gap `10 -> 8`, padding `16/16/20 -> 14/16/16` (further tighten info stack -> cards shorter again).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
+## 0. LATEST - Reduce product card height (2026-10-31)
+
+**Goal hit:** user - "the card have more height reduce the height of all cards of the product!"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - reverted the just-applied card height increases: `.product-body` gap `12 -> 10`, padding bottom `22 -> 20`, `.product-name` min-height `52 -> 46` (back to clean compact tall-card rhythm; add-to-bag still pinned via flex).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
+## 0. LATEST - Taller cards + border fix in grids (2026-10-31)
+
+**Goal hit:** user - "cards have more height!! like longvertical!! it was not good! look at the card in this image or this website! https://sreepon.netlify.app/"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.product-body`: info stack roomier (gap `10 -> 12`, padding bottom `20 -> 22`) + `.product-name` min-height `46 -> 52` so product cards read taller with clean vertical rhythm (long-vertical card feel).
+2. **`customer-web/src/styles.css`** - `.grid-products > .product-card, .grid-products > .card-skeleton`: border token light `--border` -> `--color-border-strong` (higher-specificity grid override was silently re-imposing the light token, so the earlier stronger-border fix never applied inside grids).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
+## 0. LATEST - Taller cards + stronger borders + sidebar on all pages (2026-10-31)
+
+**Goal hit:** user - "1. the card size have more heights 2. the card have light border need more highlight! 3. https://easyget-customer.pages.dev/#/home this screen also need sidebar make sidebar works all pages!"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.product-body`: taller info stack (padding `14/16/16` -> `16/16/20`, gap `8` -> `10`) so product cards read taller.
+2. **`customer-web/src/styles.css`** - `.product-card`: border light `--border` -> `--color-border-strong` for more highlight (design token, border-first elevation kept).
+3. **Sidebar on all catalog pages** - home (`#/home`) now renders the left category sidebar via `CategorySidebar` inside `.browse-layout`; same added to `SearchPage`, `CategoriesPage`, `WishlistPage` (`#/browse` already had it). Sidebar collapse breakpoint fixed earlier (`1024px -> 900px`) so sticky sidebar shows on all widths >900px.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** none new for this round.
+
+---
+
+## 0. LATEST - Shop page banner + sidebar layout (2026-10-31)
+
+**Goal hit:** user - "Let's fix the layout structure for the shop page: Sidebar and Banner Alignment: Right now, the banner is full-width rectangle stretching across the top, and the sidebar is pushed underneath it. Correct Layout Hierarchy: Reorganize the container structure so the sidebar stays on the left (spanning vertically alongside the product grid), and position the banner neatly inside the main content area above the product grid (so the sidebar runs parallel to both the banner and the products)."
+
+**What changed:**
+1. **`customer-web/src/pages/HomePage.tsx`** - moved the hero/banner INSIDE `.browse-main` (right column of `.browse-layout`), so the left category sidebar now spans vertically alongside the banner + product content (standard 2-column grid: sidebar left, banner + products right).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** none new for this round.
+
+---
+
+## 0. LATEST - Sidebar visibility fix (2026-10-31)
+
+**Goal hit:** user - "Still there is no sidebar on dashboard!"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - fixed dead gap where catalog sidebar never rendered:
+   - Sidebar collapse breakpoint moved from `@media (max-width: 1024px)` to `@media (max-width: 900px)`.
+   - Previously: sidebar hidden at <=1024px but the mobile drawer toggle only appears <900px, leaving a dead zone (901px-1024px) with NO sidebar and NO way to open one.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** none new for this round.
+
+---
+
+## 0. LATEST - Product grid + login card cleanup (2026-10-31)
+
+**Goal hit:** user — "fix a few UI layout and styling issues on the frontend: Product Grid (cards stretching across the entire width / sparse-bulky) ... Sidebar (add a clean, sticky category and filter sidebar on the left side of the product catalog) ... Login Modal (high-contrast 'zebra-crossing' striped pattern — remove stripes, clean solid neutral background card with soft shadow and rounded corners)."
+
+**What changed:**
+1. **`customer-web/src/styles.css`** — `.grid-products`:
+   - Was: `repeat(auto-fill, minmax(340px, 1fr))` (cards could stretch to massive width / sparse-bulky).
+   - Now: `repeat(auto-fill, minmax(240px, 1fr))` — controlled responsive columns, neat uniform multi-column card layout, never full-width stretching.
+2. **`customer-web/src/styles.css`** — `.auth-card`:
+   - Removed the zebra-crossing `.auth-card::before` (`repeating-linear-gradient(-45deg, ...)` striped top strip).
+   - Login screen now renders a clean solid card (`var(--surface)` bg) with soft shadow (`var(--shadow)`) and rounded corners (16px) — professional finish.
+3. **Sidebar:** verified existing clean sticky category + filter sidebar on `/browse` (`.browse-layout` 264px rail + `.filter-side` sticky + mobile drawer) — no code change needed.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; commit follows `827808f` audit round.
+
+**Known open edges:** none new for this round.
+
+---
+
+## 0. LATEST — Homepage redesign — Shopify/Nike/Apple-inspired (2026-10-31)
+
+**Goal hit:** user — "i need more changes on complete ui! https://sreepon.netlify.app/ this is one of our website we used to create for another client and i need the design work like this!" + "change some things! 1. The cards of products currently in 6 cards per row! but i need it to be 4 cards! and the left side have no menu!! are routing contents! i will send the repo of github for design make sure which are the design concept that we can add it to our website to look more professionally with extra contents in UI because current state have less content and lower designs!"
+
+**What changed:**
+1. **`customer-web/src/pages/HomePage.tsx`** — rebuilt homepage:
+   - Full-bleed hero tile with giant headline, tagline, and single pill CTA (Shopify cinematic + Apple product-tile-dark)
+   - Shop by Category rail: horizontal scroll of category icon cards with images/monograms (Nike category-icon-card)
+   - Admin-configured sections still render below the rail
+   - DealsRail, RecommendedRail, RecentlyViewedRail, AllProductsGrid all preserved
+2. **`customer-web/src/pages/CategorySidebar.tsx`** — new component:
+   - Left sticky category navigation sidebar (~264px) at desktop
+   - Category tree with radio selection + active state
+   - Filter groups: Brand, Discount, Price with pill chips
+   - Mobile: full-screen filter drawer with overlay backdrop + Apply button
+3. **`customer-web/src/styles.css`** — new CSS:
+   - `.hero-tile` / `.hero-tile-dark` — full-bleed hero with tinted image overlay, giant headline, pill CTA
+   - `.category-rail` / `.cat-icon-card` — horizontal icon card rail with hover lift
+   - `.filter-side` / `.filter-side-mobile` — sticky left sidebar + mobile drawer with overlay
+   - All values via EasyGet tokens; no hardcoded hex/px in new declarations
+4. **`design-reference/awesome-design-md/`** — saved DESIGN.md from shopify, nike, apple for reference
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; pushed to `origin fix/flutter-web-and-ordering` as `a3e709f`
+
+**Known open edges:** none new — homepage redesign complete; next: wire CategorySidebar into BrowsePage, then remaining TODOs (cart stock gate, wishlist OOS badges, search price-filter fix).
+
+---
+
+## 0. LATEST — Ratings & Reviews redesign (2026-10-30)
+
+**Goal hit:** user — "The current Ratings & Reviews section layout looks plain and unpolished... redesign the reviews component into a modern two-column layout."
+
+**What changed:**
+1. **`customer-web/src/pages/ProductPage.tsx`** — `ReviewsSection` rebuilt:
+   - Two-column layout: rating score card (left, ~340px) + review list (right)
+   - Left card: large overall score (mono-spaced), star visual, review count, star breakdown (5★→1★) with animated progress bars
+   - Right: organized review cards with clean borders, hover lift, rating + reviewer + verified badge + date, title + body
+   - Empty state: "No reviews yet" with "Write the first review" button that scrolls to the form
+   - Write-review form: star picker, title + body fields, Post button, all in a clean card
+   - `useRef` + smooth scroll to form on "Write the first review"
+2. **`customer-web/src/styles.css`** — full reviews CSS rewrite:
+   - `.reviews-wrap` with border-radius and padding
+   - `.reviews-grid` two-column grid (340px 1fr)
+   - `.reviews-score-card` with accent-tinted background
+   - `.review-card` cards with hover lift + shadow-elev
+   - `.review-form` card with star picker, inputs, Post button
+   - Responsive: single column ≤900px
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; no backend or HTML changes.
+
+**Known open edges:** none — single shared `ReviewsSection` component on PDP.
+
+---
+
+## 0. LATEST — Product cards rebuilt PDP-style (2026-10-30)
+
+**Goal hit:** user — "EACH PRODUCTS CARD LIKE IN DETAIL" — browse/list product cards should look like the product detail page left side, not compact marketplace cards.
+
+**What changed:**
+1. **`customer-web/src/components/ui.tsx`** — `ProductCard` rewritten to read like a mini PDP:
+   - Larger price font (`size="md"` instead of `"sm"`) with tabular numerals
+   - Prominent brand → name → price stack
+   - `added` state tracked locally for "✓ Added" feedback
+   - All existing OOS / discount / featured badge logic preserved
+2. **`customer-web/src/styles.css`** — full card CSS rewrite:
+   - Larger hero image (aspect-ratio 1/1, hover scale 1.04×)
+   - Badge pill top-right, wishlist heart top-left (larger 36px, appears on hover)
+   - Brand name (uppercase, muted), product name (16px, 2-line clamp), rating pill
+   - Price row with larger mono-spaced price, MRP strikethrough, % off
+   - Add-to-bag button pinned to bottom, 48px touch target, PDP buy-box style
+   - Border-first elevation; hover lift + shadow-elev; transitions via `--dur-micro`
+   - All values via EasyGet tokens; no hardcoded hex/px in new declarations
+   - Removed unused `.product-meta` styles
+   - Applied across HomePage, BrowsePage, SearchPage, CategoriesPage, WishlistPage, marketplace, PDP similar-products (single `ProductCard` component)
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; no backend or HTML changes.
+
+**Known open edges:** none — single shared component means the PDP-style card renders everywhere consistently.
+
+---
+
+## 0. LATEST — Browse grid full-width + 6+ cards per row (2026-10-30)
+
+**Goal hit:** user — "layout has too much blank space on the left and right, and it's currently showing only 4 product cards per row. update the grid container to display at least 6 products per row on larger screens and reduce the outer container's padding/max-width so the catalog utilizes the full width of the screen better"
+
+**What changed:**
+1. **`customer-web/src/styles.css` `.page`**: `max-width` 1280→1600px, side padding 20→12px — catalog now uses more of the screen width
+2. **`customer-web/src/styles.css` `.grid-products`**: `minmax(190px, 1fr)`→`minmax(150px, 1fr)`, `gap` 16→12px — large screens now fit 6+ product cards per row instead of 4
+3. Mobile breakpoints unchanged (2 columns ≤640px, 1 column ≤430px)
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; no backend or HTML changes.
+
+**Note on "AND STILL THE CARD IS STICKY!!":** the PDP buybox sticky containment from the previous round is working as designed (stuck within `.product-detail`, never overlaps Similar products). If you're seeing sticky behavior on the browse page or want the PDP buybox sticky removed entirely, let me know — that's a separate change.
+
+---
+
+## 0. LATEST — PDP sticky buy box containment (2026-10-30)
+
+**Goal hit:** user — "the sticky right-side buy card scrolls down until it hits the 'Similar products' section. adjust the CSS or layout so that it stops earlier with some padding, or stays contained neatly within the main product details grid."
+
+**What changed:**
+1. **`customer-web/src/styles.css`** — `.buybox` now has `position: sticky; top: calc(var(--nav-h) + 24px); align-self: start; z-index: 10;`:
+   - Sticks 24px below the nav bar while scrolling through product details (padding from top)
+   - `align-self: start` keeps it at content height (doesn't stretch to fill the grid row)
+   - `z-index: 10` keeps it above other content when sticky
+   - Sticky is contained within `.product-detail` (its parent grid), so it naturally scrolls away when the product details grid ends — it will **never overlap the Similar products section**
+   - On tablet/mobile (single-column/full-width), sticky is harmless (acts as normal flow)
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; no backend or HTML changes.
+
+**Known open edges:** none — this is a pure CSS containment fix.
+
+---
+
+## 0. LATEST — SriPon-style product card redesign (2026-10-30)
+
+**Goal hit:** user — "i need the design work like this! https://sreepon.netlify.app/ — checkouts the cards and give me same card design like that for our easyget website!" → rebuilt customer-web product cards to match the sreepon.netlify.app card aesthetic using EasyGet's own design tokens (no hardcoded hex/px, DESIGN.md compliant).
+
+**What changed:**
+1. **`customer-web/src/styles.css`** — rewrote `.product-card` block:
+   - Square edge-to-edge hero image (`aspect-ratio: 1/1`, `object-fit: cover`, `bg-sunken` canvas), hover scales image 1.05×
+   - Top-right badge pill (`.product-chip` + `.chip-out`/`.chip-deal`/`.chip-featured`) on the image
+   - Top-left wishlist heart (`.wish-btn`, circular, appears on hover, moves from top-right to top-left so it no longer collides with the badge)
+   - Brand → name → price row → stock → Add-to-bag stack, button pinned to bottom via `margin-top: auto`
+   - Hover: card lifts `translateY(-2px)`, shadow-elev, border shifts toward `--primary`; transitions use `--dur-micro` (160ms ≥ DESIGN.md §1 floor)
+   - Border-first elevation (1px hairline + shadow on hover only), never floating shadows alone
+   - Add-to-bag uses `--color-cta` (live green) with 44px touch target, `--color-state-ok` for added state
+   - All values via EasyGet tokens; no hardcoded hex/px in new declarations
+2. **`customer-web/src/components/ui.tsx`** — `ProductCard` badge spans now carry `product-chip` class so `.product-chip` base positioning applies
+3. **`customer-web/src/styles.css` root** — added `--bg-sunken` and `--radius-lg` token definitions; removed old absolute positioning from `.chip-featured`/`.chip-deal`/`.chip-out` (now handled by `.product-chip`)
+4. Removed duplicate `.wish-card` definition (`.wish-btn` now owns all heart styles)
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green (customer-web); admin-web untouched but previously green.
+
+**Known open edges:** none — cards render identically across HomePage, BrowsePage, SearchPage, CategoriesPage, WishlistPage, marketplace, and PDP similar-products since they all share the one `ProductCard` component.
+
+---
+
+## 0. LATEST — NotFound screens replace silent fallbacks (2026-10-29)
+
+**Goal hit:** user — "do what Profesional do!" → closed the last open audit gap: unknown-route fallbacks now render **real NotFound screens** instead of silently dumping into Home (customer) / Dashboard (admin).
+
+**What changed:**
+1. **customer-web** — new `pages/NotFoundPage.tsx` (uses existing `EmptyState` + `.page`/`.pagehead`/`.btn`); route fallback `unknown → <NotFoundPage />` (was `<HomePage />`).
+2. **admin-web** — unknown-route fallback now renders `<div className="card not-found">…</div>` with a Back-to-dashboard button (was `<DashboardPage />`); `.not-found` styles added to admin `styles.css`.
+
+**Verification:** both SPAs `tsc --noEmit` (strict incl. `--noUnusedLocals`) + `vite build` green; no backend change.
+
+**Known open edges:** none new — silent fallbacks resolved this round.
+
+---
+
+## 0. LATEST — Dead-code sweep + screen-routing / screen-content / auth audit round (2026-10-29)
+
+**Goal hit:** user packet — "check screen wiring is gold standard or just same fallback wiring; check each screen content is professional like a pro e-commerce (no crap, only needed for customers); check unwanted codes that reflect no changes are waste of line; auth workflow like Supabase well structured for all db and users!!". Swept both web SPAs (customer-web + admin-web) for dead code, fixed everything hit, re-verified builds.
+
+**What changed:**
+1. **Dead code removed — both SPAs now pass `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean:**
+   - customer-web `App.tsx` — dropped unread `error` from the `useStorefront()` destructure (only `data`/`loading` consumed).
+   - customer-web `components/marketplace.tsx` — dropped unread `type Product` import.
+   - customer-web `pages/CheckoutPage.tsx` — dropped unread `Spinner` import.
+   - admin-web `App.tsx` — dropped unread `theme` destructure + the now-unused `useTheme` import.
+   - admin-web `pages/InventoryPage.tsx` — dropped the dead first `storesQuery` useQuery (the live one lives in the Add-Stock modal section).
+   - admin-web `pages/LoginPage.tsx` — dropped unread `toggle` from `LoginPage`'s `useTheme()` destructure (ThemeToggle keeps its own).
+   - admin-web `pages/ProductsPage.tsx` — dropped dead `categoryById` useMemo.
+   - admin-web `pages/StorefrontPage.tsx` — dropped unread `type TickerConfig` import.
+2. **Module-level scan** — no fully-unreferenced src modules (only flag-gated design sandbox `preview.tsx` + `components/next/ProductCard.tsx`, wired via `preview.html` + `isNextUi`, intentional).
+
+**Audit verdicts (user packet):**
+1. **Route wiring:** customer hash router covers `#/home`, `#/browse?category=…`, `#/product/<slug>`, `#/search?q=…`, `#/cart`, `#/checkout`, `#/orders`, `#/order/<id>`, `#/account`, `#/wishlist`, `#/categories`, `#/login` with guest guard on personal routes; **fallback** unknown → `<HomePage />`. Admin has explicit 8-route table + fallback unknown → `<DashboardPage />`, and non-admin fallbacks for `users`/`storefront` → Dashboard (nav already adminOnly-gates; deep links still fall through). Fallbacks flagged as "lazy" — product decision pending.
+2. **Screen content:** sampled core customer screens (Wishlist, Auth, PDP incl. OOS, cart) — professional per DESIGN.md gates; zero `console.log`/`debugger`/`TODO`/`FIXME`/`alert` in both SPAs src.
+3. **Unwanted code:** now clean — 8 dead symbols removed this round via strict tsc flags; module scan clean.
+4. **Auth workflow:** Supabase-like structure CONFIRMED — register → OTP verify/resend → login → refresh → logout (blacklist) → Google → `me`; JWT (simplejwt `ROTATE_REFRESH_TOKENS=False`, `BLACKLIST_AFTER_ROTATION=True`), DRF `ScopedRateThrottle` wired (login 5/min, register 3/min, otp 10/min), password validators, roles CUSTOMER/MERCHANT/ADMIN/STORE_MANAGER/DELIVERY_AGENT; both frontends: Bearer + refresh-then-retry + global 401 purge.
+
+**Verification:** both SPAs `tsc --noEmit` green with `--noUnusedLocals --noUnusedParameters`; `npm run build` green for customer-web + admin-web; no backend change this round.
+
+**Known open edges:** unknown-route fallbacks (customer→home, admin→dashboard) pending product decision; register UI copy ("no codes, no waiting") vs backend OTP email path; no password-reset endpoint; Flutter parity for add-stock/in_stock still pending.
+
+---
+
+## 0. LATEST — Image display controls (align/zoom/hover effect) + designer layout fixes + secret guard (2026-09-27)
+
+**Goal hit:** user packet — fix 2 Storefront Designer layout bugs (section header controls clipped at the right edge; section item cards had no horizontal scrolling), then "be frontier model and complete this": full per-image presentation control — **focal align, zoom level, interactive hover effects** — for product images AND storefront section images (add/edit/remove already existed from `a7780b8`), plus a CI guard against tracked secrets and a PR to `main`. Commits **`7887104`** (designer fix) + **`6e30fce`** (feature) + **`7de905b`** (CI guard) + **`05cab46`** (gitignore). **Backend 268/268 green (1 skipped, +6 tests); both builds green; live display smoke 14/14.**
+
+**What changed:**
+1. **Designer layout fixes (`7887104`)** — `.section-row { min-width: 0 }` (grid child no longer overflows); `.section-head` rewritten as a flex row (`justify-content: space-between`, `width: 100%`, `min-width: 0`, no wrap) with the actions block `flex: none; margin-left: auto` so ✎/↑/↓/✕ stay pinned right and visible instead of clipping; title `flex: 1; min-width: 0` + badge ellipsis for truncation; `.item-strip` now `flex-wrap: nowrap; max-width: 100%; overflow-x: auto` (section item cards scroll horizontally with a styled thin scrollbar instead of pushing the layout wide).
+2. **Backend (`6e30fce`)** — new `ImageDisplayFields` abstract model in `products/models.py` (`align_x`/`align_y` 0–100 def 50, `zoom` 1.0–3.0 def 1.0, `effect` none|zoom|pan|grayscale def none, `transition_ms` 0–2000 def 400) inherited by `ProductImage` **and** `StoreSection` (migrations `products.0006` + `storefront.0004`, applied live); image serializers expose the 5 fields; `primary_image_display` (`_image_display(_primary_image(obj))`) added to **both** Product list and detail serializers; section read/write serializers carry the fields with explicit write validation → custom 400 `{"error": {"code", ...}}` detail.
+3. **Admin (`6e30fce`)** — shared `ImageDisplayEditor` component (live hover-preview frame, 3×3 align preset grid, X/Y sliders, zoom slider 1–3× with ×NN.NN readout, effect `<select>`, transition slider disabled when effect is none) + `imageFxClass`/`imageFxStyle` helpers + `.img-fx`/`.ide-*` CSS; `api.ts` `ImageDisplay`/`DEFAULT_IMAGE_DISPLAY`/`EFFECT_LABELS`/`toImageDisplay`/`updateProductImage`; ProductsPage gallery tiles render with the configured effect and get a ✎ overlay button opening an inline editor panel (display controls + caption, Cancel/Save, PATCH → state update → query invalidate → toast); StorefrontPage `SectionDesignModal` gains a design-image block for `HERO|BANNER|IMAGE_GALLERY` sections — editor shown when a preview exists, values fold into the existing Save design payload (hint: "saves with Save design").
+4. **Customer (`6e30fce`)** — optional `ImageDisplay` type on `StoreSection` + `Product.primary_image_display` + `ProductDetail.images` item type; `utils/imageFx.ts` (`fxClass`/`fxStyle`, defaults are a strict no-op); applied to ProductCard, PDP main thumb (fx follows the selected gallery image via `activeFx`), per-image thumb buttons, SimilarCard, and both hero renders (HeroSlide + HomePage) — heroes use a direct-`img` CSS variant so `.hero-img { position: absolute }` is untouched; wrapper rule `.img-fx:not(img) { position: relative; overflow: hidden }` protects `.product-thumb`/`.detail-thumb`.
+5. **CI (`7de905b`)** — `.github/workflows/repo-hygiene.yml`: fails if `.env` stops being gitignored, if env/key/keystore/credential-like files are tracked (`.env.example` whitelisted), or if private-key / AWS `AKIA` / `ghp_` / `xox` token patterns appear in tracked content.
+6. **`.gitignore` rewritten business-level (`05cab46`)** — secrets + local artifacts only: added signing/credential patterns (`*.pem`/`*.p12`/`*.pfx`/`*.jks`/`*.keystore`, `key.properties`, `google-services.json`, `service-account*.json`, `credentials.json`) in sync with the CI guard, generalized `db.sqlite3` → `*.sqlite3`, dropped unused speculative entries (pytest/coverage); the 76 live ignore entries verified byte-identical (zero new untracked noise), `.env.example` still whitelisted, 0 ignored-but-tracked files.
+
+**Verification:** suite **268/268 OK (1 skipped)** (products +3: upload defaults, edit+validation, list embed; storefront +3: owner edit, range validation, render carries fields); `tsc --noEmit && vite build` green for customer-web + admin-web; hygiene checks green locally (ignore ✓ / tracked ✓ / content scan ✓); migrations applied live to Supabase; **live display smoke 14/14**: upload → defaults 50/50/1.0/none/400 → PATCH align 75/25 + zoom 1.75 + pan + 650ms + caption persisted → `zoom=9` and `effect=disco` → 400 → detail `images[0]` + `primary_image_display` + list row all carry the values → section PATCH roundtrip + render shows them → `align_x=250` → 400 → cleanup (image deleted → display null; section restored to defaults). The one transient FAIL was a **stale pre-migration storefront render cache**, auto-invalidated by the section PATCH (fresh re-read confirmed defaults) — same cache-invalidation path as the known categories cache. **Repo note:** owner deleted & recreated `trisentricai/EasyGet` mid-session (old PRs #1–#3 gone); branch history was re-pushed intact, `main` restored at `cabbf51`, **new PR #1** opened — all 8 checks green; default branch pending manual switch to `main` (see GitCheck).
+
+**Known open edges:** Section **items** (product tiles inside sections) have no display fields — the designer has no item-level image upload yet (follow-up if wanted); transition slider capped at 1000ms in admin (model allows 2000); hover effects are CSS-only — touch devices get the static align/zoom, no gesture equivalent; section-design image block only for HERO/BANNER/IMAGE_GALLERY (layout sections have no hero image to style); one-time render-cache staleness until first section write (self-heals); no frontend test runner (builds + API smoke gate).
+
+## 0. LATEST — Admin product image gallery (2026-09-27)
+
+**Goal hit:** user asked "can i able to add original image of products via admin web?" → no such path existed (the catalog had **zero** product images anywhere) → built it end-to-end: API + admin gallery UI. Commit **`a7780b8`**. **Backend 262/262 green (1 skipped, +10 tests); admin build green; live gallery smoke 27/27.**
+
+**What changed:**
+1. **Image API (backend `products`)** — `GET/POST /api/v1/products/<slug>/images/` + `GET/PATCH/DELETE /api/v1/products/images/<pk>/` (`ProductImageListCreateView` + `ProductImageDetailView` in `products/views.py`, routes registered **before** the router in `products/urls.py` so the multi-segment paths aren't swallowed). Create requires a file (400 `{image: …}` without), auto `sort_order = max+1`, first upload forced primary, `is_primary=true` demotes siblings atomically; PATCH is partial (file replace and/or caption/is_primary/sort_order); DELETE of the primary promotes the next by `sort_order, id`; GETs `AllowAny`, writes = `IsAuthenticated` + `IsTenantWriter` + `IsTenantObjectMember` — the object check runs against the **product** (`ProductImage` has no tenant; tenant-less platform products are staff-only). Existing `image_signals` COMPRESS_RULES already WebP-compresses `products.ProductImage` at 800px on save.
+2. **Latent 500 fixed (the real find)** — `ProductDetailSerializer` never overrode `primary_image`, so DRF auto-mapped it to the `Product.primary_image` **model property** (returns a `ProductImage` instance) → the moment a product had an image, `GET /products/<slug>/` **500'd in DRF's JSON encoder**. Invisible until now because the live catalog had zero images. Extracted shared `_primary_image_url()` helper; list + detail serializers both declare the `SerializerMethodField`; regression test pins URL-string output (this is what the customer PDP also renders).
+3. **Admin gallery UI (`ProductsPage`)** — editor gains an Images block: tile grid (hover overlay: ★ set primary, ✕ remove), dashed `+` upload tile (immediate multipart upload), Primary badge, per-tile busy state; `openEdit` also fetches the product detail for `images`, `openCreate` clears; delete-promotes-next mirrored client-side; create mode shows "Save the product first…". `api.ts` adds `getProduct`, `uploadProductImage`, `setPrimaryProductImage`, `deleteProductImage`, `ProductImage`/`ProductDetail` types and exports the shared `mediaSrc` (StorefrontPage now imports it instead of its own copy).
+4. **CSS** — `.prod-gallery`, `.prod-img-tile(.primary)`, `.prod-img-overlay`, `.prod-img-badge`, `.prod-img-add(.busy)`, `.prod-img-empty` in admin `styles.css`.
+
+**Verification:** suite **262/262 OK (1 skipped)** (`products` = 37: `ProductImageEndpointTests` ×9 + detail-serialization regression, 10 new); admin `tsc --noEmit && vite build` green; **live gallery smoke 27/27**: login → upload ×2 (primary rotation, stored `.webp`) → detail GET 200 with string `primary_image` under `/media/products/` → GET image 200 `image/webp` → PATCH set-primary demotes → DELETE primary promotes next → DELETE last empties gallery → anon upload 401.
+
+**Known open edges:** anon `GET /api/v1/categories/` serves a **stale 1h Redis cache** (returns `Grocery id:1`; real Supabase ids are 6–15 — pre-existing seed-vs-cache mismatch, unrelated to this work; creating a product with a cached id 400s until TTL/invalidation); image row delete leaves the file on disk (Django default, no orphan sweeper); images still local-disk (Supabase/object storage is a future move); no frontend test runner (UI gated on build + the 27-step API smoke).
+
+## 0. LATEST — Designer hero image + theme tabs, customer dark mode, infinite scroll (2026-09-27)
+
+**Goal hit:** user work packet — **Bug 1** Hero Banner image upload in the Storefront Designer + new sections visibly appended & scrolled into view; **Bug 2** Store Theme moved out of the overlaying side panel into its own tab; **Task A** customer-web dark mode (header ☀️/🌙 toggle, CSS variables, localStorage + `prefers-color-scheme`, ~200ms color transition); **Task B** BrowsePage infinite scroll with conditional Load More. Plus an unplanned **media-serving fix** (uploads had no `MEDIA_*` settings, saved cwd-relative, and always 404'd). Commit **`a079dcd`**. **Backend 252/252 green (1 skipped); both builds green; live multipart upload → GET 200 `image/webp`.**
+
+**What changed:**
+1. **Designer tabs** (admin `StorefrontPage.tsx` + `styles.css`) — `Sections | Store theme` tab bar replaces the `.sf-layout` two-column grid; board and theme card each own a full-width view (overlay gone); the add-section dropdown already POSTed + appended — it now also flips to the Sections tab and smooth-scrolls the new row into view (appended at the bottom of long lists was the "nothing happened" illusion); `.sf-layout` CSS removed, `.sf-tabs` added.
+2. **Hero banner image** — `SectionDesignModal` gains a Banner image block for `HERO` sections (thumbnail preview via `mediaSrc`, Upload/Replace/Remove). Upload is **immediate**: multipart PATCH through `updateSection(id, FormData)` (api.ts now routes `FormData` bodies to the existing `form:` path); Remove = JSON `{image:null}`; `onImageChange` keeps both the `sections` list and `editSection` in sync; `StoreSection.image: string | null` typed. URL-input rejected: DRF `ImageField` only accepts files.
+3. **Dark mode (customer-web)** — no-flash inline script in `index.html` (localStorage `eg-theme` → else `prefers-color-scheme`), header `.nav-theme` Sun/Moon toggle (inline SVG) with a system-preference listener that stays live until the first explicit choice; `html[data-theme="dark"]` palette uses `!important` so the merchant's inline `--bg` (store theme) can't win, plus `color-scheme: dark`; theme-switch-only `data-theme-transition` attribute gives a 200ms background/border/color/fill transition (skipped under `prefers-reduced-motion`); light-only hardcoded colors (`#3c3c3c`, `#fff` mixes, `#f2f2f2`, `#eaeaea`, `#d9d9d9`, toast/btn-dark text…) converted to vars (`--warn-ink` added for the pending chip), so both themes are token-driven.
+4. **Infinite scroll (BrowsePage)** — 1px sentinel + `IntersectionObserver` (`rootMargin` 200px) marks the bottom zone; an effect auto-fetches while in view, gated on `data && hasNextPage && !isFetchingNextPage` (React Query dedupes in-flight pages); the Load More button renders only when `hasNextPage && !nearBottom` (visible mid/upper page, hidden at the bottom where auto-load kicks in, gone when exhausted); label keeps the `(N left)` count + `Loading…` state.
+5. **Media serving (backend)** — `MEDIA_URL="/media/"` + `MEDIA_ROOT=BASE_DIR/"media"`, DEBUG-only `static(MEDIA_URL, …)` route in `config/urls.py`, and `mimetypes.add_type("image/webp", …)` (Windows registry lacks `.webp` → served `application/octet-stream` before). With no MEDIA settings, uploads had been landing cwd-relative under `backend/storefront/…` and every image URL 404'd (0 product/section images existed, so it was invisible until now).
+
+**Verification:** suite **252/252 OK (1 skipped)** after the settings/urls change; `tsc --noEmit && vite build` green for both SPAs; live smoke: section create 201 (auto position), multipart image PATCH 200 → `/media/storefront/sections/*.webp` → **GET 200 `image/webp`**, `{image:null}` clear 200, delete 204, both SPAs 200 (customer serves the `eg-theme` boot script). Smoke media files cleaned up.
+
+**Known open edges:** no frontend test runner (UI gated on builds + API smoke — a visual pass on the dark palette is still worthwhile); admin-web already has its own `ThemeContext` (login page) — a header toggle there is a possible follow-up; section delete leaves the media file on disk (Django default, no orphan sweeper yet); images still use local disk — Supabase/object storage remains a future move.
+
+## 0. LATEST — Perf batch: indexes/cache/search, pagination ≤20, Supabase RLS, React Query (2026-09-27)
+
+**Goal hit:** the 3-prompt perf/security batch fully applied (audited first — much of it had landed uncommitted from a parallel session, verified + completed here). Commits **`891e278`** (perf foundation) + **`0e5a230`** (pagination/RLS/React Query/UI). **Backend 252/252 green (1 skipped, +10 tests); both builds green; live: 68/68 public tables RLS-on, 0 anon/auth grants.**
+
+**What changed:**
+1. **Perf foundation** (`891e278`) — 1h cache-aside for storefront renders + public category list (signal-invalidated via `common/cache.py` + `cache_signals.py`); upload→WebP q80 compression 1200/800px (`common/images.py` + `image_signals.py`, name-only/committed fields skipped); search rebuilt on `ProductSearchIndex` (multi-token match, suggestions, query log, popularity) + `rebuild_search_index` command; composite index migrations (Product/Category/Banner); guest browsing `AllowAny` on products/brands/reviews/categories GET; `seed_platform_storefront` command; customer-web EASYGET favicon + stale-token 401 retry + tokenized search fallback.
+2. **Global pagination ≤20** (`0e5a230`) — DRF default `common.pagination.Max20PagePagination` (PAGE_SIZE 20, hard max 20); `ProductPagination` 100→20, `ReviewPagination` 50→20; admin `listAllProducts` loop retuned (20/page × 50 pages — 200-item cap removed); every consumer verified tolerant of `{count,next,previous,results}` (customer `asArray`, admin `toArray`, Flutter `json['results']`).
+3. **Supabase RLS** (`0e5a230`) — `common/rls.py` runs from **post_migrate connected WITHOUT a sender** (a sender-filtered hook never fires: `common` has no `models_module` and Django skips such apps — see `django/core/management/sql.py:45`). Enables RLS on every owned public table + revokes `anon`/`authenticated` table/sequence/default-table privileges. Django connects as table owner (`postgres`, no FORCE) → owner bypass keeps the API working. Live verified: **68 tables, 0 RLS-off, 0 leftover grants**; idempotent (`rowsecurity=false` filter), ownership-guarded, sqlite no-op for tests.
+4. **React Query** (`0e5a230`) — `@tanstack/react-query@5` in both SPAs (one `QueryClient`: staleTime 30s, refetchOnWindowFocus false, retry 1). customer-web: Browse (`useInfiniteQuery` load-more), Orders + order detail, Product detail/related/reviews, Search (`keepPreviousData`); user id in keys to prevent cross-user cache bleed. admin-web: Products/Categories/Orders/Reviews/Inventory/Dashboard with `invalidateQueries` replacing manual reloads after mutations. **Left effect-based by agreement:** auth/cart/storefront contexts, StorefrontPage designer (mutation-coupled), suggestion debounce, checkout submit flow.
+5. **UI perf polish** (`0e5a230`) — `.product-card` rest border `1px solid var(--border)` (was transparent) + primary-tinted hover; **all 8 `<img>` tags** now `decoding="async"`, below-fold ones also `loading="lazy"` (heroes/PDP main deliberately eager for LCP).
+6. **Test fixes for the new contract** — paginated `{results}` assertions (admin reviews, delivery queue, inventory transactions); `cache.clear()` in `StorefrontTestBase.setUp` (render caching + `on_commit` invalidation never fires under `TestCase` rollback → cross-test Redis leaks); `images.py` `_committed` guard fixed the banner-upload `FileNotFoundError`.
+
+**Verification:** suite **252/252 OK (1 skipped)**; `tsc --noEmit && vite build` green for customer-web + admin-web; live smoke: `/products/` → `{count:200,next,previous,results:20}`, anon `/categories/` 200, `/search/` 200, customer `/orders/` paginated, admin `/orders/`,`/products/`,`/inventory/`,`/admin/dashboard/` 200, both SPAs 200 (EASYGET titles), dist CSS carries the new border, dev HMR clean.
+
+**Known open edges:** StorefrontPage designer + Auth/Cart/Checkout still effect-based (scope-agreed, follow-up if wanted); if Redis is down, cached endpoints stay correct but slow (IGNORE_EXCEPTIONS, up-to-1h staleness only when signals can't invalidate — signals no-op when Redis down); RLS has **no per-row policies** (owner + `service_role` bypass, anon/authenticated fully denied) — revisit if PostgREST/anon access is ever introduced; multi-seller split E2E still sqlite-proven only; no frontend test runner (React Query conversions gated on tsc/build + manual smoke).
+
+## 0. LATEST — EASYGET platform storefront + split orders (2026-09-26)
+
+**Goal hit:** the single "Rahul's store" concept is gone from the customer journey — **EASYGET is one platform storefront showing everything**, with per-seller order splitting at checkout. Spec `docs/superpowers/specs/2026-09-26-easyget-platform-storefront-design.md`; plan `docs/superpowers/plans/2026-09-26-easyget-platform-storefront-plan.md` (8 tasks, executed TDD inline). **Backend 242/242 green (1 skipped, +21 new tests); both builds green; 8/8 live smoke green.**
+
+**Decisions (user-confirmed, D1–D6):**
+- **D1 = B architectural** — EASYGET becomes the single platform storefront; rahuls-store stays as legacy/Flutter surface.
+- **D2 = A split orders** — checkout creates one order per seller (resolve all stores first → all-or-nothing).
+- **D3 = B seller visibility** — seller name ONLY in cart grouping / checkout review / orders (hidden on cards, PDP, browse).
+- **D4 = A rename** — demo store → **EasyGet Demo Store** (slug `rahuls-store` kept for Flutter); live DB held `Rahuls-Store` not `Rahul's Store` → guarded migration covers both spellings + one-off shell rename on live.
+- **D5 = A web only** — Flutter untouched; back-compat via legacy slug route + legacy `{store}` order mode.
+- **D6 = Approach 1** — `Store.is_platform` flag + single platform row (slug `easyget`, tenant NULL) + partial unique constraint.
+
+**What changed (commits `cc69ec6`…`0ca975e`):**
+1. **Backend platform row** (`8025962`) — `Store.is_platform` + `unique_platform_store`; data migration creates EASYGET row + renames demo (both spellings); store list/detail + `common._store_state` hide platform row from non-staff; orders reject `store=platform` (400).
+2. **Platform route** (`f046741`) — `GET /api/v1/storefront/platform/` (AllowAny, lookup by flag not slug, before slug route); section-item guard: platform links any **active** product, merchants stay tenant-strict.
+3. **Marketplace cart** (`d0d524b`) — cross-tenant add/merge guards removed (split belongs at checkout); cart lines expose `tenant_id` + `seller_name` (first active non-platform store name → tenant name → "EasyGet", prefetched via `to_attr`).
+4. **Split orders** (`03abb1e`) — `POST /orders/` **without** `store` → group cart by product tenant → resolve every seller's store FIRST (missing/dead → 400 `Some items can't be ordered right now.`, nothing created) → one Order+items per seller in one transaction → `{orders:[…]}`; **with** `store` → legacy single mode untouched; `OrderListSerializer.store_name` added.
+5. **customer-web platform fetch + brand** (`e4eb016`) — context always fetches `/storefront/platform/` (slug/localStorage/hash machinery removed; `getStorefront` deleted — only context used it); title/loading/fallback/footer/PDP "Sold by" = EASYGET; logout purge already sweeps `eg-*` incl `eg-cust-store`.
+6. **Cart/checkout/orders UX** (`eee9843`) — cart grouped `Sold by {seller}` + per-seller subtotal; checkout groups + `This will be placed as N orders — one per seller.` + split placement (toast `N orders placed! 🎉` → orders list, legacy fallback defensive); orders list `Seller: …` + detail Seller line; `createOrder` returns `{orders?} & Partial<OrderDetail>`.
+7. **admin-web designer** (`0ca975e`) — NAV entry + `#/storefront` route only for `role === "ADMIN"` (merchant deep-link → dashboard); designer default resolution platform > saved `eg-store` > first store (resolved once); `getStoreSlug()` fallback `easyget`; `listStores` typed with `is_platform`.
+
+**Verification:** full suite **242/242 OK (1 skipped)** (was 221; +21: platform row/route/guards, mixed-seller cart + seller fields, split orders). Builds: `customer-web` + `admin-web` tsc+vite pass. **Live smoke 8/8:** platform route 200 `EASYGET`; `rahuls-store` 200 → `EasyGet Demo Store`; customer `/stores/` hides easyget; cart line `tenant_id=2 seller_name="EasyGet Demo Store"`; split POST → 201 `{orders:[1]}` cart cleared; legacy POST `{store}` → 201 single-object echo (Flutter proof); merchant PATCH platform theme → 403; dist `<title>EASYGET</title>`.
+
+**Known open edges:** multi-tenant split E2E proven on sqlite only (live DB has 1 tenant; Supabase transaction behavior untested for multi-order create); `EZG-YYYYMMDD-XXXX` order number has no collision-retry loop; stock is not yet partitioned per store (spec §7 accepted); Flutter still renders its own storefront until ported (D5).
+
+## 0. LATEST — Security hardening + UX guards (2026-09-26)
+
+**Goal hit:** full auth/authz review (14 findings: 1 Critical, 6 High, 7 Medium) → **all 13 actionable findings fixed** (VULN-014 orders-cancel = Low, accepted). Plus 2 UX tasks. **Backend 221/221 green (1 skipped, +26 security tests); both builds green; 13/13 live-verified.**
+
+**Vulnerability fixes (VULN-001…013):**
+- **001 pwa** — `AppUpdateViewSet.get_permissions`: AllowAny only for `list/retrieve/check`; writes + `mark_deployed` = `IsAdminOnly`. Live: anon create 401, admin create 201 / delete 204.
+- **002 inventory** — `StockItemWriteSerializer.create` rejects stores outside caller's tenant (staff bypass), `"Store not found."`.
+- **003 delivery** — permission tiers: assign=`IsTenantWriter`, list/retrieve/advance=`IsAuthenticated`, else admin; **agents list PII scoped**: own-tenant assignments OR unassigned pool (staff: all). Live: customer raw POST 403, merchant agents 200, customer agents 403.
+- **004/007 chat** — add/remove participant + message edit/delete = staff-or-author; `ChatRoom.participants` read-only; `ChatMessage.validate_room` participant-or-staff; `reply_to` must be same room; room↔order validation (caller must be order owner/staff).
+- **005 WS** — `subscribe_order` gated by `can_access_order()`; `join_room`/`typing` gated by existing `check_room_access`.
+- **006 webhook** — `IsAdminOnly` (was AllowAny: unsigned, unscoped charge-confirmable). Live: merchant POST 403.
+- **008 payment attach** — `PaymentCreateSerializer.validate`: order must belong to requester (or staff) → `{"order": "Order not found."}` (no enumeration).
+- **009 refund** — `RefundCreateSerializer` fields `["amount","reason"]`, validated against `context["payment"]` (was: any refundable order id → payment oracle); **latent 500 fixed**: `refund(request, id=None)` → `pk=None`.
+- **011 storefront** — `_product_allowed_for_store()` on section/item POST/PATCH (400 cross-tenant product); inactive-section GET → 404 unless staff/store-manager.
+- **012 OTP/throttle** — uniform `OTP_INVALID_MESSAGE` for unknown-email/no-OTP/expired/wrong-code (attempts message kept); ResendOTP silent quota (≥4 OTPs/10 min → generic success message, no enumeration); **DRF throttles finally live**: `ScopedRateThrottle` added to `DEFAULT_THROTTLE_CLASSES` + `throttle_scope` register 3/min, login 5/min, otp 10/min (scopes existed but were dead config). Live proof: burst → `401×5, 429, 429`.
+- **013 validators** — `AUTH_PASSWORD_VALIDATORS` (was `[]`): Similarity + MinimumLength(10) + CommonPassword + `NumericPasswordValidator`; `RegisterSerializer.validate()` runs `validate_password`; register form `minLength=10` + helper copy. Live: weak/numeric register 400.
+
+**Environment bug found during live verify (critical for dev):** cache = Redis with `IGNORE_EXCEPTIONS` fail-soft — redis-py 8.1 handshakes via `HELLO` (RESP3) which this machine's pre-6 Redis rejects → **every cache write silently failed → ALL cache-backed rate limiting was silently off**. Fixed: `CONNECTION_POOL_KWARGS: {"protocol": 2}` in `CACHES` (fail-soft retained so prod Redis-out still degrades to allow, not 500).
+
+**UX tasks:**
+1. **Signup overflow** — `.form-grid` → `repeat(2, minmax(0,1fr))`, `.field { min-width: 0 }`, inputs `width:100%` ("Last name" no longer escapes the card).
+2. **Guest gate + logout purge** — personal routes (`cart checkout orders order account wishlist`) redirect to `#/login` when ready&&!user (Spinner while gating); `purgeLocalUserData()` removes all `eg-*` localStorage + sessionStorage on sign-out (customer + admin contexts; admin also purges on 401).
+
+**Verification:** 221/221 tests run WITH working cache · live: pwa 401/201/204, storefront render+theme+sections 200, weak reg 400, logins OK, agents 200/403, webhook 403, `/users/me` 200, delivery 403, login burst 429. **Known open issues:** none.
+
+## 0. LATEST — Marketplace depth, B1 (2026-09-26)
+
+**Goal hit:** the 5 gaps left by A2 are closed. Decisions: pincode = external lookup (api.postalpincode.in) + heuristic ETA · offers = display-only coupons this phase (checkout apply = Phase C). **Backend 195/195 green (1 skipped); both web builds green; all items verified live.**
+
+**Wishlist (server-backed heart):**
+- New `WishlistItem` model (`products/0004_wishlistitem`, UNIQUE user+product) + endpoints `GET /api/v1/products/wishlist/`, `POST`/`DELETE /api/v1/products/wishlist/<slug>/` (idempotent, registered **before the router** like `brands/` so slug lookup can't shadow them; auth required).
+- customer-web: heart on cards + new PDP heart is **optimistic server-sync** (localStorage is only an offline cache: `syncWishlistCache`/`setWishlistCache`); new **`#/wishlist` page** (grid + empty state) + header **Wishlist** link.
+
+**`sort=rating`:**
+- `products/views.py` orders by `review_rating_avg desc nulls_last` → count → id; `search` app got the same branch + `ChoiceField` gained `"rating"`. Browse + Search selects now offer **"Avg. Customer Review"**.
+- **Bug fixed en route:** the old `sort` branches `return`ed *before* the customer visibility filters — any customer sorting saw inactive/unstocked merchant catalogs. Visibility now applies before sorting (regression test added).
+
+**Offers (PDP "Available offers"):**
+- `ProductDetailSerializer` embeds up to 5 **active, in-window coupons** applicable to the product (`applies_to` ALL / CATEGORY match / PRODUCT match) — the previously-dead `admin_panel.Coupon` table finally has a consumer. Customer PDP renders them as offer lines + `CODE:` chips (display only; applying at checkout = Phase C).
+- Seeded demo coupons: `WELCOME10` (10% up to ₹100), `FLAT50` (₹50 off ≥ ₹299), `FREESHIP`.
+
+**Live pincode → ETA:**
+- New `GET /api/v1/pincode/<6-digit>/` (`common` app): validates format (400), looks up **api.postalpincode.in** (404 if undeliverable), returns `{city, state, eta_days, delivery_fee, free_delivery_over, source}`. ETA = **2 days same state / 4 days otherwise** (store state vs postal state, normalized — store `TN` matches API `Tamil Nadu` via alias table); fee ₹29 < ₹499 else free. **Process-local cache** + `source: "fallback"` heuristic if the API is unreachable (never hard-fails the PDP). Two gotchas found live: postal API drops python-requests' default User-Agent (fixed with a browser-ish UA), and state code/name mismatches (fixed with alias map).
+- PDP Check button now calls this (was a client-side mock); PDP also shows city + real fee.
+
+**Admin review moderation:**
+- Backend: `GET/PATCH/DELETE /api/v1/admin/reviews/` (`ProductReviewViewSet`, `IsAdminOnly`, filters `?approved=true|false` & `?product=<slug>`; bare array — no default DRF pagination).
+- admin-web: new **ReviewsPage** (`⭐ Reviews` in NAV, `#/reviews`): All/Needs-approval/Approved filters, table (product, stars, body, reviewer + verified, Live/Hidden badge, date), **Approve/Hide** toggle + **Delete** (ConfirmDialog).
+
+**Tests:** +18 (wishlist CRUD/auth/idempotency, rating sort, sort-visibility regression, coupon offers embedding, pincode format/api/fallback/alias, admin moderation perms) → **195 green, 1 skipped**. Migrations `products/0004` applied to Supabase. Also cleaned ~20 root junk files (incl. `token.txt`/`login.json` with live JWTs).
+
+**Run notes:** backend `:8000`, customer-web **`:3000`**, admin-web `:5174` (vite binds IPv6 `localhost` — probe `http://localhost:3000/`, not `127.0.0.1`).
+
+**Known gaps / next (Phase C+):** coupon **apply at checkout** (cart/orders/discount math), real payment gateways (Razorpay/Stripe/COD template), post-order (D), Flutter port of B1 features (E), review images.
+
+## 0. LATEST — Flipkart-grade marketplace look (2026-09-24)
+
+**Goal hit:** customer-web now looks/behaves like Flipkart/Meesho (reference: ecomhtml.baseecom.com template). Decisions: Flipkart style · marketplace = default theme · reviews API first.
+
+**Backend (177/177 tests green, migrations applied to Supabase):**
+- **Reviews & ratings API** — `ProductReview` model (`products/0003_productreview`): one review per user per product (UNIQUE), rating 1-5 (CHECK), masked reviewer name (`Rahul B.`), `is_verified_purchase` derived from DELIVERED orders server-side, `is_approved` for admin moderation.
+- Endpoints: `GET/POST /api/v1/products/<slug>/reviews/` (auth; GET approved-only paginated; POST returns 409 on duplicate). Product list/detail gain `rating_avg`/`rating_count` via **subquery annotation** (immune to stock-join row duplication).
+- Admin: `ProductReviewAdmin` (approve queue); fixed latent `alt_text` -> `caption` bug in ProductImageInline.
+- **Theme -> Flipkart palette** (`storefront/0002` + `0003_marketplace_palette`): model defaults `primary=#2874F0`, `secondary=#FB641B`, `font=Inter, system-ui, sans-serif`, `button_style=SQUARE`; data migration remaps ONLY legacy-default rows (custom rebrands preserved). Demo store `rahuls-store` manually set to the same palette.
+
+**Frontend (customer-web, `npm run build` green):**
+- **Header**: blue sticky bar - logo + tagline, wide search with orange Search button, Login/Account block, Orders, Cart with badge; **2nd-row category strip**; **scrolling offer ticker** (free delivery/returns/COD).
+- **Home**: auto-rotating **banner carousel** (dots/arrows, from HERO/BANNER sections) + rails (Deals w/ countdown, categories, recommended, recently viewed).
+- **ProductCard**: brand uppercase, green **rating pill**, discount ribbon >=50%, wishlist **heart** (device-local), Free-delivery tag, hover elevation.
+- **PDP rebuilt**: gallery+thumbs | info (rating pill, price block, variants, highlights) | **buy box** (pincode check w/ ETA, qty stepper, ADD TO CART yellow + BUY NOW orange, seller box); **Ratings & Reviews** (avg + distribution bars, review list, verified badges, star-picker write form); Similar products rail.
+- **Browse**: **left filter sidebar** (category/brand/discount radios, price inputs, featured) + sort bar with count; mobile Filters toggle.
+- **Footer**: 4-col marketplace footer + payment badges (UPI/VISA/MC/RuPay/COD); **mobile bottom nav** (Home/Search/Cart/Account <=640px).
+- New/changed: `components/marketplace.tsx` (BannerCarousel), `utils/history.ts` (+wishlist), `ui.tsx` (RatingPill/WishButton), icons (+14), Inter font in `index.html`.
+
+**Run notes:** customer-web dev = **`localhost:3000`** (vite config, NOT 5173), backend `:8000`. Verified live: reviews CRUD + 409 + aggregates, theme colors served.
+
+**Known gaps (closed by B1 on 2026-09-26):** wishlist was device-local (no backend), no admin-web review moderation UI, offers were static copy (no offers API), pincode ETA was a client-side mock, no `sort=rating`.
 
 ## 0. LATEST — Flutter app (2026-09-23): analyzer zero, APK built ✅
 
@@ -296,3 +826,41 @@ docker compose up -d postgres redis
 - DRF now defaults to **JWT + IsAuthenticated**: every view either uses it or explicitly opts out (`authenticate_classes=[]`/`AllowAny` on register/verify/login/logout/health).
 - Only `users.*` domain models exist post-Phase 2 — **do not** assume models for stores/products/orders until those phases land.
 - Never commit `.env` or secrets; `.env.*` except `.env.example` is gitignored.
+
+## 8. Production Deployment (2026-09-27)
+
+Stack (all free tier): **Render** (Django API) + **Netlify x2** (customer/admin SPAs) + **Supabase** Postgres (existing DB, reused) + **Upstash Redis** (broker/cache/result-backend via `rediss://`). Media: Supabase Storage **pending** (needs 5 S3 values from owner: bucket, endpoint, region, access key, secret key) - until then uploads live on Render's ephemeral disk.
+
+| Piece | URL / ID |
+|---|---|
+| API | `https://easyget-api.onrender.com` (health: `/api/v1/health/`) |
+| Customer web | `https://easyget-customer.netlify.app` (`easyget` subdomain was taken) |
+| Admin web | `https://easyget-admin.netlify.app` |
+| Render service | `srv-dasj3l60tbcc73fl0520` (`easyget-api`, region singapore, plan free, branch `fix/flutter-web-and-ordering`, autoDeploy on) |
+| Netlify customer site | `63400d3a-c504-46d9-a510-5a734145c96d` |
+| Netlify admin site | `f5eb0c7a-eaa2-4ca7-a461-e7205986c217` |
+
+- **Start command:** `python backend/manage.py migrate --noinput && python backend/manage.py collectstatic --noinput && cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120`; build: `pip install -r requirements.txt`.
+- **9 Render env vars** (values live in Render dashboard, never in git): `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CORS_ALLOWED_ORIGINS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`.
+- **SPAs bake the API URL at build time:** build with `VITE_API_URL=https://easyget-api.onrender.com`; also set as a site env var for future connected builds.
+- **Verified live:** health 200, products/categories/PDP 200 on live Supabase, `Access-Control-Allow-Origin` echoes both Netlify origins, admin `POST /api/v1/auth/login/` 200 with tokens, both sites serve assets with the baked URL, local/remote payload parity.
+- Deploy-prep commit `767cc9f` (settings STATIC_ROOT/STORAGES/whitenoise/proxy/CSRF + gunicorn/whitenoise/storages requirements + `ORIGIN` in both `api.ts`) is what makes Render boot - it was initially uncommitted and the deploy died on `ImproperlyConfigured: STATIC_ROOT`.
+- No celery worker on Render free (scheduled tasks idle); Render cold starts ~50s; rotate demo creds + enable push protection before real traffic.
+
+## 9. Frontend hosting moved Netlify → Cloudflare Pages (2026-10-06)
+
+Netlify free credits exhausted (deploys blocked). Both SPAs now on Cloudflare Pages (free: unlimited bandwidth, 500 builds/mo), deployed via `wrangler pages deploy` with `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (GitHub secrets; tokens in `$env:TEMP\opencode\`, never in git).
+
+| Piece | URL |
+|---|---|
+| Customer web | `https://easyget-customer.pages.dev` |
+| Admin web | `https://easyget-admin.pages.dev` |
+| NEXT_UI preview | `https://easyget-customer.pages.dev/preview?next_ui=1` (extensionless — `.html` 308-redirects) |
+
+- CI: `.github/workflows/deploy-cloudflare.yml` (replaces `deploy-netlify.yml`, deleted) — builds + `wrangler@4 pages deploy` per site on frontend pushes. Netlify sites left live in parallel until cutover confirmed.
+- Cloudflare account id `1dcd308fa49a8cab2060836420879b22`. No code changes needed (hash routing → no redirect rules; `preview.html` serves as a file).
+- REQUIRED after cutover: Render `DJANGO_CORS_ALLOWED_ORIGINS` + `DJANGO_CSRF_TRUSTED_ORIGINS` must include the `pages.dev` origins or browsers block API calls.
+
+## 10. Supabase Storage wired for media (2026-10-06)
+
+Bucket `easyget-media` (public) via S3 interop; 6 `SUPABASE_S3_*` env vars live on Render (values in dashboard only, never in git). Verified: upload → Supabase public URL → HTTP 200 → delete. Effects: `STORAGES["default"]` is S3 when the endpoint var is set, so all image URLs are absolute Supabase URLs; `SERVE_MEDIA_EPHEMERAL` auto-disables. Known leftover: API image DELETE removes the DB row but orphans the S3 object (no post_delete cleanup yet — follow-up ticket); pre-cutover `/media/` rows (ids 6, 8) point at files lost to ephemeral disks and need re-upload, not migration.

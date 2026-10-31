@@ -5,20 +5,42 @@ from rest_framework import serializers
 
 from categories.serializers import CategoryBriefSerializer
 
-from .models import Product, ProductImage, ProductVariant
+from .models import Product, ProductImage, ProductReview, ProductVariant
+
+IMAGE_DISPLAY_FIELDS = [
+    "align_x",
+    "align_y",
+    "zoom",
+    "effect",
+    "transition_ms",
+]
+
+
+def _image_display(img):
+    if img is None:
+        return None
+    return {k: getattr(img, k) for k in IMAGE_DISPLAY_FIELDS}
 
 
 class ProductImageListSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
-        fields = ["id", "image", "caption", "is_primary", "sort_order"]
+        fields = ["id", "image", "caption", "is_primary", "sort_order"] + IMAGE_DISPLAY_FIELDS
         read_only_fields = fields
 
 
 class ProductImageWriteSerializer(serializers.ModelSerializer):
+    align_x = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    align_y = serializers.IntegerField(min_value=0, max_value=100, required=False)
+    zoom = serializers.FloatField(min_value=1.0, max_value=3.0, required=False)
+    effect = serializers.ChoiceField(
+        choices=ProductImage.ImageEffect.choices, required=False
+    )
+    transition_ms = serializers.IntegerField(min_value=0, max_value=2000, required=False)
+
     class Meta:
         model = ProductImage
-        fields = ["image", "caption", "is_primary", "sort_order"]
+        fields = ["image", "caption", "is_primary", "sort_order"] + IMAGE_DISPLAY_FIELDS
 
 
 class ProductVariantListSerializer(serializers.ModelSerializer):
@@ -38,9 +60,14 @@ class ProductVariantListSerializer(serializers.ModelSerializer):
 
 
 class ProductVariantWriteSerializer(serializers.ModelSerializer):
+    # Accepted on update only: routes the dict to an existing variant of the
+    # same product instead of creating a duplicate. Ignored on create (the
+    # database owns PKs; explicit ids would collide).
+    id = serializers.IntegerField(required=False)
+
     class Meta:
         model = ProductVariant
-        fields = ["name", "sku", "attributes", "price", "is_active"]
+        fields = ["id", "name", "sku", "attributes", "price", "is_active"]
 
 
 class VariantBriefSerializer(serializers.ModelSerializer):
@@ -52,11 +79,37 @@ class VariantBriefSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+def _primary_image(obj):
+    # Use prefetched images cache (obj.images.all() hits prefetch, while
+    # .filter().first() would issue a new query per product on Supabase).
+    try:
+        imgs = list(obj.images.all())
+    except Exception:
+        return None
+    if not imgs:
+        return None
+    return next((i for i in imgs if getattr(i, "is_primary", False)), imgs[0])
+
+
+def _primary_image_url(obj):
+    primary = _primary_image(obj)
+    if primary is None:
+        return None
+    img = getattr(primary, "image", None)
+    try:
+        return img.url if img else None
+    except Exception:
+        return str(img) if img else None
+
+
 class ProductListSerializer(serializers.ModelSerializer):
     category = CategoryBriefSerializer(read_only=True)
     discount_percent = serializers.SerializerMethodField()
     base_price = serializers.SerializerMethodField()
     primary_image = serializers.SerializerMethodField()
+    primary_image_display = serializers.SerializerMethodField()
+    rating_avg = serializers.SerializerMethodField()
+    rating_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -72,8 +125,18 @@ class ProductListSerializer(serializers.ModelSerializer):
             "is_featured",
             "is_active",
             "primary_image",
+            "primary_image_display",
+            "rating_avg",
+            "rating_count",
         ]
         read_only_fields = fields
+
+    def get_rating_avg(self, obj):
+        avg = getattr(obj, "review_rating_avg", None)
+        return round(float(avg), 1) if avg is not None else None
+
+    def get_rating_count(self, obj):
+        return getattr(obj, "review_rating_count", None) or 0
 
     def get_base_price(self, obj):
         # Use annotated min_variant_price when available (list view) to
@@ -90,20 +153,30 @@ class ProductListSerializer(serializers.ModelSerializer):
         return 0
 
     def get_primary_image(self, obj):
-        # Use prefetched images cache (obj.images.all() hits prefetch, while
-        # .filter().first() would issue a new query per product on Supabase).
-        try:
-            imgs = list(obj.images.all())
-        except Exception:
-            return None
-        if not imgs:
-            return None
-        primary = next((i for i in imgs if getattr(i, "is_primary", False)), imgs[0])
-        img = getattr(primary, "image", None)
-        try:
-            return img.url if img else None
-        except Exception:
-            return str(img) if img else None
+        return _primary_image_url(obj)
+
+    def get_primary_image_display(self, obj):
+        return _image_display(_primary_image(obj))
+
+    def get_rating_avg(self, obj):
+        avg, _ = _review_stats(obj)
+        return round(float(avg), 1) if avg is not None else None
+
+    def get_rating_count(self, obj):
+        _, n = _review_stats(obj)
+        return n
+
+
+def _review_stats(obj):
+    """(avg, count) from queryset subquery-annotation, else one fallback query."""
+    if hasattr(obj, "review_rating_avg"):
+        return obj.review_rating_avg, (obj.review_rating_count or 0)
+    from django.db.models import Avg, Count
+
+    agg = obj.reviews.filter(is_approved=True).aggregate(
+        avg=Avg("rating"), n=Count("id")
+    )
+    return agg["avg"], agg["n"] or 0
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
@@ -112,6 +185,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     images = ProductImageListSerializer(many=True, read_only=True)
     discount_percent = serializers.SerializerMethodField()
     base_price = serializers.SerializerMethodField()
+    primary_image = serializers.SerializerMethodField()
+    primary_image_display = serializers.SerializerMethodField()
+    rating_avg = serializers.SerializerMethodField()
+    rating_count = serializers.SerializerMethodField()
+    offers = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -128,6 +206,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "is_featured",
             "is_active",
             "primary_image",
+            "primary_image_display",
+            "rating_avg",
+            "rating_count",
+            "offers",
             "variants",
             "images",
             "created_at",
@@ -141,6 +223,85 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     def get_discount_percent(self, obj):
         return obj.discount_percent
+
+    def get_primary_image(self, obj):
+        return _primary_image_url(obj)
+
+    def get_primary_image_display(self, obj):
+        return _image_display(_primary_image(obj))
+
+    def get_rating_avg(self, obj):
+        avg, _ = _review_stats(obj)
+        return round(float(avg), 1) if avg is not None else None
+
+    def get_rating_count(self, obj):
+        _, n = _review_stats(obj)
+        return n
+
+    def get_offers(self, obj):
+        """Active coupons applicable to this product — the PDP
+        'Available offers' chips (display only; applying is Phase C)."""
+        from django.db.models import Q
+        from django.utils import timezone
+
+        from admin_panel.models import Coupon
+
+        now = timezone.now()
+        coupons = (
+            Coupon.objects.filter(
+                is_active=True, start_date__lte=now, end_date__gte=now
+            )
+            .filter(
+                Q(applies_to=Coupon.AppliesTo.ALL)
+                | Q(
+                    applies_to=Coupon.AppliesTo.CATEGORY,
+                    category_id=obj.category_id,
+                )
+                | Q(applies_to=Coupon.AppliesTo.PRODUCT, product_id=obj.id)
+            )
+            .order_by("-created_at")[:5]
+        )
+        return [
+            {
+                "code": c.code,
+                "name": c.name,
+                "description": c.description,
+                "discount_type": c.discount_type,
+                "discount_value": str(c.discount_value),
+                "max_discount": str(c.max_discount) if c.max_discount else None,
+            }
+            for c in coupons
+        ]
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    """Public review payload: masked name, no emails/ids leaked."""
+
+    reviewer_name = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = ProductReview
+        fields = [
+            "id",
+            "rating",
+            "title",
+            "body",
+            "reviewer_name",
+            "is_verified_purchase",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class ReviewCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductReview
+        fields = ["rating", "title", "body"]
+
+    def validate_rating(self, value):
+        if not 1 <= int(value) <= 5:
+            raise serializers.ValidationError("Rating must be between 1 and 5.")
+        return value
 
 
 class ProductWriteSerializer(serializers.ModelSerializer):
@@ -174,6 +335,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         images = validated_data.pop("images", [])
         product = Product.objects.create(**validated_data)
         for variant in variants:
+            variant.pop("id", None)
             ProductVariant.objects.create(product=product, **variant)
         for image in images:
             ProductImage.objects.create(product=product, **image)
@@ -186,9 +348,20 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         if variants is not None:
-            instance.variants.all().delete()
             for variant in variants:
-                ProductVariant.objects.create(product=instance, **variant)
+                variant_id = variant.pop("id", None)
+                if variant_id is None:
+                    ProductVariant.objects.create(product=instance, **variant)
+                    continue
+                try:
+                    existing = instance.variants.get(pk=variant_id)
+                except ProductVariant.DoesNotExist:
+                    raise serializers.ValidationError(
+                        {"variants": f"Variant {variant_id} does not belong to this product."}
+                    )
+                for attr, value in variant.items():
+                    setattr(existing, attr, value)
+                existing.save()
         if images is not None:
             instance.images.all().delete()
             for image in images:

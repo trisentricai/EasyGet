@@ -16,6 +16,19 @@ export function CartPage() {
 
   const items = cart?.items ?? [];
 
+  // Group by seller so the customer sees each seller's lines together
+  // (checkout will place one order per group).
+  const groups: { key: string; seller: string; items: typeof items }[] = [];
+  for (const item of items) {
+    const key = item.tenant_id != null ? String(item.tenant_id) : "__none";
+    let group = groups.find((g) => g.key === key);
+    if (!group) {
+      group = { key, seller: item.seller_name || "EASYGET", items: [] };
+      groups.push(group);
+    }
+    group.items.push(item);
+  }
+
   const doClear = async () => {
     try {
       await clear();
@@ -43,55 +56,87 @@ export function CartPage() {
         />
       ) : (
         <div className="cart-layout">
-          <div className="panel">
-            {items.map((item) => {
-              const attrs = item.variant.attributes ?? {};
-              const attrText = Object.entries(attrs)
-                .map(([k, v]) => `${k}: ${v}`)
-                .join(" · ");
+          <div className="cart-panel">
+            {groups.map((group) => {
+              const groupSubtotal = group.items.reduce(
+                (sum, i) => sum + Number(i.line_total),
+                0,
+              );
               return (
-                <div className="cart-line" key={item.id}>
-                  <div className="thumb">
-                    <Monogram text={item.variant.name || item.variant.sku} />
+                <div key={group.key}>
+                  <div className="cart-seller">Sold by {group.seller}</div>
+                  {group.items.map((item) => {
+                    const variant = item.variant;
+                    // The frozen cart contract carries only variant fields
+                    // (name/sku/price) — no product title or image.
+                    const lineTitle = variant.name || variant.sku;
+                    const unitPrice = money(variant.price);
+                    const lineTotal = money(item.line_total);
+                    return (
+                      <div className="cart-item" key={item.id}>
+                        <div className="cart-thumb">
+                          <Monogram text={lineTitle} />
+                        </div>
+                        <div className="cart-item-info">
+                          <div className="name">{lineTitle}</div>
+                          <div className="sub">{variant.sku} · {unitPrice} each</div>
+                        </div>
+                        <div className="cart-qty">
+                          <button
+                            onClick={() => void setQty(item.id, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
+                            aria-label="Decrease quantity"
+                          >
+                            −
+                          </button>
+                          <span>{item.quantity}</span>
+                          <button
+                            onClick={() => void setQty(item.id, item.quantity + 1)}
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <div className="cart-item-price">{lineTotal}</div>
+                        <button
+                          className="cart-trash"
+                          title="Remove"
+                          aria-label="Remove item"
+                          onClick={() => void remove(item.id)}
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <div className="cart-summary-line" style={{ paddingTop: 10 }}>
+                    <span className="muted">{group.seller} subtotal</span>
+                    <span>{money(groupSubtotal)}</span>
                   </div>
-                  <div className="grow">
-                    <div className="name">{item.variant.name || item.variant.sku}</div>
-                    {attrText ? <div className="sub">{attrText}</div> : null}
-                    <div className="sub">{money(item.variant.price)} each</div>
-                  </div>
-                  <div className="qty">
-                    <button onClick={() => void setQty(item.id, item.quantity - 1)} aria-label="Decrease">−</button>
-                    <span>{item.quantity}</span>
-                    <button onClick={() => void setQty(item.id, item.quantity + 1)} aria-label="Increase">+</button>
-                  </div>
-                  <div style={{ fontWeight: 700, minWidth: 80, textAlign: "right" }}>{money(item.line_total)}</div>
-                  <button className="trash" title="Remove" aria-label="Remove item" onClick={() => void remove(item.id)}>
-                    <Icon name="trash" size={17} />
-                  </button>
                 </div>
               );
             })}
-            <div className="form-actions" style={{ justifyContent: "space-between" }}>
+            <div className="cart-actions">
               <button className="btn btn-ghost btn-sm" onClick={() => navigate("browse")}>← Continue shopping</button>
               <button className="btn btn-danger btn-sm" onClick={() => void doClear()}>Clear cart</button>
             </div>
           </div>
 
-          <div className="panel">
+          <div className="cart-summary">
             <h2>Summary</h2>
-            <div className="summary-line">
+            <div className="cart-summary-line">
               <span className="muted">Subtotal</span>
               <span>{money(cart?.subtotal)}</span>
             </div>
-            <div className="summary-line">
+            <div className="cart-summary-line">
               <span className="muted">Delivery</span>
               <span className="muted">calculated at checkout</span>
             </div>
-            <div className="summary-line summary-total">
+            <div className="cart-summary-total">
               <span>Total</span>
               <span>{money(cart?.subtotal)}</span>
             </div>
-            <button className="btn btn-block" style={{ marginTop: 14 }} onClick={() => navigate("checkout")}>
+            <button className="btn btn-primary cart-checkout" onClick={() => navigate("checkout")}>
               Proceed to checkout
             </button>
           </div>
