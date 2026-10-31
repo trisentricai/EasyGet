@@ -9,6 +9,20 @@
 
 ---
 
+## 0. LATEST - 4 cards per row + small card size (2026-10-31)
+
+**Goal hit:** user - "cards stil big i need 4 cards but size need to small"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.grid-products` minmax `240 -> 150px` + gap `16 -> 12` so 4 cards fit per row.
+2. **`customer-web/src/components/ui.tsx`** - `ProductCard` default size `md -> sm` (small density: tighter padding/gap/font) so global browse/search/wishlist/similar cards render small; admin ProductRowSection still passes size explicitly (sm/md/lg).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green; live shows 4 cols (160px x4) + `product-card--sm` on all 20 cards.
+
+**Known open edges:** none new.
+
+---
+
 ## 0. LATEST - Admin-configurable product cards (size/columns/effects) (2026-10-31)
 
 **Goal hit:** user - "u still not correct card height! and the banner! you make the card size proper like card of product can be modifed via admin storefront design! make that happen! card style, siz, row cloluum, placement, effect etc.."
