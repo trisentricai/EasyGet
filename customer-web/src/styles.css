@@ -776,7 +776,7 @@ button { font-family: inherit; }
 }
 
 /* Wishlist heart on image — top-left, appears on hover */
-.wish-card {
+.wish-btn.wish-card {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -954,7 +954,7 @@ button { font-family: inherit; }
 .rating-pill em { font-style: normal; opacity: 0.9; font-weight: 600; }
 .rating-pill-lg { font-size: 13.5px; padding: 3px 9px; border-radius: 4px; }
 
-/* wishlist heart — top-left of the card image (badge takes top-right) */
+/* wishlist heart — top-right of the card image (badge takes top-left, sreepon-style) */
 .wish-btn {
   position: absolute;
   top: 10px;
