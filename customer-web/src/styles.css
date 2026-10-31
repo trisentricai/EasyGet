@@ -742,11 +742,11 @@ button { font-family: inherit; }
   opacity: 0.7;
 }
 
-/* Badge on image — top-right pill */
+/* Badge on image — top-left pill (sreepon-style) */
 .product-chip {
   position: absolute;
   top: 12px;
-  right: 12px;
+  left: 12px;
   z-index: 3;
   display: inline-flex;
   align-items: center;
@@ -779,7 +779,8 @@ button { font-family: inherit; }
 .wish-card {
   position: absolute;
   top: 12px;
-  left: 12px;
+  right: 12px;
+  left: auto;
   z-index: 3;
   width: 36px;
   height: 36px;

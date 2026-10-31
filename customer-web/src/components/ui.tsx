@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { href } from "../hooks/useHashRoute";
-import { useCart } from "../context/CartContext";
-import { useToast } from "../context/ToastContext";
 import {
   addToWishlist,
-  errText,
-  getProduct,
   getTokens,
   img,
   removeFromWishlist,
@@ -128,37 +124,11 @@ export function ProductCard({
   effects?: string[];
 }) {
   const fx = Array.isArray(effects) ? effects : [];
-  const has = (k: string) => fx.includes(k);
-  const fadeClass = has("fade_in") ? "fx-fade-in" : "";
-  const { add } = useCart();
-  const toast = useToast();
+  const fadeClass = fx.includes("fade_in") ? "fx-fade-in" : "";
   const image = img(product.primary_image);
-  const freeDelivery = Number(product.base_price ?? 0) >= 499;
   const out = product.in_stock === false;
-  const hasDiscount = product.mrp && Number(product.mrp) > Number(product.base_price ?? 0);
   const discount = product.discount_percent ?? 0;
-  // The list payload carries no variants, so the card can't know whether this
-  // product already sits in the cart — `added` is local acknowledgement only.
-  const [busy, setBusy] = useState(false);
-  const [added, setAdded] = useState(false);
 
-  const handleAdd = async () => {
-    if (out || busy) return;
-    setBusy(true);
-    try {
-      // addToCart needs a VARIANT id; the list endpoint only has the product,
-      // so resolve the first active variant from the detail endpoint.
-      const detail = await getProduct(product.slug);
-      const variant = detail.variants.find((v) => v.is_active) ?? detail.variants[0];
-      if (!variant) throw new Error("No purchasable variant");
-      await add(variant.id, 1);
-      setAdded(true);
-    } catch (e) {
-      toast.push(errText(e, "Could not add to bag"), "err");
-    } finally {
-      setBusy(false);
-    }
-  };
   return (
     <a className={`product-card product-card--${size} ${fadeClass}`.trim()} href={href(`product/${product.slug}`)}>
       <div className="product-thumb-wrap">
@@ -181,7 +151,7 @@ export function ProductCard({
         </div>
         {out ? (
           <span className="product-chip chip chip-out">Out of stock</span>
-        ) : discount >= 50 ? (
+        ) : discount >= 5 ? (
           <span className="product-chip chip chip-deal">{discount}% off</span>
         ) : product.is_featured ? (
           <span className="product-chip chip chip-featured">★ Featured</span>
@@ -189,37 +159,11 @@ export function ProductCard({
         <WishButton slug={product.slug} className="wish-card" />
       </div>
       <div className="product-body">
-        <div className="product-brand">{product.brand || product.category?.name || ""}</div>
+        <div className="product-brand">{product.category?.name || product.brand || ""}</div>
         <div className="product-name" title={product.name}>{product.name}</div>
-        <div className="product-rate-row">
-          <RatingPill avg={product.rating_avg} count={product.rating_count} />
-        </div>
         <div className="product-price-row">
           <Price price={product.base_price} mrp={product.mrp} discount={discount} size="md" />
-          {hasDiscount && !(discount > 0) && (
-            <span className="save-note">Save ₹{Number(product.mrp) - Number(product.base_price)}</span>
-          )}
         </div>
-        <div className="product-stock">
-          {!out && freeDelivery ? <span className="stock-free">Free delivery</span> : null}
-        </div>
-        <button
-          className={`add-btn${added ? " added" : ""}${out ? " out" : ""}`}
-          onClick={(e) => {
-            // The card itself is a link to the PDP — adding must not navigate.
-            e.preventDefault();
-            e.stopPropagation();
-            void handleAdd();
-          }}
-          disabled={out || busy}
-          aria-label={
-            out
-              ? `${product.name} is out of stock`
-              : `Add ${product.name} to bag`
-          }
-        >
-          {out ? "Out of stock" : busy ? "Adding…" : added ? "✓ Added" : "Add to bag"}
-        </button>
       </div>
     </a>
   );
