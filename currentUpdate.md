@@ -9,6 +9,20 @@
 
 ---
 
+## 0. LATEST - Product cards rebuilt SriPon-style (details) (2026-10-31)
+
+**Goal hit:** user - "i need 4 cards and i need details of the product like this image" (reference: sreepon.netlify.app product card)
+
+**What changed:**
+1. **`customer-web/src/components/ui.tsx`** - ProductCard rebuilt to match sreepon card: square image, discount badge top-left, wishlist top-right, body = category (muted) + name (2-line) + price (now + mrp strikethrough). Removed add-to-bag button, rating, stock line (details-focused; add-to-bag stays on PDP). Size/effects still supported.
+2. **`customer-web/src/styles.css`** - badge moved top-left, wishlist moved top-right (to match reference).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
 ## 0. LATEST - 4 cards per row + small card size (2026-10-31)
 
 **Goal hit:** user - "cards stil big i need 4 cards but size need to small"
