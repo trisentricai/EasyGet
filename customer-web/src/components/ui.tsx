@@ -126,19 +126,39 @@ export function ProductCard({
   const fx = Array.isArray(effects) ? effects : [];
   const fadeClass = fx.includes("fade_in") ? "fx-fade-in" : "";
   const image = img(product.primary_image);
+
+  // Optional multi-image gallery: activates only when the backend exposes
+  // additional images; otherwise renders the single primary_image.
+  const gallery = Array.isArray((product as { images?: string[] }).images)
+    ? ((product as { images?: string[] }).images as string[])
+        .map((u) => img(u))
+        .filter((u): u is string => Boolean(u))
+    : [];
+  const slides = gallery.length ? gallery : image ? [image] : [];
+  const [active, setActive] = useState(0);
+  const slide = slides[active] ?? image;
+
   const out = product.in_stock === false;
   const discount = product.discount_percent ?? 0;
 
   return (
-    <a className={`product-card product-card--${size} ${fadeClass}`.trim()} href={href(`product/${product.slug}`)}>
+    <a
+      className={`product-card product-card--${size} ${fadeClass}`.trim()}
+      href={href(`product/${product.slug}`)}
+      onMouseEnter={() => {
+        if (slides.length > 1) setActive((i) => (i + 1) % slides.length);
+      }}
+      onMouseLeave={() => setActive(0)}
+    >
       <div className="product-thumb-wrap">
         <div
           className={`product-thumb ${fxClass(product.primary_image_display)}`}
           style={fxStyle(product.primary_image_display)}
         >
-          {image ? (
+          {slide ? (
             <img
-              src={image}
+              key={slide}
+              src={slide}
               alt={product.name}
               loading="lazy"
               decoding="async"
