@@ -137,9 +137,14 @@ function HeroTile({ sections }: { sections: StoreSection[] }) {
   const cta = (cfg.cta_label as string) ?? "Shop now";
   const ctaLink = (cfg.cta_link as string) ?? "browse";
   const align = (cfg.align as string) === "right" ? "right" : "left";
+  const layout = (cfg.hero_layout as string) === "split" ? "split" : (cfg.hero_layout as string) === "minimal" ? "minimal" : "feature";
+  const overlay = (cfg.hero_overlay as string) === "light" ? "light" : (cfg.hero_overlay as string) === "none" ? "none" : "dark";
 
   return (
-    <section className="hero-tile" style={effects.hero_animation === "fade" ? { animation: "rise 0.6s ease" } : undefined}>
+    <section
+      className={`hero-tile hero-${layout} hero-overlay-${overlay}`}
+      style={effects.hero_animation === "fade" ? { animation: "rise 0.6s ease" } : undefined}
+    >
       {heroImg ? (
         <img
           className="hero-img"
