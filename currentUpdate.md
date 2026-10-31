@@ -64,6 +64,21 @@
 
 ---
 
+## 0. LATEST - 3 layout bugs fixed (grid 4-5 cols, PDP breadcrumb, cart polish) (2026-10-31)
+
+**Goal hit:** user - "Fix three critical frontend layout bugs: Product Grid Layout (4-5 cards/row), PDP Breadcrumbs & Header Fix, Cart Page UI Polish."
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.grid-products`: minmax 150 -> 160px (4-5 cards/row on desktop), gap 12; removed conflicting mobile override that reverted 2-col/1-col rules; added `.pdp-breadcrumb` row styles; rebuilt cart CSS (`.cart-item`, `.cart-qty`, `.cart-trash`, `.cart-summary`, `.cart-checkout`, responsive collapse).
+2. **`customer-web/src/pages/ProductPage.tsx`** - replaced inline-styled breadcrumb with semantic `.pdp-breadcrumb` (Back + category link) above product main view.
+3. **`customer-web/src/pages/CartPage.tsx`** - rebuilt rows as `.cart-item` grid (thumb/info/qty/price/trash), styled qty stepper, trash, summary panel, checkout button.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** live-deploy value check pending (Cloudflare Pages propagation).
+
+---
+
 ## 0. LATEST - Tighten product card height (2026-10-31)
 
 **Goal hit:** user - "u still not correct card height!" (after reducing from 615 -> 597)
