@@ -138,15 +138,17 @@ export function ProductPage({ slug }: { slug: string }) {
 
   return (
     <div className="page">
-      <div style={{ marginBottom: 14 }}>
-        <span className="link" onClick={() => history.back()}>← Back</span>
-        {"  "}
+      <nav className="pdp-breadcrumb" aria-label="Breadcrumb">
+        <button type="button" className="pdp-back" onClick={() => history.back()}>← Back</button>
         {product.category ? (
-          <a className="muted" style={{ fontSize: 13 }} href={href(`browse?category=${product.category.slug}`)}>
-            › {product.category.name}
-          </a>
+          <>
+            <span className="pdp-breadcrumb-sep">›</span>
+            <a className="pdp-breadcrumb-link" href={href(`browse?category=${product.category.slug}`)}>
+              {product.category.name}
+            </a>
+          </>
         ) : null}
-      </div>
+      </nav>
 
       <div className="product-detail">
         {/* gallery */}
