@@ -156,7 +156,7 @@ function Shell() {
 
   return (
     <>
-      <header className="topnav">
+      <header className="topnav" role="banner">
         <div className="brand" onClick={() => navigate("home")}>
           <div className="brand-mark">EG</div>
           <div>
@@ -208,7 +208,7 @@ function Shell() {
             <Icon name="box" size={19} />
             <span>Orders</span>
           </a>
-          <a className="nav-cart" href={href("cart")}>
+          <a className="nav-cart" href={href("cart")} aria-label="Cart">
             <span className="nav-cart-ico">
               <Icon name="cart" size={20} />
               {count > 0 ? <CartBubble count={count} /> : null}
@@ -224,9 +224,11 @@ function Shell() {
 
       <Ticker />
 
-      {page}
+      <main id="main-content" role="main">
+        {page}
+      </main>
 
-      <footer className="footer">
+      <footer className="footer" role="contentinfo">
         <div className="footer-cols">
           <div className="footer-col">
             <h4>About</h4>

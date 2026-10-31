@@ -179,7 +179,7 @@ export function ProductCard({ product }: { product: Product }) {
       </div>
       <div className="product-body">
         <div className="product-brand">{product.brand || product.category?.name || ""}</div>
-        <h3 className="product-name" title={product.name}>{product.name}</h3>
+        <div className="product-name" title={product.name}>{product.name}</div>
         <div className="product-rate-row">
           <RatingPill avg={product.rating_avg} count={product.rating_count} />
         </div>

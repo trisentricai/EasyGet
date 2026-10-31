@@ -3,8 +3,8 @@ import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
 import { img, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/ui";
-import { fxStyle } from "../utils/imageFx";
 import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
+import { fxStyle } from "../utils/imageFx";
 import {
   AllProductsGrid,
   DealsRail,
@@ -13,12 +13,12 @@ import {
 } from "../components/marketplace";
 
 /**
- * Home page — Shopify/Nike/Apple-inspired design:
+ * Home page — clean, professional e-commerce layout:
  * - Full-bleed hero tile with giant headline + single pill CTA
- * - Shop by Category rail (icon cards in horizontal scroll)
+ * - Single "Shop by Category" section with proper category cards (image + colorful wash fallback)
  * - Deals of the Day
  * - 4 product cards per row (PDP-style cards)
- * - Left category sidebar on browse pages
+ * - Recently Viewed
  */
 export function HomePage() {
   const { data, loading, error } = useStorefront();
@@ -47,9 +47,14 @@ export function HomePage() {
   );
   const hasContent = sections.length > 0;
 
+  // Collect all category items from sections for the single category rail
+  const categoryItems = sections.flatMap((s) =>
+    s.items.filter((i) => i.item_type === "CATEGORY" || i.category_slug),
+  );
+
   return (
     <div className="page home-page">
-      {/* Full-width hero + category rail (replaces BannerCarousel for a cleaner look) */}
+      {/* Full-width hero tile */}
       {banners.length > 0 ? (
         <HeroTile sections={banners} />
       ) : (
@@ -60,8 +65,25 @@ export function HomePage() {
         />
       )}
 
-      {/* Shop by Category — horizontal icon rail */}
-      <CategoryRail categories={data.sections.flatMap((s) => s.items).filter((i) => i.item_type === "CATEGORY" || i.category_slug)} />
+      {/* Single Shop by Category section — uses CategoryTiles with cards style for proper styling */}
+      {categoryItems.length > 0 && (
+        <>
+          {(() => {
+            const categorySection: StoreSection = {
+              id: 0,
+              section_type: "CATEGORY_GRID",
+              title: "Shop by category",
+              subtitle: "Everything your home needs, delivered fast",
+              image: null,
+              config: { category_style: "cards" },
+              position: 0,
+              is_active: true,
+              items: categoryItems,
+            } as unknown as StoreSection;
+            return <CategoryGridSection section={categorySection} />;
+          })()}
+        </>
+      )}
 
       {/* Designed sections (admin-configured) */}
       {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
@@ -137,50 +159,12 @@ function WelcomeHero({ storeName, description }: { storeName: string; city: stri
       <div className="hero-content">
         <p className="hero-eyebrow">Welcome to {storeName}</p>
         <h1 className="hero-headline">{storeName}</h1>
-        <p className="hero-lead">{description || "Essentials, delivered quickly."}</p>
+        <p className="hero-lead">{description || "Everyday essentials — groceries, personal care, household items and more, delivered to your doorstep in Bengaluru. Free delivery on orders above ₹499, 7-day easy returns, cash on delivery available."}</p>
         <div className="hero-actions">
           <a className="btn btn-primary" href={href("browse")}>
             Shop now
           </a>
         </div>
-      </div>
-    </section>
-  );
-}
-
-function CategoryRail({ categories }: { categories: SectionItem[] }) {
-  const items = categories.filter((i) => i.item_type === "CATEGORY" || i.category_slug);
-  if (items.length === 0) return null;
-
-  // Build tile items from section items
-  const tiles = items.map((i) => ({
-    key: i.id,
-    slug: i.category_slug,
-    name: i.category_name || i.caption || "Category",
-    image: img(i.image),
-  }));
-
-  return (
-    <section className="category-rail">
-      <div className="rail-head">
-        <h2 className="rail-title">Shop by category</h2>
-        <a className="link" href={href("categories")}>
-          See all →
-        </a>
-      </div>
-      <div className="rail-scroll">
-        {tiles.map((t) => (
-          <a key={t.key} className="cat-icon-card" href={href(`browse?category=${t.slug}`)}>
-            <div className="cat-icon-media">
-              {t.image ? (
-                <img src={t.image} alt="" loading="lazy" decoding="async" width={128} height={128} />
-              ) : (
-                <span className="cat-icon-monogram">{t.name.slice(0, 1).toUpperCase()}</span>
-              )}
-            </div>
-            <span className="cat-icon-name">{t.name}</span>
-          </a>
-        ))}
       </div>
     </section>
   );
