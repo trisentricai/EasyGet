@@ -55,17 +55,6 @@ export function HomePage() {
 
   return (
     <div className="page home-page">
-      {/* Full-width hero tile */}
-      {banners.length > 0 ? (
-        <HeroTile sections={banners} />
-      ) : (
-        <WelcomeHero
-          storeName={data.store.name}
-          city={data.store.city}
-          description={data.store.description}
-        />
-      )}
-
       {/* Left category sidebar + home content — sidebar now on the home screen too */}
       <div className="browse-layout">
         <CategorySidebar
@@ -77,6 +66,17 @@ export function HomePage() {
           onDiscountChange={() => undefined}
         />
         <div className="browse-main">
+          {/* Full-width hero tile */}
+          {banners.length > 0 ? (
+            <HeroTile sections={banners} />
+          ) : (
+            <WelcomeHero
+              storeName={data.store.name}
+              city={data.store.city}
+              description={data.store.description}
+            />
+          )}
+
           {/* Single Shop by Category section — uses CategoryTiles with cards style for proper styling */}
           {categoryItems.length > 0 && (
             <>

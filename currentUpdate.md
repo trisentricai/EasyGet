@@ -24,6 +24,19 @@
 
 ---
 
+## 0. LATEST - Shop page banner + sidebar layout (2026-10-31)
+
+**Goal hit:** user - "Let's fix the layout structure for the shop page: Sidebar and Banner Alignment: Right now, the banner is full-width rectangle stretching across the top, and the sidebar is pushed underneath it. Correct Layout Hierarchy: Reorganize the container structure so the sidebar stays on the left (spanning vertically alongside the product grid), and position the banner neatly inside the main content area above the product grid (so the sidebar runs parallel to both the banner and the products)."
+
+**What changed:**
+1. **`customer-web/src/pages/HomePage.tsx`** - moved the hero/banner INSIDE `.browse-main` (right column of `.browse-layout`), so the left category sidebar now spans vertically alongside the banner + product content (standard 2-column grid: sidebar left, banner + products right).
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** none new for this round.
+
+---
+
 ## 0. LATEST - Sidebar visibility fix (2026-10-31)
 
 **Goal hit:** user - "Still there is no sidebar on dashboard!"
