@@ -9,7 +9,22 @@
 
 ---
 
-## 0. LATEST — Product grid + login card cleanup (2026-10-31)
+## 0. LATEST - Sidebar visibility fix (2026-10-31)
+
+**Goal hit:** user - "Still there is no sidebar on dashboard!"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - fixed dead gap where catalog sidebar never rendered:
+   - Sidebar collapse breakpoint moved from `@media (max-width: 1024px)` to `@media (max-width: 900px)`.
+   - Previously: sidebar hidden at <=1024px but the mobile drawer toggle only appears <900px, leaving a dead zone (901px-1024px) with NO sidebar and NO way to open one.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** none new for this round.
+
+---
+
+## 0. LATEST - Product grid + login card cleanup (2026-10-31)
 
 **Goal hit:** user — "fix a few UI layout and styling issues on the frontend: Product Grid (cards stretching across the entire width / sparse-bulky) ... Sidebar (add a clean, sticky category and filter sidebar on the left side of the product catalog) ... Login Modal (high-contrast 'zebra-crossing' striped pattern — remove stripes, clean solid neutral background card with soft shadow and rounded corners)."
 

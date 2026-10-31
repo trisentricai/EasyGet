@@ -2082,8 +2082,11 @@ img.img-fx-gray:hover {
   background: color-mix(in srgb, var(--ink) 8%, var(--surface));
 }
 
-/* Responsive: hide sidebar on tablet/mobile, show mobile drawer toggle instead */
-@media (max-width: 1024px) {
+/* Responsive: hide sidebar on tablet/mobile, show mobile drawer toggle instead.
+   NOTE: breakpoint aligned to 900px (not 1024px) — the collapse used to sit at
+   1024px while the drawer toggle only appears below 900px, which left a dead
+   gap (901px–1024px) where the catalog had NO sidebar and NO way to open one. */
+@media (max-width: 900px) {
   .filter-side {
     display: none;
   }
