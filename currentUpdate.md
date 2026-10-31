@@ -64,6 +64,20 @@
 
 ---
 
+## 0. LATEST - Checkout refactor (2-col, sticky summary, PIN lookup, payment radios, validation) (2026-10-31)
+
+**Goal hit:** user - checkout page refactor: 2-col grid (col-span-8 steps, col-span-4 sticky summary), PIN auto-lookup, payment method radios (COD/UPI/Card) with conditional UPI ID, real-time inline validation with scroll-to-first-error.
+
+**What changed:**
+1. **`customer-web/src/pages/CheckoutPage.tsx`** - 2-col `.checkout-layout`; `.checkout-summary` sticky aside; PIN lookup via postalpincode.in with spinner + hint; payment radios with conditional UPI ID field; dynamic Place order button helper text; inline validation (phone/line1/PIN) with red border + error messages + scroll to first error.
+2. **`customer-web/src/styles.css`** - `.checkout-layout`, `.checkout-steps`, `.checkout-summary`, `.pay-methods`/`.pay-option`, `.pin-input-wrap`/`.pin-spinner`, `.field-error`/`.field-err`/`.field-hint`.
+
+**Verification:** `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+**Known open edges:** full visual verification requires a logged-in cart with items (checkout requires auth).
+
+---
+
 ## 0. LATEST - 3 layout bugs fixed (grid 4-5 cols, PDP breadcrumb, cart polish) (2026-10-31)
 
 **Goal hit:** user - "Fix three critical frontend layout bugs: Product Grid Layout (4-5 cards/row), PDP Breadcrumbs & Header Fix, Cart Page UI Polish."
