@@ -1,9 +1,10 @@
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from inventory.models import StockItem
 from stores.models import Store
 from users.permissions import IsAdminOnly
 
@@ -67,6 +68,21 @@ class CartViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         variant = serializer.validated_data["variant"]
         quantity = serializer.validated_data.get("quantity", 1)
+        # Server-side stock gate: only block when stock records exist for the
+        # variant (legacy variants without stock keep working). Reject when the
+        # requested total would exceed available quantity in active stores.
+        stock_qs = StockItem.objects.filter(variant=variant)
+        if stock_qs.exists():
+            existing = CartItem.objects.filter(cart=cart, variant=variant).first()
+            current_qty = existing.quantity if existing else 0
+            available = (
+                stock_qs.filter(store__is_active=True).aggregate(total=Sum("quantity"))["total"] or 0
+            )
+            if current_qty + quantity > available:
+                return Response(
+                    {"detail": f"Only {available} in stock for this item."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         # Marketplace cart: sellers may mix freely — the split into
         # per-seller orders happens at checkout, not at add-to-cart time.
         item, created = CartItem.objects.get_or_create(
@@ -87,6 +103,17 @@ class CartViewSet(viewsets.ModelViewSet):
             )
         serializer = CartItemSerializer(item, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        new_quantity = serializer.validated_data.get("quantity", item.quantity)
+        stock_qs = StockItem.objects.filter(variant=item.variant)
+        if stock_qs.exists() and new_quantity is not None:
+            available = (
+                stock_qs.filter(store__is_active=True).aggregate(total=Sum("quantity"))["total"] or 0
+            )
+            if new_quantity > available:
+                return Response(
+                    {"detail": f"Only {available} in stock for this item."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         serializer.save()
         return Response(serializer.data)
 

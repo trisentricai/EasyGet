@@ -529,12 +529,16 @@ const searchProducts = (body: Record<string, unknown>) =>
 export async function searchWithFallback(body: {
   q?: string;
   sort?: string;
+  min_price?: string | number;
+  max_price?: string | number;
 }): Promise<SearchResponse> {
   try {
     return await searchProducts(body);
   } catch {
     const params: Record<string, string> = {};
     if (body.sort && body.sort !== "relevance") params.sort = body.sort;
+    if (body.min_price !== undefined && body.min_price !== "") params.min_price = String(body.min_price);
+    if (body.max_price !== undefined && body.max_price !== "") params.max_price = String(body.max_price);
     const all = await listAllProducts(params);
     const tokens = (body.q ?? "")
       .toLowerCase()

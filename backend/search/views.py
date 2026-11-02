@@ -105,9 +105,9 @@ class SearchViewSet(viewsets.GenericViewSet):
         if params.get("store"):
             queryset = queryset.filter(stock_items__store_id=params["store"], stock_items__quantity__gt=0)
         if params.get("min_price"):
-            queryset = queryset.filter(base_price__gte=params["min_price"])
+            queryset = queryset.filter(min_variant_price__gte=params["min_price"])
         if params.get("max_price"):
-            queryset = queryset.filter(base_price__lte=params["max_price"])
+            queryset = queryset.filter(min_variant_price__lte=params["max_price"])
         if params.get("is_featured") is not None:
             queryset = queryset.filter(is_featured=params["is_featured"])
 
@@ -134,9 +134,9 @@ class SearchViewSet(viewsets.GenericViewSet):
         if sort == "relevance":
             queryset = queryset.order_by("-rank", "-is_featured", "-created_at")
         elif sort == "price_asc":
-            queryset = queryset.order_by("base_price")
+            queryset = queryset.order_by("min_variant_price")
         elif sort == "price_desc":
-            queryset = queryset.order_by("-base_price")
+            queryset = queryset.order_by("-min_variant_price")
         elif sort == "newest":
             queryset = queryset.order_by("-created_at")
         elif sort == "popular":

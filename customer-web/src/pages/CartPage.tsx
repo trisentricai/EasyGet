@@ -83,7 +83,7 @@ export function CartPage() {
                         </div>
                         <div className="cart-qty">
                           <button
-                            onClick={() => void setQty(item.id, item.quantity - 1)}
+                            onClick={() => void setQty(item.id, item.quantity - 1).catch((e) => toast.push(errText(e, "Could not update quantity"), "err"))}
                             disabled={item.quantity <= 1}
                             aria-label="Decrease quantity"
                           >
@@ -91,7 +91,7 @@ export function CartPage() {
                           </button>
                           <span>{item.quantity}</span>
                           <button
-                            onClick={() => void setQty(item.id, item.quantity + 1)}
+                            onClick={() => void setQty(item.id, item.quantity + 1).catch((e) => toast.push(errText(e, "Could not update quantity"), "err"))}
                             aria-label="Increase quantity"
                           >
                             +

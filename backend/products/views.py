@@ -467,6 +467,15 @@ class WishlistView(generics.ListAPIView):
             .annotate(min_variant_price=Min("variants__price"))
         ).order_by("-wishlist_items__created_at", "-id")
 
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        data = response.data
+        results = data.get("results", []) if isinstance(data, dict) else data
+        stocked = stocked_product_ids([r.get("id") for r in results])
+        for row in results:
+            row["in_stock"] = row.get("id") in stocked
+        return response
+
 
 class WishlistToggleView(generics.GenericAPIView):
     """POST /products/wishlist/<slug>/ = add (idempotent),

@@ -16,13 +16,15 @@ import {
 export function SearchPage({ initialQuery }: { initialQuery?: string }) {
   const [q, setQ] = useState(initialQuery ?? "");
   const [sort, setSort] = useState("relevance");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
   const [showSuggest, setShowSuggest] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const debounceRef = useRef<number | null>(null);
 
   const { data, error, isFetching, refetch } = useQuery({
-    queryKey: ["search", q, sort],
-    queryFn: () => searchWithFallback({ q, sort }),
+    queryKey: ["search", q, sort, minPrice, maxPrice],
+    queryFn: () => searchWithFallback({ q, sort, min_price: minPrice || undefined, max_price: maxPrice || undefined }),
     placeholderData: keepPreviousData,
   });
   const products = data ? data.results : null;
@@ -98,6 +100,24 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
           <option value="popular">Popular</option>
           <option value="rating">Avg. Customer Review</option>
         </select>
+        <input
+          type="number"
+          min={0}
+          placeholder="Min ₹"
+          value={minPrice}
+          onChange={(e) => setMinPrice(e.target.value)}
+          style={{ width: 90 }}
+          aria-label="Minimum price"
+        />
+        <input
+          type="number"
+          min={0}
+          placeholder="Max ₹"
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(e.target.value)}
+          style={{ width: 90 }}
+          aria-label="Maximum price"
+        />
         {showSuggest && suggestions.length > 0 ? (
           <div
             style={{

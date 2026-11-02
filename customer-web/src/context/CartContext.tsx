@@ -62,7 +62,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const add = useCallback(
     async (variantId: number, qty = 1) => {
-      await addToCart(variantId, qty);
+      try {
+        await addToCart(variantId, qty);
+      } catch (e) {
+        await refresh();
+        throw e;
+      }
       await refresh();
     },
     [refresh],
@@ -70,10 +75,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const setQty = useCallback(
     async (itemId: number, qty: number) => {
-      if (qty <= 0) {
-        await removeCartItem(itemId);
-      } else {
-        await updateCartItem(itemId, qty);
+      try {
+        if (qty <= 0) {
+          await removeCartItem(itemId);
+        } else {
+          await updateCartItem(itemId, qty);
+        }
+      } catch (e) {
+        await refresh();
+        throw e;
       }
       await refresh();
     },
