@@ -64,6 +64,26 @@
 
 ---
 
+## 0. LATEST - 3 tasks: cart stock gate, wishlist OOS badges, search price filter (2026-10-31)
+
+**Goal hit:** user - "1. cart server-side stock gate 2. wishlist OOS badges 3. search price-filter latent bug"
+
+**What changed:**
+Backend (views only; models/serializers/tests untouched):
+1. cart/views.py: server-side stock gate in add_item + update_item (only enforces when StockItem records exist, so legacy variants/tests pass).
+2. products/views.py: WishlistView.list now injects in_stock (mirrors ProductViewSet) so wishlist cards render Out-of-Stock badges.
+3. search/views.py: price filter/sort now use annotated min_variant_price instead of non-DB base_price (fixes latent 500 on price filters/sort).
+
+Frontend:
+- services/api.ts: searchWithFallback forwards min_price/max_price.
+- SearchPage.tsx: min/max price inputs wired to query.
+- CartContext.tsx: add/setQty catch backend 400, refresh + rethrow.
+- CartPage.tsx: qty buttons handle errors via toast.
+
+**Verification:** backend tests 63 OK (exit 0); `tsc --noEmit --noUnusedLocals --noUnusedParameters` clean; `npm run build` green.
+
+---
+
 ## 0. LATEST - Checkout refactor (2-col, sticky summary, PIN lookup, payment radios, validation) (2026-10-31)
 
 **Goal hit:** user - checkout page refactor: 2-col grid (col-span-8 steps, col-span-4 sticky summary), PIN auto-lookup, payment method radios (COD/UPI/Card) with conditional UPI ID, real-time inline validation with scroll-to-first-error.
