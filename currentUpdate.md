@@ -64,6 +64,16 @@
 
 ---
 
+## 0. LATEST - Search price filter follow-up (Decimal JSON fix) (2026-10-31)
+
+**Goal hit:** local test of search price filter surfaced a 500 (Decimal not JSON serializable in SearchQueryLog.filters).
+
+**What changed:** search/views.py — stringify Decimal values in the filters dict passed to log_search_query.
+
+**Verification:** backend tests 63 OK; local search endpoint returns 200 with min/max price params.
+
+---
+
 ## 0. LATEST - 3 tasks: cart stock gate, wishlist OOS badges, search price filter (2026-10-31)
 
 **Goal hit:** user - "1. cart server-side stock gate 2. wishlist OOS badges 3. search price-filter latent bug"
