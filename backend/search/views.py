@@ -174,7 +174,7 @@ class SearchViewSet(viewsets.GenericViewSet):
             query=query_text or "*",
             user_id=None if request.user.is_anonymous else request.user.id,
             results_count=total,
-            filters={k: v for k, v in params.items() if k not in ["page", "page_size", "q"]},
+            filters={k: (float(v) if hasattr(v, "as_tuple") else v) for k, v in params.items() if k not in ["page", "page_size", "q"]},
             took_ms=took_ms,
         )
         if query_text:
