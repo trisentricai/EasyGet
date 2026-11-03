@@ -2182,7 +2182,7 @@ img.img-fx-gray:hover {
 .filter-side {
   position: sticky;
   top: calc(var(--nav-h) + 24px);
-  width: 264px;
+  width: 220px;
   flex-shrink: 0;
   background: var(--surface);
   border: 1px solid var(--border);
