@@ -518,6 +518,16 @@ export function StorefrontPage() {
               />
             </label>
             <label>
+              Background color
+              <input
+                type="color"
+                value={themeValue.background_color ?? "#ffffff"}
+                onChange={(e) => setTheme({ ...(theme ?? themeValue), background_color: e.target.value } as Theme)}
+                onBlur={(e) => saveTheme({ background_color: e.target.value })}
+                style={{ width: "100%", height: 40, border: "none", background: "transparent", cursor: "pointer" }}
+              />
+            </label>
+            <label>
               Button style
               <select
                 className="input"
@@ -608,6 +618,8 @@ function SectionDesignModal({
   const [categoryStyle, setCategoryStyle] = useState<string>(String(cfg.category_style ?? "cards"));
   const [heroLayout, setHeroLayout] = useState<string>(String(cfg.hero_layout ?? "feature"));
   const [heroOverlay, setHeroOverlay] = useState<string>(String(cfg.hero_overlay ?? "dark"));
+  const [ctaLabel, setCtaLabel] = useState<string>(String(cfg.cta_label ?? "Shop now"));
+  const [ctaLink, setCtaLink] = useState<string>(String(cfg.cta_link ?? "browse"));
   const [imgBusy, setImgBusy] = useState(false);
   const [disp, setDisp] = useState<ImageDisplay>(toImageDisplay(section));
   const preview = mediaSrc(section.image);
@@ -635,6 +647,8 @@ function SectionDesignModal({
         category_style: categoryStyle,
         hero_layout: heroLayout,
         hero_overlay: heroOverlay,
+         cta_label: ctaLabel,
+         cta_link: ctaLink,
       },
     });
   }
@@ -690,7 +704,7 @@ function SectionDesignModal({
             </select>
           </label>
         )}
-        {section.section_type === "HERO" && (
+        {["HERO", "BANNER"].includes(section.section_type) && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14 }}>
             <label>
               Hero layout
@@ -707,6 +721,14 @@ function SectionDesignModal({
                 <option value="light">Light scrim (bright art)</option>
                 <option value="none">None (plain image)</option>
               </select>
+            </label>
+            <label>
+              CTA button label
+              <input className="input" value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} placeholder="Shop now" />
+            </label>
+            <label>
+              CTA link (page slug)
+              <input className="input" value={ctaLink} onChange={(e) => setCtaLink(e.target.value)} placeholder="browse" />
             </label>
           </div>
         )}

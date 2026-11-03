@@ -48,11 +48,6 @@ export function HomePage() {
   );
   const hasContent = sections.length > 0;
 
-  // Collect all category items from sections for the single category rail
-  const categoryItems = sections.flatMap((s) =>
-    s.items.filter((i) => i.item_type === "CATEGORY" || i.category_slug),
-  );
-
   return (
     <div className="page home-page">
       {/* Left category sidebar + home content — sidebar now on the home screen too */}
@@ -77,27 +72,8 @@ export function HomePage() {
             />
           )}
 
-          {/* Single Shop by Category section — uses CategoryTiles with cards style for proper styling */}
-          {categoryItems.length > 0 && (
-            <>
-              {(() => {
-                const categorySection: StoreSection = {
-                  id: 0,
-                  section_type: "CATEGORY_GRID",
-                  title: "Shop by category",
-                  subtitle: "Everything your home needs, delivered fast",
-                  image: null,
-                  config: { category_style: "cards" },
-                  position: 0,
-                  is_active: true,
-                  items: categoryItems,
-                } as unknown as StoreSection;
-                return <CategoryGridSection section={categorySection} />;
-              })()}
-            </>
-          )}
-
-          {/* Designed sections (admin-configured) */}
+          {/* Designed sections (admin-configured) — categories render via
+              CATEGORY_GRID sections with their saved category_style. */}
           {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
 
           {/* Fallback welcome content when no sections configured */}
@@ -115,14 +91,8 @@ export function HomePage() {
             </>
           )}
 
-          {hasContent && (
-            <>
-              <DealsRail />
-              <RecommendedRail />
-              <RecentlyViewedRail />
-              <AllProductsGrid />
-            </>
-          )}
+          {/* When sections exist, only admin-configured sections render
+              (see rest.map above) — no hardcoded rails. */}
         </div>
       </div>
     </div>
@@ -294,7 +264,14 @@ function GallerySection({ section }: { section: StoreSection }) {
       <div className="grid grid-gallery">
         {images.map((i) => (
           <figure key={i.id} style={{ margin: 0 }}>
-            <img className="gallery-img" src={img(i.image)!} alt={i.caption} loading="lazy" decoding="async" />
+            <img
+              className={`gallery-img ${fxClass(i)}`}
+              style={fxStyle(i)}
+              src={img(i.image)!}
+              alt={i.caption}
+              loading="lazy"
+              decoding="async"
+            />
             {i.caption ? <figcaption className="muted" style={{ fontSize: 12, marginTop: 6 }}>{i.caption}</figcaption> : null}
           </figure>
         ))}
