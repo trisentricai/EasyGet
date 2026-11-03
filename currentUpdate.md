@@ -34,6 +34,16 @@
 
 ---
 
+## 0. LATEST - Storefront home fix (keep product rails; fallback category rail) (2026-10-31)
+
+**Goal hit:** home page rendered empty after de-dup (no products) — restored curated rails as baseline + fallback category rail when no admin CATEGORY_GRID section.
+
+**What changed:** HomePage.tsx — re-added Deals/Recommended/Recent/AllProducts rails in hasContent branch; added fallback category rail when no CATEGORY_GRID section present.
+
+**Verification:** `tsc` clean; `npm run build` green; live home shows 21 product cards + categories.
+
+---
+
 ## 0. LATEST - Storefront designer wiring (home de-dup, BannerCarousel, gallery image display, admin bg/cta/hero) (2026-10-31)
 
 **Goal hit:** user - "store front designers is not working for all the routes... checkout full scan... duplicate, needed to wring"
