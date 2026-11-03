@@ -64,6 +64,18 @@
 
 ---
 
+## 0. LATEST - Exactly 4 cards per row + premium sizing (2026-10-31)
+
+**Goal hit:** user - "now it was like 7 cards in home and browse and page where cards of products present but i want only 4 cards! with premium quality!"
+
+**What changed:**
+1. **`customer-web/src/styles.css`** - `.grid-products`: `repeat(auto-fill, minmax(160px, 1fr))` -> `repeat(4, 1fr)` (exactly 4 per row on desktop); gap 12 -> 16.
+2. **`customer-web/src/styles.css`** - `.browse-layout` sidebar 264 -> 220px (+ filter-side width 264 -> 220) for more room per card (premium feel).
+
+**Verification:** `tsc` clean; `npm run build` green; live shows 4 cols (168px x4) + sidebar 220px.
+
+---
+
 ## 0. LATEST - Search price filter follow-up (Decimal JSON fix) (2026-10-31)
 
 **Goal hit:** local test of search price filter surfaced a 500 (Decimal not JSON serializable in SearchQueryLog.filters).
