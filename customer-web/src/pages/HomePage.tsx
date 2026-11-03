@@ -5,9 +5,10 @@ import { img, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/ui";
 import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
 import { CategorySidebar } from "./CategorySidebar";
-import { fxStyle } from "../utils/imageFx";
+import { fxClass, fxStyle } from "../utils/imageFx";
 import {
   AllProductsGrid,
+  BannerCarousel,
   DealsRail,
   RecentlyViewedRail,
   RecommendedRail,
@@ -61,9 +62,9 @@ export function HomePage() {
           onDiscountChange={() => undefined}
         />
         <div className="browse-main">
-          {/* Full-width hero tile */}
+          {/* Hero / banner carousel (admin-configured HERO/BANNER sections) */}
           {banners.length > 0 ? (
-            <HeroTile sections={banners} />
+            <BannerCarousel sections={banners} />
           ) : (
             <WelcomeHero
               storeName={data.store.name}
@@ -96,49 +97,6 @@ export function HomePage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function HeroTile({ sections }: { sections: StoreSection[] }) {
-  const section = sections[0];
-  const cfg = section?.config ?? {};
-  const effects = (cfg.effects as Record<string, unknown>) ?? {};
-  const heroImg = img(section?.image) ?? img((cfg.hero_image as string) ?? null);
-  const cta = (cfg.cta_label as string) ?? "Shop now";
-  const ctaLink = (cfg.cta_link as string) ?? "browse";
-  const align = (cfg.align as string) === "right" ? "right" : "left";
-  const layout = (cfg.hero_layout as string) === "split" ? "split" : (cfg.hero_layout as string) === "minimal" ? "minimal" : "feature";
-  const overlay = (cfg.hero_overlay as string) === "light" ? "light" : (cfg.hero_overlay as string) === "none" ? "none" : "dark";
-
-  return (
-    <section
-      className={`hero-tile hero-${layout} hero-overlay-${overlay}`}
-      style={effects.hero_animation === "fade" ? { animation: "rise 0.6s ease" } : undefined}
-    >
-      {heroImg ? (
-        <img
-          className="hero-img"
-          style={fxStyle(section)}
-          src={heroImg}
-          alt=""
-          decoding="async"
-          width={1600}
-          height={800}
-        />
-      ) : null}
-      <div className="hero-content" style={align === "right" ? { marginLeft: "auto", textAlign: "right" } : undefined}>
-        {section?.subtitle ? <p className="hero-eyebrow">{section.subtitle}</p> : null}
-        <h1 className="hero-headline">{section?.title || "Fresh groceries, fast"}</h1>
-        <div className="hero-actions">
-          <a
-            className="btn btn-primary"
-            href={ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink)}
-          >
-            {cta}
-          </a>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -265,8 +223,8 @@ function GallerySection({ section }: { section: StoreSection }) {
         {images.map((i) => (
           <figure key={i.id} style={{ margin: 0 }}>
             <img
-              className={`gallery-img ${fxClass(i)}`}
-              style={fxStyle(i)}
+              className={`gallery-img ${fxClass(section)}`}
+              style={fxStyle(section)}
               src={img(i.image)!}
               alt={i.caption}
               loading="lazy"
