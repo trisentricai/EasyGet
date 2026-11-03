@@ -452,8 +452,8 @@ button { font-family: inherit; }
    minmax caps how wide a card can get, so cards never stretch to fill the
    whole row edge-to-edge (sparse/bulky bug) and stay neat & uniform. */
 .grid-products {
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
 .grid-products > .product-card,
 .grid-products > .card-skeleton {
@@ -1795,7 +1795,7 @@ button { font-family: inherit; }
 }
 
 /* ---------- Browse: left filter sidebar ---------- */
-.browse-layout { display: grid; grid-template-columns: 264px 1fr; gap: 20px; align-items: start; }
+.browse-layout { display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; }
 .filter-side { position: sticky; top: calc(var(--nav-h) + 58px); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .filter-group { border-bottom: 1px solid var(--border); padding: 14px 16px; }
 .filter-group:last-child { border-bottom: none; }
