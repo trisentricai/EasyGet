@@ -47,6 +47,12 @@ export function HomePage() {
   const rest = sections.filter(
     (s) => s.section_type !== "HERO" && s.section_type !== "BANNER",
   );
+  // Fallback category rail when the designer has no CATEGORY_GRID section,
+  // so categories always render (admin sections take precedence when present).
+  const hasCategorySection = rest.some((s) => s.section_type === "CATEGORY_GRID");
+  const categoryItems = hasCategorySection
+    ? []
+    : sections.flatMap((s) => s.items.filter((i) => i.item_type === "CATEGORY" || i.category_slug));
   const hasContent = sections.length > 0;
 
   return (
@@ -73,9 +79,39 @@ export function HomePage() {
             />
           )}
 
+          {/* Fallback category rail (only when no admin CATEGORY_GRID section). */}
+          {categoryItems.length > 0 && (
+            <>
+              {(() => {
+                const categorySection: StoreSection = {
+                  id: 0,
+                  section_type: "CATEGORY_GRID",
+                  title: "Shop by category",
+                  subtitle: "Everything your home needs, delivered fast",
+                  image: null,
+                  config: { category_style: "cards" },
+                  position: 0,
+                  is_active: true,
+                  items: categoryItems,
+                } as unknown as StoreSection;
+                return <CategoryGridSection section={categorySection} />;
+              })()}
+            </>
+          )}
+
           {/* Designed sections (admin-configured) — categories render via
               CATEGORY_GRID sections with their saved category_style. */}
           {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
+
+          {/* Curated rails (always available as baseline content). */}
+          {hasContent && (
+            <>
+              <DealsRail />
+              <RecommendedRail />
+              <RecentlyViewedRail />
+              <AllProductsGrid />
+            </>
+          )}
 
           {/* Fallback welcome content when no sections configured */}
           {!hasContent && (
