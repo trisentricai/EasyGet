@@ -34,6 +34,18 @@
 
 ---
 
+## 0. LATEST - Storefront designer wiring (home de-dup, BannerCarousel, gallery image display, admin bg/cta/hero) (2026-10-31)
+
+**Goal hit:** user - "store front designers is not working for all the routes... checkout full scan... duplicate, needed to wring"
+
+**What changed:**
+- customer-web/src/pages/HomePage.tsx: removed synthetic category rail (categories now render once via admin CATEGORY_GRID sections with saved category_style); removed hardcoded Deals/Recommended/Recent/AllProducts rails from hasContent branch (admin sections only); switched hero to BannerCarousel (multi-banner support); wired fxClass/fxStyle on gallery images.
+- admin-web/src/pages/StorefrontPage.tsx: added background_color input in theme tab; added cta_label/cta_link inputs + enabled hero_layout/hero_overlay for BANNER sections too.
+
+**Verification:** `tsc` clean (both web apps); `npm run build` green (both).
+
+---
+
 ## 0. LATEST - 4 cards per row + small card size (2026-10-31)
 
 **Goal hit:** user - "cards stil big i need 4 cards but size need to small"
