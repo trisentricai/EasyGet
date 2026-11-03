@@ -1,6 +1,6 @@
 ﻿# GIT CHECK â€” EASYGET (Git & GitHub Reference)
 
-**Last updated:** 2026-09-27
+**Last updated:** 2026-11-03
 **Read BEFORE working:** together with `README.md` (roadmap) and `currentUpdate.md` (live code status). Update this file after every commit/change.
 
 ---
@@ -75,6 +75,7 @@ Rules: concise, imperative mood, never commit secrets (`.env`, keys).
 
 | Date | Branch | Commit | Summary |
 |---|---|---|---|
+| 2026-11-03 | fix/flutter-web-and-ordering | `a1d84cd` | feat(customer-web): storefront icon/motion polish — bespoke 24px monoline `Icon` set (~70 icons) replacing emoji/inline glyphs; SVG/CSS `AnimatedArt` + `SuccessCheck`; router collapsed to one `useSyncExternalStore` store + native `startViewTransition`/`flushSync` (one transition per nav, header pinned); `/` search shortcut, account chip, 5-tab mobile nav, PDP add-to-cart success, auth eye toggle, payment icons; mobile grid 2-up + filter overlay gating + PDP wish-burst containment (390px scroll width); `.summary-line`/`.summary-total`, tokenised offer chips, `button.link` UA reset; removed unreachable CategorySidebar mobile drawer; strict tsc clean, build green (150.72 kB / 39.68 gzip), backend untouched |
 | 2026-10-29 | fix/flutter-web-and-ordering | `dead-code-sweep-audit` (this round) | Dead-code sweep + screen-routing/screen-content/auth audit round: removed 8 dead symbols via `tsc --noUnusedLocals --noUnusedParameters` (customer: App `error` + marketplace `Product` + Checkout `Spinner`; admin: App `theme`+`useTheme`, InventoryPage dead `storesQuery`, LoginPage `toggle`, ProductsPage `categoryById`, StorefrontPage `TickerConfig`); module scan clean (flag-gated design sandbox intentional); audit verdicts: route fallbacks lazy (customer→home / admin→dashboard pending product decision), core customer screens professional per DESIGN.md, zero console.log/TODO/alert in SPAs, auth Supabase-like structure confirmed (JWT+blacklist+throttle+OTP+Google+roles). Both `tsc --noEmit` + `npm run build` green; no backend change |
 | 2026-10-29 | fix/flutter-web-and-ordering | `notfound-screens` (this round) | feat(web): NotFound screens — customer unknown-route fallback → new `NotFoundPage` (EmptyState + Back home); admin unknown-route fallback → `.not-found` card (Back dashboard); silent fallbacks eliminated; both builds green, strict tsc clean |
 | 2026-10-30 | fix/flutter-web-and-ordering | `sripon-product-cards` (this round) | feat(customer-web): SriPon-style product card redesign — square edge-to-edge hero images, top-right badge pill (`.product-chip`), top-left wishlist heart (`.wish-btn`), brand→name→price→CTA stack with add-to-bag pinned to bottom, hover lift + image scale, border-first elevation via EasyGet tokens (`--radius-lg`, `--bg-sunken`, `--dur-micro`, `--color-cta`, `--shadow-hi`); `ProductCard` badge spans now carry `product-chip` class; root gains `--bg-sunken`/`--radius-lg`; old absolute chip positioning removed; `tsc --noUnusedLocals` clean, build green |
