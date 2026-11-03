@@ -264,7 +264,7 @@ export function BrowsePage() {
             <div className="filter-chips">
               {activeFilters.map((f) => (
                 <button key={f.label} className="filter-chip" onClick={f.clear} title="Remove filter">
-                  {f.label} ✕
+                  {f.label} <Icon name="x" size={12} />
                 </button>
               ))}
               <button className="link" onClick={clearAll}>Clear all</button>

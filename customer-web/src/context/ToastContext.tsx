@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { Icon } from "../components/icons";
 
 export type Toast = { id: number; text: string; kind: "ok" | "err" | "info" };
 
@@ -34,7 +35,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="toasts">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.kind}`}>
-            <span>{t.kind === "ok" ? "✅" : t.kind === "err" ? "⚠️" : "ℹ️"}</span>
+            <span className="toast-ico">
+              <Icon
+                name={t.kind === "ok" ? "checkCircle" : t.kind === "err" ? "alertCircle" : "info"}
+                size={16}
+              />
+            </span>
             {t.text}
           </div>
         ))}

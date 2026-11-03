@@ -10,6 +10,7 @@ import {
 import { isWished, syncWishlistCache, toggleWishlist } from "../utils/history";
 import { fxClass, fxStyle } from "../utils/imageFx";
 import { Icon, type IconName } from "./icons";
+import { AnimatedArt, type ArtKind } from "./animations";
 
 export function money(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -63,9 +64,7 @@ export function RatingPill({
   return (
     <span className={`rating-pill rating-pill-${size}`}>
       {avg.toFixed(1)}
-      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.3l7.1-.7z" />
-      </svg>
+      <Icon name="starFilled" size={9} strokeWidth={0} />
       <em>({count > 999 ? `${(count / 1000).toFixed(1)}k` : count})</em>
     </span>
   );
@@ -109,7 +108,8 @@ export function WishButton({ slug, className = "" }: { slug: string; className?:
       disabled={busy}
       onClick={toggle}
     >
-      <Icon name="heart" size={16} />
+      <Icon name={wished ? "heartFilled" : "heart"} size={16} />
+      <span className="wish-burst" aria-hidden="true" />
     </button>
   );
 }
@@ -220,12 +220,45 @@ export function CardSkeletonGrid({ count = 8 }: { count?: number }) {
   );
 }
 
-export function EmptyState({ icon = "box", title, text, action }: { icon?: IconName; title: string; text?: string; action?: ReactNode }) {
+const ICON_ART: Partial<Record<IconName, ArtKind>> = {
+  cart: "cart",
+  bag: "cart",
+  bagCheck: "cart",
+  heart: "heart",
+  heartFilled: "heart",
+  search: "search",
+  box: "box",
+  receipt: "orders",
+  warning: "error",
+  alertCircle: "error",
+  checkCircle: "success",
+  leaf: "leaf",
+};
+
+export function EmptyState({
+  icon = "box",
+  title,
+  text,
+  action,
+  art,
+}: {
+  icon?: IconName;
+  title: string;
+  text?: string;
+  action?: ReactNode;
+  /** Optional illustration override; otherwise inferred from the icon. */
+  art?: ArtKind;
+}) {
+  const illustration = art ?? ICON_ART[icon];
   return (
     <div className="empty-state">
-      <div className="empty-ico">
-        <Icon name={icon} size={26} />
-      </div>
+      {illustration ? (
+        <AnimatedArt kind={illustration} />
+      ) : (
+        <div className="empty-ico">
+          <Icon name={icon} size={26} />
+        </div>
+      )}
       <h3>{title}</h3>
       {text ? <p className="muted">{text}</p> : null}
       {action}

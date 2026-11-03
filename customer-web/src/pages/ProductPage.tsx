@@ -19,6 +19,7 @@ import {
 } from "../services/api";
 import { EmptyState, Monogram, RatingPill, Spinner, WishButton } from "../components/ui";
 import { Icon } from "../components/icons";
+import { SuccessCheck } from "../components/animations";
 import { recordView } from "../utils/history";
 import { fxClass, fxStyle } from "../utils/imageFx";
 
@@ -34,6 +35,8 @@ export function ProductPage({ slug }: { slug: string }) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [activeFx, setActiveFx] = useState<ImageDisplay | null>(null);
   const [busy, setBusy] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
+  const addedTimer = useRef<number | null>(null);
   const [qty, setQty] = useState(1);
   const [pincode, setPincode] = useState("");
   const [pinResult, setPinResult] = useState<string | null>(null);
@@ -43,6 +46,14 @@ export function ProductPage({ slug }: { slug: string }) {
   useEffect(() => {
     setQty(1);
   }, [slug]);
+
+  // Clear the "Added" confirmation timer if the shopper navigates away.
+  useEffect(
+    () => () => {
+      if (addedTimer.current) window.clearTimeout(addedTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!product) return;
@@ -92,7 +103,12 @@ export function ProductPage({ slug }: { slug: string }) {
     try {
       await add(variantId, qty);
       if (thenCheckout) navigate("checkout");
-      else toast.push("Added to cart");
+      else {
+        toast.push("Added to cart");
+        setJustAdded(true);
+        if (addedTimer.current) window.clearTimeout(addedTimer.current);
+        addedTimer.current = window.setTimeout(() => setJustAdded(false), 1800);
+      }
     } catch (e) {
       toast.push(errText(e, "Could not add to cart"), "err");
     } finally {
@@ -139,7 +155,9 @@ export function ProductPage({ slug }: { slug: string }) {
   return (
     <div className="page">
       <nav className="pdp-breadcrumb" aria-label="Breadcrumb">
-        <button type="button" className="pdp-back" onClick={() => history.back()}>← Back</button>
+        <button type="button" className="pdp-back" onClick={() => history.back()}>
+          <Icon name="arrowLeft" size={15} /> Back
+        </button>
         {product.category ? (
           <>
             <span className="pdp-breadcrumb-sep">›</span>
@@ -320,9 +338,14 @@ export function ProductPage({ slug }: { slug: string }) {
           </div>
 
           <div className="buybox-actions">
-            <button className="btn-cart" disabled={busy || !variantId || outOfStock} onClick={() => void addToCart(false)}>
-              <Icon name="cart" size={17} />
-              {outOfStock ? "Out of stock" : busy ? "Adding…" : "Add to cart"}
+            <button
+              className={`btn-cart ${justAdded ? "is-added" : ""}`.trim()}
+              disabled={busy || !variantId || outOfStock}
+              onClick={() => void addToCart(false)}
+              aria-live="polite"
+            >
+              {justAdded ? <SuccessCheck size={19} /> : <Icon name="cart" size={17} />}
+              {outOfStock ? "Out of stock" : busy ? "Adding…" : justAdded ? "Added" : "Add to cart"}
             </button>
             <button className="btn-buy" disabled={busy || !variantId || outOfStock} onClick={() => void addToCart(true)}>
               Buy now
@@ -501,7 +524,7 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
               <div className="reviews-score-stars">
                 {[5, 4, 3, 2, 1].map((s) => (
                   <span key={s} className={`reviews-star ${avg >= s - 0.5 ? "on" : ""}`}>
-                    ★
+                    <Icon name="starFilled" size={20} strokeWidth={0} />
                   </span>
                 ))}
               </div>
@@ -531,7 +554,7 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
             <div className="reviews-list-wrap">
               {reviews.length === 0 ? (
                 <div className="reviews-empty">
-                  <span className="reviews-empty-ico">✍️</span>
+                  <span className="reviews-empty-ico"><Icon name="edit" size={26} /></span>
                   <h3 className="reviews-empty-title">No reviews yet</h3>
                   <p className="reviews-empty-text">Be the first to review this product.</p>
                   {canReview && (
@@ -549,7 +572,9 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
                         <div className="review-meta">
                           <span className="review-who">{r.reviewer_name}</span>
                           {r.is_verified_purchase ? (
-                            <span className="verified-badge">✓ Verified Purchase</span>
+                            <span className="verified-badge">
+                              <Icon name="shieldCheck" size={12} /> Verified Purchase
+                            </span>
                           ) : null}
                           <span className="review-when">
                             {new Date(r.created_at).toLocaleDateString("en-IN", {
@@ -583,9 +608,7 @@ function ReviewsSection({ slug, canReview }: { slug: string; canReview: boolean 
                 aria-label={`${n} star${n > 1 ? "s" : ""}`}
                 onClick={() => setRating(n)}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.3l7.1-.7z" />
-                </svg>
+                <Icon name="starFilled" size={24} strokeWidth={0} />
               </button>
             ))}
           </div>

@@ -14,6 +14,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { asArray, img, listCategories, type Category, type SectionItem } from "../services/api";
 import { href } from "../hooks/useHashRoute";
+import { Icon } from "./icons";
 
 export type CategoryTileStyle = "avatars" | "cards" | "cover" | "chips";
 
@@ -32,12 +33,12 @@ export function normalizeTileStyle(value: unknown): CategoryTileStyle {
 const CATEGORY_WASHES: ReadonlyArray<string> = [
   "#FCEFD4", // marigold wash
   "#DDF0E4", // primary tint
-  "#FDECEA", // danger wash
-  "#FDF3E0", // warning wash
-  "#E8F5E9", // success wash
-  "#E3F2FD", // info wash
-  "#F3E8FF", // purple wash
-  "#FFE5E5", // rose wash
+  "#FDECEA", // blush wash
+  "#FDF3E0", // warm cream
+  "#E8F5E9", // mint wash
+  "#F5EFE6", // oat
+  "#EFE7DC", // sand
+  "#FFE9D6", // peach
 ];
 
 function categoryColorForSlug(slug: string): string {
@@ -197,8 +198,8 @@ export function TileLayout({
         </div>
         {more ? (
           <div style={{ marginTop: 14 }}>
-            <a className="link" href={href("categories")}>
-              See all {tiles.length} categories →
+            <a className="link link-arrow" href={href("categories")}>
+              See all {tiles.length} categories <Icon name="arrowRight" size={14} />
             </a>
           </div>
         ) : null}
@@ -229,8 +230,8 @@ export function TileLayout({
       </div>
       {more ? (
         <div style={{ marginTop: 14 }}>
-          <a className="link" href={href("categories")}>
-            See all {tiles.length} categories →
+          <a className="link link-arrow" href={href("categories")}>
+            See all {tiles.length} categories <Icon name="arrowRight" size={14} />
           </a>
         </div>
       ) : null}

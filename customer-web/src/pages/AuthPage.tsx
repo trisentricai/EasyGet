@@ -12,10 +12,47 @@ import {
   type LoginResponse,
 } from "../services/api";
 import { isGoogleConfigured, loginWithGoogle, renderGoogleButton } from "../services/google";
+import { Icon } from "../components/icons";
 
 type Mode = "login" | "register" | "otp";
 
 type RoleChoice = "CUSTOMER" | "MERCHANT" | "DELIVERY_AGENT";
+
+/** Password field with a show/hide control (eye icons, not text links). */
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  minLength,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  minLength?: number;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="field-input-wrap">
+      <input
+        type={show ? "text" : "password"}
+        required
+        minLength={minLength}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      <button
+        type="button"
+        className="field-trail"
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? "Hide password" : "Show password"}
+        aria-pressed={show}
+      >
+        <Icon name={show ? "eyeOff" : "eye"} size={17} />
+      </button>
+    </div>
+  );
+}
 
 function GoogleSignInButton({ disabled }: { disabled: boolean }) {
   const { signIn } = useAuth();
@@ -181,7 +218,7 @@ export function AuthPage() {
             </div>
             <div className="field">
               <label>Password</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+              <PasswordInput value={password} onChange={setPassword} placeholder="••••••••" />
             </div>
             <button className="btn btn-block" disabled={busy} type="submit">
               {busy ? "Signing in…" : "Sign in"}
@@ -230,7 +267,7 @@ export function AuthPage() {
               </div>
               <div className="field full">
                 <label>Password</label>
-                <input type="password" required minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 10 characters" />
+                <PasswordInput value={password} onChange={setPassword} minLength={10} placeholder="At least 10 characters" />
               </div>
             </div>
             <button className="btn btn-block" disabled={busy} type="submit">

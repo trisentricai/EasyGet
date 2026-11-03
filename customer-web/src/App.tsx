@@ -59,6 +59,21 @@ function Shell() {
   const { data, loading } = useStorefront();
   const { user, ready, signOut } = useAuth();
   const { count } = useCart();
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  // "/" focuses the header search, like a developer-tool marketplace —
+  // ignored while typing in any field so it never hijacks input.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   // Shared "categories" cache — the marketplace rails and browse filters
   // reuse this exact key, so the list is fetched once per session visit.
   const categoriesQuery = useQuery({
@@ -157,13 +172,13 @@ function Shell() {
   return (
     <>
       <header className="topnav" role="banner">
-        <div className="brand" onClick={() => navigate("home")}>
-          <div className="brand-mark">EG</div>
-          <div>
+        <a className="brand" href={href("home")} aria-label={`${storeName} home`}>
+          <span className="brand-mark">EG</span>
+          <span>
             <span className="brand-name">{loading ? "EASYGET" : storeName}</span>
             <span className="brand-city">{loading ? "explore" : `${storeCity || "online"} · delivery`}</span>
-          </div>
-        </div>
+          </span>
+        </a>
 
         <form
           className="searchform"
@@ -173,8 +188,14 @@ function Shell() {
             if (input?.value.trim()) navigate(`search?q=${encodeURIComponent(input.value.trim())}`);
           }}
         >
-          <span className="search-ico"><Icon name="search" size={17} /></span>
-          <input name="q" placeholder="Search for products, brands and more" aria-label="Search products" />
+          <span className="search-ico"><Icon name="search" size={18} /></span>
+          <input
+            ref={searchRef}
+            name="q"
+            placeholder="Search products, brands"
+            aria-label="Search products"
+          />
+          <kbd className="search-kbd" aria-hidden="true">/</kbd>
           <button type="submit">Search</button>
         </form>
 
@@ -190,25 +211,31 @@ function Shell() {
             {themeMode === "dark" ? <MoonIcon /> : <SunIcon />}
           </button>
           {!ready ? null : user ? (
-            <a className="nav-login" href={href("account")}>
-              <b>{(user.first_name || user.email.split("@")[0])}</b>
-              <small>Account &amp; Orders</small>
+            <a className="nav-login nav-account" href={href("account")} aria-current={activeRoute === "account" ? "page" : undefined}>
+              <span className="nav-account-ico"><Icon name="user" size={18} /></span>
+              <span className="nav-account-copy">
+                <b>{(user.first_name || user.email.split("@")[0])}</b>
+                <small>Account &amp; Orders</small>
+              </span>
             </a>
           ) : (
-            <button className="nav-login" onClick={() => navigate("login")}>
-              <b>Login</b>
-              <small>Signup</small>
+            <button className="nav-login nav-account" onClick={() => navigate("login")}>
+              <span className="nav-account-ico"><Icon name="user" size={18} /></span>
+              <span className="nav-account-copy">
+                <b>Login</b>
+                <small>Signup</small>
+              </span>
             </button>
           )}
-          <a className="nav-wish" href={href("wishlist")} aria-label="Wishlist">
+          <a className="nav-wish" href={href("wishlist")} aria-label="Wishlist" aria-current={activeRoute === "wishlist" ? "page" : undefined}>
             <Icon name="heart" size={19} />
             <span>Wishlist</span>
           </a>
-          <a className="nav-orders" href={href("orders")}>
+          <a className="nav-orders" href={href("orders")} aria-current={activeRoute === "orders" || activeRoute === "order" ? "page" : undefined}>
             <Icon name="box" size={19} />
             <span>Orders</span>
           </a>
-          <a className="nav-cart" href={href("cart")} aria-label="Cart">
+          <a className="nav-cart" href={href("cart")} aria-label={`Cart${count > 0 ? `, ${count} items` : ""}`} aria-current={activeRoute === "cart" ? "page" : undefined}>
             <span className="nav-cart-ico">
               <Icon name="cart" size={20} />
               {count > 0 ? <CartBubble count={count} /> : null}
@@ -252,9 +279,11 @@ function Shell() {
             <h4>Mail Us</h4>
             <p>{storeName}{storeCity ? `, ${storeCity}` : ""}</p>
             <p className="footer-social">
-              <span className="soc">f</span>
-              <span className="soc">𝕏</span>
-              <span className="soc">in</span>
+              <span className="soc" title="Facebook"><Icon name="facebook" size={15} strokeWidth={1.4} /></span>
+              <span className="soc" title="Instagram"><Icon name="instagram" size={15} strokeWidth={1.4} /></span>
+              <span className="soc" title="X"><Icon name="xSocial" size={14} /></span>
+              <span className="soc" title="LinkedIn"><Icon name="linkedin" size={14} strokeWidth={1.4} /></span>
+              <span className="soc" title="YouTube"><Icon name="youtube" size={16} strokeWidth={1.4} /></span>
             </p>
           </div>
         </div>
@@ -282,20 +311,23 @@ function Shell() {
       </footer>
 
       <nav className="bottomnav" aria-label="Primary">
-        <a className={activeRoute === "home" ? "on" : ""} href={href("home")}>
+        <a className={activeRoute === "home" ? "on" : ""} href={href("home")} aria-current={activeRoute === "home" ? "page" : undefined}>
           <Icon name="home" size={20} /><span>Home</span>
         </a>
-        <a className={activeRoute === "search" ? "on" : ""} href={href("search")}>
+        <a className={activeRoute === "browse" || activeRoute === "categories" ? "on" : ""} href={href("browse")} aria-current={activeRoute === "browse" ? "page" : undefined}>
+          <Icon name="grid" size={20} /><span>Browse</span>
+        </a>
+        <a className={activeRoute === "search" ? "on" : ""} href={href("search")} aria-current={activeRoute === "search" ? "page" : undefined}>
           <Icon name="search" size={20} /><span>Search</span>
         </a>
-        <a className={activeRoute === "cart" || activeRoute === "checkout" ? "on" : ""} href={href("cart")}>
+        <a className={activeRoute === "cart" || activeRoute === "checkout" ? "on" : ""} href={href("cart")} aria-current={activeRoute === "cart" ? "page" : undefined}>
           <span className="nav-cart-ico">
             <Icon name="cart" size={20} />
             {count > 0 ? <CartBubble count={count} /> : null}
           </span>
           <span>Cart</span>
         </a>
-        <a className={activeRoute === "account" || activeRoute === "orders" ? "on" : ""} href={href("account")}>
+        <a className={activeRoute === "account" || activeRoute === "orders" ? "on" : ""} href={href("account")} aria-current={activeRoute === "account" ? "page" : undefined}>
           <Icon name="user" size={20} /><span>Account</span>
         </a>
       </nav>

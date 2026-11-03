@@ -1,7 +1,8 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
-import { img, type SectionItem, type StoreSection } from "../services/api";
+import { asArray, img, listCategories, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/ui";
 import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
 import { CategorySidebar } from "./CategorySidebar";
@@ -24,6 +25,13 @@ import {
  */
 export function HomePage() {
   const { data, loading, error } = useStorefront();
+  // Shared cache with the header strip + sidebar: one fetch per visit.
+  // Used only as a fallback when the designer has no CATEGORY_GRID section.
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: listCategories,
+    staleTime: 5 * 60_000,
+  });
 
   if (loading) return <Spinner />;
   if (error || !data) {
@@ -47,12 +55,28 @@ export function HomePage() {
   const rest = sections.filter(
     (s) => s.section_type !== "HERO" && s.section_type !== "BANNER",
   );
-  // Fallback category rail when the designer has no CATEGORY_GRID section,
-  // so categories always render (admin sections take precedence when present).
+  // Fallback category rail when the designer has no CATEGORY_GRID section:
+  // build it from the store's real category list (not stray section items),
+  // so the home page always shows a complete, shoppable aisle grid.
   const hasCategorySection = rest.some((s) => s.section_type === "CATEGORY_GRID");
-  const categoryItems = hasCategorySection
+  const categoryItems: SectionItem[] = hasCategorySection
     ? []
-    : sections.flatMap((s) => s.items.filter((i) => i.item_type === "CATEGORY" || i.category_slug));
+    : asArray(categoriesQuery.data).map((c, index) => ({
+        id: -(index + 1),
+        item_type: "CATEGORY" as const,
+        product: null,
+        product_name: null,
+        product_slug: null,
+        product_price: null,
+        category: c.id,
+        category_name: c.name,
+        category_slug: c.slug,
+        caption: "",
+        image: null,
+        link: "",
+        config: {},
+        position: index,
+      }));
   const hasContent = sections.length > 0;
 
   return (
@@ -81,9 +105,9 @@ export function HomePage() {
 
           {/* Fallback category rail (only when no admin CATEGORY_GRID section). */}
           {categoryItems.length > 0 && (
-            <>
-              {(() => {
-                const categorySection: StoreSection = {
+            <CategoryGridSection
+              section={
+                {
                   id: 0,
                   section_type: "CATEGORY_GRID",
                   title: "Shop by category",
@@ -93,10 +117,9 @@ export function HomePage() {
                   position: 0,
                   is_active: true,
                   items: categoryItems,
-                } as unknown as StoreSection;
-                return <CategoryGridSection section={categorySection} />;
-              })()}
-            </>
+                } as unknown as StoreSection
+              }
+            />
           )}
 
           {/* Designed sections (admin-configured) — categories render via

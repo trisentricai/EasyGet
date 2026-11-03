@@ -154,7 +154,7 @@ export function DealsRail() {
     <Section
       title="Deals of the Day"
       subtitle={`Ends in ${countdown}`}
-      action={<a className="link" href={href("browse")}>See all</a>}
+      action={<a className="link link-arrow" href={href("browse")}>See all <Icon name="arrowRight" size={14} /></a>}
     >
       <Rail>
         {deals.map((p) => (
@@ -178,7 +178,14 @@ export function CategoryRail() {
   const cats = asArray(data);
   if (!cats.length) return null;
   return (
-    <Section title="Shop by Category">
+    <Section
+      title="Shop by Category"
+      action={
+        <a className="link link-arrow" href={href("categories")}>
+          See all <Icon name="arrowRight" size={14} />
+        </a>
+      }
+    >
       <Rail>
         {cats.map((c) => (
           <a className="cat-chip" key={c.slug} href={href(`browse?category=${c.slug}`)}>
@@ -223,7 +230,11 @@ export function RecommendedRail() {
     <Section
       title={`More in ${top.name}`}
       subtitle="Based on what you've been browsing"
-      action={<a className="link" href={href(`browse?category=${top.slug}`)}>See all</a>}
+      action={
+        <a className="link link-arrow" href={href(`browse?category=${top.slug}`)}>
+          See all <Icon name="arrowRight" size={14} />
+        </a>
+      }
     >
       <Rail>
         {items.map((p) => (
@@ -311,7 +322,7 @@ export function AllProductsGrid() {
           ? `${total} products — scroll for more`
           : "The full catalog — keep scrolling"
       }
-      action={<a className="link" href={href("browse")}>See all</a>}
+      action={<a className="link link-arrow" href={href("browse")}>See all <Icon name="arrowRight" size={14} /></a>}
     >
       <div className="grid grid-products">
         {products.map((p) => (

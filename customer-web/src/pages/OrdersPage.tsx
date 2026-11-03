@@ -12,6 +12,7 @@ import {
   type Order,
 } from "../services/api";
 import { EmptyState, money, SignInGate, Spinner, StatusChip } from "../components/ui";
+import { Icon } from "../components/icons";
 
 const CANCELLABLE = new Set(["PENDING", "CONFIRMED", "PREPARING"]);
 
@@ -105,7 +106,9 @@ export function OrderDetailPage({ id }: { id: string }) {
   return (
     <div className="page page-narrow">
       <div style={{ marginBottom: 14 }}>
-        <span className="link" onClick={() => navigate("orders")}>← All orders</span>
+        <span className="link" onClick={() => navigate("orders")}>
+          <Icon name="arrowLeft" size={14} /> All orders
+        </span>
       </div>
       <div className="pagehead">
         <h1 style={{ display: "flex", alignItems: "center", gap: 12 }}>

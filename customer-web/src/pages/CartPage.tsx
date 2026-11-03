@@ -117,7 +117,9 @@ export function CartPage() {
               );
             })}
             <div className="cart-actions">
-              <button className="btn btn-ghost btn-sm" onClick={() => navigate("browse")}>← Continue shopping</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => navigate("browse")}>
+                <Icon name="arrowLeft" size={14} /> Continue shopping
+              </button>
               <button className="btn btn-danger btn-sm" onClick={() => void doClear()}>Clear cart</button>
             </div>
           </div>

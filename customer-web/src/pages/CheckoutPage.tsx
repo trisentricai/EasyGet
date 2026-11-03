@@ -14,6 +14,7 @@ import {
   type Order,
 } from "../services/api";
 import { money, SignInGate } from "../components/ui";
+import { Icon, type IconName } from "../components/icons";
 
 type PaymentMethod = "cod" | "upi" | "card";
 
@@ -343,12 +344,13 @@ export function CheckoutPage() {
             <div className="pay-methods">
               <div className="pay-methods-title">Payment method</div>
               {([
-                { id: "cod", label: "Cash on Delivery", hint: "Pay with cash when your order arrives." },
-                { id: "upi", label: "UPI (Google Pay / PhonePe / Paytm)", hint: "Pay instantly via UPI." },
-                { id: "card", label: "Credit / Debit Card", hint: "Pay securely with your card." },
-              ] as { id: PaymentMethod; label: string; hint: string }[]).map((m) => (
+                { id: "cod", icon: "rupee", label: "Cash on Delivery", hint: "Pay with cash when your order arrives." },
+                { id: "upi", icon: "wallet", label: "UPI (Google Pay / PhonePe / Paytm)", hint: "Pay instantly via UPI." },
+                { id: "card", icon: "creditCard", label: "Credit / Debit Card", hint: "Pay securely with your card." },
+              ] as { id: PaymentMethod; icon: IconName; label: string; hint: string }[]).map((m) => (
                 <label key={m.id} className={`pay-option ${paymentMethod === m.id ? "selected" : ""}`}>
                   <input type="radio" name="payment" value={m.id} checked={paymentMethod === m.id} onChange={() => setPaymentMethod(m.id)} />
+                  <span className="pay-option-ico"><Icon name={m.icon} size={18} /></span>
                   <div>
                     <div className="pay-option-label">{m.label}</div>
                     <div className="pay-option-hint">{m.hint}</div>
