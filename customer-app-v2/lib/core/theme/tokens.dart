@@ -113,6 +113,11 @@ abstract class FreshMarketColorTokens {
   Color get champagne;
   Color get champagneDeep;
 
+  /// Glass Morphism card surface (frosted fill) + border (subtle edge).
+  /// Works in both light and dark modes.
+  Color get glassSurface;
+  Color get glassBorder;
+
   /// Obsidian Glass overlay (frosted dark pills, badges, Add).
   Color get obsidian;
   Color get obsidianGlass;
@@ -164,6 +169,10 @@ class FreshMarketLightColors extends ThemeExtension<FreshMarketLightColors>
   Color get champagne => AppColors.champagne;
   @override
   Color get champagneDeep => AppColors.champagneDeep;
+  @override
+  Color get glassSurface => const Color(0xD0F7EFDD); // champagne ~82% opacity
+  @override
+  Color get glassBorder => const Color(0x80EFE0C2); // champagneDeep ~50% opacity
   @override
   Color get obsidian => AppColors.obsidian;
   @override
@@ -217,6 +226,10 @@ class FreshMarketDarkColors extends ThemeExtension<FreshMarketDarkColors>
   Color get champagne => AppColors.darkChampagne;
   @override
   Color get champagneDeep => AppColors.darkChampagneDeep;
+  @override
+  Color get glassSurface => const Color(0xD02A241B); // darkChampagne ~82% opacity
+  @override
+  Color get glassBorder => const Color(0x8038301F); // darkChampagneDeep ~50% opacity
   @override
   Color get obsidian => AppColors.obsidian;
   @override

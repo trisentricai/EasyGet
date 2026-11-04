@@ -11,6 +11,7 @@ from .serializers import (
     AddressSerializer,
     AdminUserCreateSerializer,
     AdminUserUpdateSerializer,
+    ChangePasswordSerializer,
     UserSerializer,
 )
 
@@ -22,6 +23,24 @@ class MeView(RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class ChangePasswordView(APIView):
+    """POST /api/v1/users/me/change-password/ — verify current, set new."""
+
+    permission_classes = [IsAuthenticated, IsVerifiedEmail]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save(update_fields=["password", "updated_at"])
+        return Response(
+            {"message": "Password updated successfully."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class AddressViewSet(viewsets.ModelViewSet):

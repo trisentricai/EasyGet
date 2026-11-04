@@ -3,12 +3,13 @@ from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from users.permissions import IsAdminOnly, IsAdminOrStoreManager
 
 from orders.models import Order
+from orders.pricing import coupon_benefits, validate_coupon_code
 from products.models import Product, ProductReview, ProductVariant
 from users.models import User
 from .models import AdminAction, Banner, Coupon, ScheduledTask, SystemConfig
@@ -90,31 +91,40 @@ class CouponViewSet(viewsets.ModelViewSet):
             return CouponValidateSerializer
         return CouponSerializer
 
-    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def validate(self, request):
+        """Validate a coupon against a cart subtotal.
+
+        Public on purpose: guests can build a local cart before signing in.
+        Business failures return HTTP 200 with `{valid: false, message}` so the
+        storefront can show a toast without parsing DRF error envelopes.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["code"]
         order_value = serializer.validated_data.get("order_value")
 
-        coupon = Coupon.objects.get(code__iexact=code)
-        is_valid, message = coupon.is_valid(request.user, order_value)
-        if is_valid:
-            discount = Decimal("0")
-            if coupon.discount_type == Coupon.DiscountType.PERCENTAGE:
-                discount = (order_value or Decimal("0")) * coupon.discount_value / 100
-                if coupon.max_discount:
-                    discount = min(discount, coupon.max_discount)
-            elif coupon.discount_type == Coupon.DiscountType.FIXED:
-                discount = coupon.discount_value
+        user = request.user if request.user.is_authenticated else None
+        coupon, message = validate_coupon_code(code, user, order_value)
+        if coupon is None:
+            return Response(
+                {"valid": False, "message": message or "Invalid coupon code."}
+            )
 
-            return Response({
+        benefits = coupon_benefits(coupon, order_value or Decimal("0"))
+        return Response(
+            {
                 "valid": True,
-                "discount": discount,
+                "code": coupon.code,
                 "discount_type": coupon.discount_type,
+                "product_discount": str(benefits["product_discount"]),
+                "delivery_discount": str(benefits["delivery_discount"]),
+                "discount": str(benefits["discount"]),
+                "delivery_fee": str(benefits["delivery_fee"]),
+                "free_delivery": benefits["free_delivery"],
                 "coupon": CouponSerializer(coupon).data,
-            })
-        return Response({"valid": False, "message": message}, status=400)
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def increment_usage(self, request, pk=None):

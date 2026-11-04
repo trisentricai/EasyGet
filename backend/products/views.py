@@ -186,6 +186,26 @@ class ProductViewSet(ModelViewSet):
                 )
             ).filter(discount_pct__gte=threshold)
 
+        # Rating facet: review_rating_avg is annotated by with_rating_stats().
+        # Unrated products (NULL) never match a positive threshold, matching
+        # the "4★ & up" storefront contract.
+        min_rating = params.get("min_rating")
+        if min_rating:
+            try:
+                rating_threshold = float(min_rating)
+            except (TypeError, ValueError):
+                rating_threshold = 0
+            if rating_threshold > 0:
+                qs = qs.filter(review_rating_avg__gte=rating_threshold)
+
+        # Availability facet: any active variant with qty > 0 in an active
+        # store. Mirrors the public `in_stock` flag computed after pagination.
+        if params.get("in_stock") == "true":
+            qs = qs.filter(
+                variants__stock_items__quantity__gt=0,
+                variants__stock_items__store__is_active=True,
+            ).distinct()
+
         # Visibility (applies BEFORE sorting so sorted lists can't leak
         # inactive/unstocked merchant catalogs to regular customers).
         # Platform products (tenant None) are public as soon as they are

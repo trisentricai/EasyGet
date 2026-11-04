@@ -12,7 +12,7 @@ import {
   type Product,
 } from "../services/api";
 import { href } from "../hooks/useHashRoute";
-import { EmptyState, ProductCard, Section, Spinner } from "../components/ui";
+import { EmptyState, PageCrumbs, ProductCard, Section, Spinner } from "../components/ui";
 import { CategorySidebar } from "./CategorySidebar";
 import { CategoryTilesFromCategories } from "../components/category-tiles";
 
@@ -71,6 +71,7 @@ export function CategoriesPage() {
 
   return (
     <div className="page">
+      <PageCrumbs current="All categories" />
       <div className="browse-layout">
         <CategorySidebar
           activeCategory=""

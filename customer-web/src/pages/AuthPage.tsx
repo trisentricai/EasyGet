@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { navigate } from "../hooks/useHashRoute";
+import { navigate, href } from "../hooks/useHashRoute";
 import {
   errText,
   fieldErrors,
@@ -13,6 +13,7 @@ import {
 } from "../services/api";
 import { isGoogleConfigured, loginWithGoogle, renderGoogleButton } from "../services/google";
 import { Icon } from "../components/icons";
+import { takeReturnTo } from "../utils/returnTo";
 
 type Mode = "login" | "register" | "otp";
 
@@ -77,7 +78,7 @@ function GoogleSignInButton({ disabled }: { disabled: boolean }) {
         .then((res) => {
           signIn({ access: res.access, refresh: res.refresh }, res.user);
           toast.push(`Welcome, ${res.user.first_name || res.user.email}`);
-          navigate("home", { replace: true });
+          navigate(takeReturnTo() ?? "home", { replace: true });
         })
         .catch((err) => {
           toast.push(errText(err, "Google sign-in failed."), "err");
@@ -119,7 +120,7 @@ export function AuthPage() {
   const finishLogin = (res: LoginResponse) => {
     signIn({ access: res.access, refresh: res.refresh }, res.user);
     toast.push(`Welcome back, ${res.user.first_name || res.user.email}`);
-    navigate("home", { replace: true });
+    navigate(takeReturnTo() ?? "home", { replace: true });
   };
 
   const submitLogin = async (e: React.FormEvent) => {
@@ -196,6 +197,9 @@ export function AuthPage() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
+        <a className="auth-home" href={href("home")}>
+          <Icon name="arrowLeft" size={14} /> Back to home
+        </a>
         <div className="mode-tabs">
           <button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(null); }} type="button">
             Sign in

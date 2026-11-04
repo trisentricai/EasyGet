@@ -1,4 +1,5 @@
 import type { Product } from "../services/api";
+import { GUEST_CART_KEY } from "./guestCart";
 
 /**
  * Marketplace memory (localStorage): recently viewed products, category
@@ -184,15 +185,19 @@ export function setWishlistCache(slugs: string[]): void {
 }
 
 /**
- * Remove EVERY piece of user data this app persisted (logout / global 401):
- * tokens, wishlist, recent views/searches (all `eg-*` keys), plus anything
- * a future feature stashes in sessionStorage.
+ * Remove EVERY piece of *account* data this app persisted (logout / global
+ * 401): tokens, wishlist, recent views/searches (all `eg-*` keys), plus
+ * anything a future feature stashes in sessionStorage.
+ *
+ * The guest cart is deliberately kept: it belongs to the device, not the
+ * account, and must survive sign-out so a guest can pick up their picks on a
+ * later visit (or merge them into a different account).
  */
 export function purgeLocalUserData(): void {
   const doomed: string[] = [];
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (key && key.startsWith("eg-")) doomed.push(key);
+    if (key && key.startsWith("eg-") && key !== GUEST_CART_KEY) doomed.push(key);
   }
   for (const key of doomed) localStorage.removeItem(key);
   sessionStorage.clear();

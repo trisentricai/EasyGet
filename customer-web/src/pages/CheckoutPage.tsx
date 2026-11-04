@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { navigate } from "../hooks/useHashRoute";
+import { rememberPincode, useDeliveryConfig } from "../hooks/useDeliveryConfig";
 import {
   asArray,
   createAddress,
@@ -12,16 +13,19 @@ import {
   listOrders,
   type Address,
   type Order,
+  type PaymentMethod,
 } from "../services/api";
-import { money, SignInGate } from "../components/ui";
+import { money, PageCrumbs, SignInGate } from "../components/ui";
 import { Icon, type IconName } from "../components/icons";
-
-type PaymentMethod = "cod" | "upi" | "card";
+import { CouponInput } from "../components/CouponInput";
+import { TotalsBreakdown } from "../components/TotalsBreakdown";
+import { computeTotals } from "../utils/pricing";
 
 export function CheckoutPage() {
   const { user } = useAuth();
-  const { cart, refresh } = useCart();
+  const { cart, refresh, appliedCoupon, removeCoupon } = useCart();
   const toast = useToast();
+  const delivery = useDeliveryConfig();
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selected, setSelected] = useState<Address["id"] | null>(null);
@@ -65,8 +69,15 @@ export function CheckoutPage() {
       });
   }, [user]);
 
+  // Price delivery from the address the shopper is actually using.
+  useEffect(() => {
+    const address = addresses.find((a) => a.id === selected);
+    const pin = String(address?.postal_code ?? "");
+    if (/^\d{6}$/.test(pin)) rememberPincode(pin);
+  }, [selected, addresses]);
+
   const lookupPin = async (pin: string) => {
-    if (!/^\\d{6}$/.test(pin)) return;
+    if (!/^\d{6}$/.test(pin)) return;
     setPinLookup(true);
     setPinHint(null);
     try {
@@ -76,6 +87,7 @@ export function CheckoutPage() {
       if (info) {
         setForm((f) => ({ ...f, city: info.District || f.city, state: info.State || f.state }));
         setPinHint(`${info.District}, ${info.State}`);
+        rememberPincode(pin);
       } else {
         setPinHint("PIN code not found — enter city/state manually.");
       }
@@ -102,12 +114,19 @@ export function CheckoutPage() {
     group.items.push(item);
   }
 
+  const totals = computeTotals({
+    subtotal: cart?.subtotal,
+    coupon: appliedCoupon,
+    delivery: delivery.config,
+    paymentMethod,
+  });
+
   const saveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: { phone?: string; line1?: string; postal_code?: string } = {};
     if (!form.phone.trim()) next.phone = "Phone is required.";
     if (!form.line1.trim()) next.line1 = "Address line 1 is required.";
-    if (!/^\\d{6}$/.test(form.postal_code)) next.postal_code = "Enter a valid 6-digit PIN code.";
+    if (!/^\d{6}$/.test(form.postal_code)) next.postal_code = "Enter a valid 6-digit PIN code.";
     setErrors(next);
     if (Object.keys(next).length) {
       const first = next.phone ? phoneRef : next.line1 ? line1Ref : pinRef;
@@ -141,11 +160,19 @@ export function CheckoutPage() {
         cart_id: cart.id,
         delivery_address: { ...address },
         delivery_instructions: instructions || undefined,
+        coupon_code: appliedCoupon?.code || undefined,
+        payment_method: paymentMethod,
       });
       await refresh();
+      removeCoupon();
       if (created.orders && created.orders.length > 0) {
-        toast.push(`${created.orders.length} order${created.orders.length === 1 ? "" : "s"} placed! 🎉`);
-        navigate("orders");
+        const first = created.orders[0];
+        toast.push(
+          created.orders.length === 1
+            ? `Order ${first.order_number} placed! 🎉`
+            : `${created.orders.length} orders placed! 🎉`,
+        );
+        navigate(`order/${first.id}/confirmation`);
         return;
       }
       // Defensive fallback: legacy single-order response shape — resolve
@@ -163,7 +190,7 @@ export function CheckoutPage() {
         /* fall through to success toast without navigation */
       }
       toast.push(`Order ${orderNumber || ""} placed! 🎉`.replace("  ", " "));
-      if (orderId !== null) navigate(`order/${orderId}`);
+      if (orderId !== null) navigate(`order/${orderId}/confirmation`);
       else navigate("orders");
     } catch (err) {
       setError(errText(err, "Could not place order"));
@@ -173,13 +200,14 @@ export function CheckoutPage() {
 
   const paymentLabel =
     paymentMethod === "cod"
-      ? `Place order · ${money(cart?.subtotal)} (Cash on Delivery)`
+      ? `Place order · ${money(totals.total)} (Cash on Delivery)`
       : paymentMethod === "upi"
-        ? `Place order · ${money(cart?.subtotal)} (Pay via UPI)`
-        : `Place order · ${money(cart?.subtotal)} (Pay by Card)`;
+        ? `Place order · ${money(totals.total)} (Pay via UPI)`
+        : `Place order · ${money(totals.total)} (Pay by Card)`;
 
   return (
     <div className="page">
+      <PageCrumbs current="Checkout" />
       <div className="pagehead">
         <h1>Checkout</h1>
         <p className="muted">{items.length ? `${cart?.total_items} item(s) · ${money(cart?.subtotal)}` : ""}</p>
@@ -336,10 +364,11 @@ export function CheckoutPage() {
                 ))}
               </div>
             ))}
-            <div className="summary-line summary-total">
-              <span>Total (pay on delivery)</span>
-              <span>{money(cart?.subtotal)}</span>
-            </div>
+            <CouponInput id="checkout-coupon" />
+            <TotalsBreakdown
+              totals={totals}
+              showCod={paymentMethod === "cod"}
+            />
 
             <div className="pay-methods">
               <div className="pay-methods-title">Payment method</div>
@@ -397,18 +426,11 @@ export function CheckoutPage() {
                   ))}
                 </div>
               ))}
-              <div className="checkout-summary-line">
-                <span className="muted">Subtotal</span>
-                <span>{money(cart?.subtotal)}</span>
-              </div>
-              <div className="checkout-summary-line">
-                <span className="muted">Delivery</span>
-                <span className="muted">calculated at checkout</span>
-              </div>
-              <div className="checkout-summary-total">
-                <span>Total</span>
-                <span>{money(cart?.subtotal)}</span>
-              </div>
+              <TotalsBreakdown
+                totals={totals}
+                showCod={paymentMethod === "cod"}
+                className="checkout-summary-totals"
+              />
             </aside>
           </div>
         </>

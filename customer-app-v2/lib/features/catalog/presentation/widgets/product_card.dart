@@ -215,26 +215,32 @@ class ProductCard extends ConsumerWidget {
       onTap: _handleTap,
       child: SizedBox(
         width: width,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpace.md),
-          decoration: BoxDecoration(
-            color: colors.champagne,
-            borderRadius: BorderRadius.circular(AppRadii.card),
-            border: Border.all(color: colors.champagneDeep, width: 1.5),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _image(context, aspect: 4 / 5, inCartQty: inCartQty),
-              const SizedBox(height: AppSpace.md),
-              _nameSlot(context),
-              _brandSlot(context),
-              const SizedBox(height: AppSpace.sm),
-              _priceSlot(),
-              const SizedBox(height: AppSpace.md),
-              _quickAddControl(obsidian: true),
-            ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpace.md),
+              decoration: BoxDecoration(
+                color: colors.glassSurface,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                border: Border.all(color: colors.glassBorder, width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _image(context, aspect: 4 / 5, inCartQty: inCartQty),
+                  const SizedBox(height: AppSpace.md),
+                  _nameSlot(context),
+                  _brandSlot(context),
+                  const SizedBox(height: AppSpace.sm),
+                  _priceSlot(),
+                  const SizedBox(height: AppSpace.md),
+                  _quickAddControl(obsidian: true),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -249,26 +255,32 @@ class ProductCard extends ConsumerWidget {
       onTap: _handleTap,
       child: SizedBox(
         width: width,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpace.md),
-          decoration: BoxDecoration(
-            color: colors.champagne,
-            borderRadius: BorderRadius.circular(AppRadii.card),
-            border: Border.all(color: colors.champagneDeep, width: 1.5),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _image(context, aspect: 1, inCartQty: inCartQty),
-              const SizedBox(height: AppSpace.md),
-              _nameSlot(context),
-              _brandSlot(context),
-              const SizedBox(height: AppSpace.sm),
-              _priceSlot(),
-              const SizedBox(height: AppSpace.md),
-              _quickAddControl(),
-            ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpace.md),
+              decoration: BoxDecoration(
+                color: colors.glassSurface,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                border: Border.all(color: colors.glassBorder, width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _image(context, aspect: 1, inCartQty: inCartQty),
+                  const SizedBox(height: AppSpace.md),
+                  _nameSlot(context),
+                  _brandSlot(context),
+                  const SizedBox(height: AppSpace.sm),
+                  _priceSlot(),
+                  const SizedBox(height: AppSpace.md),
+                  _quickAddControl(),
+                ],
+              ),
+            ),
           ),
         ),
       ),

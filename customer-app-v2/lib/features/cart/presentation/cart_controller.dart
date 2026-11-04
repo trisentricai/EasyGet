@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../models/cart_models.dart';
 import '../../catalog/data/catalog_repository.dart';
+import '../data/cart_enrichment.dart';
 import '../data/cart_repository.dart';
 import '../data/coupon_repository.dart';
 
@@ -70,8 +71,21 @@ class CartController extends Notifier<CartViewState> {
   Future<void> _load() async {
     try {
       final cart = await ref.read(cartRepositoryProvider).fetchCart();
+      // Client-side enrichment: the frozen cart contract carries no product
+      // name/slug/image on variants, so backfill lines from the PDP cache
+      // (README §3.4 respected — no endpoint changes).
+      final enrichment = ref.read(cartEnrichmentProvider.notifier);
+      final items = cart.items.map((item) {
+        final e = enrichment.forVariant(item.variantId);
+        if (e == null) return item;
+        return item.copyWith(
+          productName: e.productName,
+          productSlug: e.productSlug,
+          imageUrl: e.imageUrl,
+        );
+      }).toList();
       state = CartViewState(
-        items: cart.items,
+        items: items,
         subtotal: cart.subtotal,
         totalItems: cart.totalItems,
         loading: false,

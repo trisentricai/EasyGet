@@ -21,6 +21,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Q
 
 from categories.models import Category
 from inventory.models import StockItem
@@ -110,6 +111,7 @@ class Command(BaseCommand):
         checklist = json.loads(CHECKLIST_PATH.read_text(encoding="utf-8"))
         created = {"categories": 0, "products": 0, "variants": 0, "stock": 0}
         reused = {"categories": 0, "products": 0}
+        adopted = {"products": 0}
 
         for block in checklist:
             category = Category.objects.filter(
@@ -127,11 +129,46 @@ class Command(BaseCommand):
                 reused["categories"] += 1
 
             for entry in block["items"]:
-                product = Product.objects.filter(
-                    tenant=tenant, name__iexact=entry["name"]
-                ).first()
+                # Prefer an existing tenant-owned row; otherwise adopt a
+                # legacy platform product with the same name instead of
+                # creating a duplicate that can never be checked out.
+                product = (
+                    Product.objects.filter(name__iexact=entry["name"])
+                    .filter(Q(tenant=tenant) | Q(tenant__isnull=True))
+                    .order_by("tenant_id")
+                    .first()
+                )
                 if product is not None:
                     reused["products"] += 1
+                    if product.tenant_id is None:
+                        adopted["products"] += 1
+                        if not dry_run:
+                            product.tenant = tenant
+                            product.save(update_fields=["tenant", "updated_at"])
+                    if dry_run:
+                        continue
+                    variant = (
+                        product.variants.filter(is_active=True).first()
+                        or product.variants.first()
+                    )
+                    if variant is None:
+                        variant = ProductVariant.objects.create(
+                            product=product,
+                            name=DEFAULT_VARIANT_NAME,
+                            price=price,
+                            is_active=True,
+                        )
+                        created["variants"] += 1
+                    stock, stock_created = StockItem.objects.get_or_create(
+                        store=store,
+                        variant=variant,
+                        defaults={"quantity": quantity, "tenant": tenant},
+                    )
+                    if stock_created:
+                        created["stock"] += 1
+                    elif stock.tenant_id != tenant.id:
+                        stock.tenant = tenant
+                        stock.save(update_fields=["tenant", "updated_at"])
                     continue
                 created["products"] += 1
                 if dry_run:
@@ -149,18 +186,21 @@ class Command(BaseCommand):
                     is_active=True,
                 )
                 created["variants"] += 1
-                _, stock_created = StockItem.objects.get_or_create(
+                stock, stock_created = StockItem.objects.get_or_create(
                     store=store,
                     variant=variant,
                     defaults={"quantity": quantity, "tenant": tenant},
                 )
                 if stock_created:
                     created["stock"] += 1
+                elif stock.tenant_id != tenant.id:
+                    stock.tenant = tenant
+                    stock.save(update_fields=["tenant", "updated_at"])
 
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — nothing written."))
         self.stdout.write(self.style.SUCCESS(
-            f"Created: {created} | Reused: {reused}"
+            f"Created: {created} | Reused: {reused} | Adopted: {adopted}"
         ))
 
         if not options["no_storefront"] and not dry_run:

@@ -90,12 +90,9 @@ class CouponValidateSerializer(serializers.Serializer):
     order_value = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
 
     def validate_code(self, value):
-        from .models import Coupon
-        try:
-            coupon = Coupon.objects.get(code__iexact=value)
-        except Coupon.DoesNotExist:
-            raise serializers.ValidationError("Invalid coupon code")
-        return value
+        # Existence/eligibility is resolved in the view so the storefront can
+        # render a friendly `{valid: false, message}` instead of a DRF error.
+        return value.strip()
 
 class ReviewAdminSerializer(serializers.ModelSerializer):
     """Moderation payload for the admin Reviews page."""

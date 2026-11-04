@@ -1,0 +1,6 @@
+{
+  "name": "EASYGET Fresh Market",
+  "description": "EASYGET Fresh Market mobile app: 10-minute grocery delivery with warm paper aesthetic, Fraunces serif display, thumb-zone buying, and full MNC design system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

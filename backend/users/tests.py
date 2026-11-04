@@ -202,6 +202,66 @@ class ProfileAndAddressTests(TestCase):
         self.assertEqual(self.user.first_name, "Updated")
         self.assertEqual(self.user.phone, "9876543210")
 
+    def test_change_password_success(self):
+        response = self.client.post(
+            reverse("change-password"),
+            {
+                "current_password": "strongpass123",
+                "new_password": "newstrongpass456",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("newstrongpass456"))
+
+    def test_change_password_rejects_wrong_current(self):
+        response = self.client.post(
+            reverse("change-password"),
+            {
+                "current_password": "notmypassword",
+                "new_password": "newstrongpass456",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("current_password", response.data["error"]["details"])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("strongpass123"))
+
+    def test_change_password_rejects_short_password(self):
+        response = self.client.post(
+            reverse("change-password"),
+            {"current_password": "strongpass123", "new_password": "short7!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("new_password", response.data["error"]["details"])
+
+    def test_change_password_rejects_common_password(self):
+        response = self.client.post(
+            reverse("change-password"),
+            {
+                "current_password": "strongpass123",
+                "new_password": "password123",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("new_password", response.data["error"]["details"])
+
+    def test_change_password_requires_auth(self):
+        self.client.credentials()
+        response = self.client.post(
+            reverse("change-password"),
+            {
+                "current_password": "strongpass123",
+                "new_password": "newstrongpass456",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 401)
+
     def test_multiple_addresses_with_single_default(self):
         address_url = reverse("address-list")
         first = self.client.post(

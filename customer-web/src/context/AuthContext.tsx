@@ -15,6 +15,8 @@ type Ctx = {
   ready: boolean;
   signIn: (tokens: { access: string; refresh: string }, user: User) => void;
   signOut: () => void;
+  /** Merge a server-returned profile into the session user (header/account). */
+  updateUser: (patch: Partial<User>) => void;
 };
 
 const AuthContext = createContext<Ctx>({
@@ -22,6 +24,7 @@ const AuthContext = createContext<Ctx>({
   ready: false,
   signIn: () => {},
   signOut: () => {},
+  updateUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -67,7 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, ready, signIn, signOut }), [user, ready, signIn, signOut]);
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, ready, signIn, signOut, updateUser }),
+    [user, ready, signIn, signOut, updateUser],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

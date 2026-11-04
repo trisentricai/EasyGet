@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
+from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -12,6 +15,7 @@ from products.models import ProductVariant
 from stores.models import Store
 from tenants.services import user_tenant_ids
 from .models import Order, OrderItem, OrderStatusHistory
+from .pricing import allocate, checkout_totals, validate_coupon_code
 from .serializers import (
     OrderCancelSerializer,
     OrderCreateSerializer,
@@ -81,10 +85,21 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def _create_split(self, serializer):
         cart = serializer.validated_data.pop("cart_id")
+        coupon_code = serializer.validated_data.pop("coupon_code", "")
+        payment_method = serializer.validated_data.pop(
+            "payment_method", Order.PaymentMethod.COD
+        )
         delivery_address = serializer.validated_data.get("delivery_address")
         delivery_instructions = serializer.validated_data.get(
             "delivery_instructions", ""
         )
+        coupon, coupon_error = validate_coupon_code(
+            coupon_code, self.request.user, cart.subtotal
+        )
+        if coupon_error:
+            raise serializers.ValidationError({"coupon_code": coupon_error})
+        totals = checkout_totals(cart.subtotal, coupon, payment_method)
+
         groups = {}
         for item in cart.items.select_related("variant__product"):
             product = item.variant.product
@@ -109,10 +124,17 @@ class OrderViewSet(viewsets.ModelViewSet):
                     {"cart_id": "Some items can't be ordered right now."}
                 )
             resolved.append((store, items))
+
+        subtotals = [sum(item.line_total for item in items) for _, items in resolved]
+        delivery_parts = allocate(totals["delivery_fee"], subtotals)
+        discount_parts = allocate(totals["discount"], subtotals)
+        tax_parts = allocate(totals["tax"], subtotals)
+        cod_parts = allocate(totals["cod_fee"], subtotals)
+
         orders = []
         with transaction.atomic():
-            for store, items in resolved:
-                subtotal = sum(item.line_total for item in items)
+            for index, (store, items) in enumerate(resolved):
+                subtotal = subtotals[index]
                 order = Order.objects.create(
                     user=self.request.user,
                     store=store,
@@ -120,7 +142,21 @@ class OrderViewSet(viewsets.ModelViewSet):
                     delivery_address=delivery_address,
                     delivery_instructions=delivery_instructions or "",
                     subtotal=subtotal,
-                    total=subtotal,  # delivery_fee/discount added later
+                    delivery_fee=delivery_parts[index],
+                    discount=discount_parts[index],
+                    tax=tax_parts[index],
+                    cod_fee=cod_parts[index],
+                    payment_method=payment_method,
+                    coupon_code=coupon.code if coupon else "",
+                    coupon_type=coupon.discount_type if coupon else "",
+                    estimated_delivery_at=timezone.now() + timedelta(days=2),
+                    total=(
+                        subtotal
+                        - discount_parts[index]
+                        + delivery_parts[index]
+                        + tax_parts[index]
+                        + cod_parts[index]
+                    ),
                 )
                 for item in items:
                     OrderItem.objects.create(
@@ -134,6 +170,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                         line_total=item.line_total,
                     )
                 orders.append(order)
+            if coupon is not None:
+                from admin_panel.models import Coupon
+
+                Coupon.objects.filter(pk=coupon.pk).update(
+                    usage_count=F("usage_count") + 1
+                )
             cart.items.all().delete()
         return Response(
             {"orders": [OrderListSerializer(o).data for o in orders]},
@@ -143,6 +185,10 @@ class OrderViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         cart = serializer.validated_data.pop("cart_id")
         store = serializer.validated_data.get("store")
+        coupon_code = serializer.validated_data.pop("coupon_code", "")
+        payment_method = serializer.validated_data.pop(
+            "payment_method", Order.PaymentMethod.COD
+        )
         # The platform storefront row never fulfils orders.
         if store and store.is_platform:
             raise serializers.ValidationError(
@@ -163,12 +209,28 @@ class OrderViewSet(viewsets.ModelViewSet):
                 raise serializers.ValidationError(
                     {"cart_id": "Cart holds items from another store's catalog."}
                 )
+
+        coupon, coupon_error = validate_coupon_code(
+            coupon_code, self.request.user, cart.subtotal
+        )
+        if coupon_error:
+            raise serializers.ValidationError({"coupon_code": coupon_error})
+        totals = checkout_totals(cart.subtotal, coupon, payment_method)
+
         with transaction.atomic():
             order = serializer.save(
                 user=self.request.user,
                 tenant=store.tenant if store and store.tenant_id else None,
                 subtotal=cart.subtotal,
-                total=cart.subtotal,  # delivery_fee/discount added later
+                delivery_fee=totals["delivery_fee"],
+                discount=totals["discount"],
+                tax=totals["tax"],
+                cod_fee=totals["cod_fee"],
+                payment_method=payment_method,
+                coupon_code=coupon.code if coupon else "",
+                coupon_type=coupon.discount_type if coupon else "",
+                estimated_delivery_at=timezone.now() + timedelta(days=2),
+                total=totals["total"],
             )
             # Create order items from cart
             for item in cart.items.select_related("variant__product"):
@@ -182,10 +244,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                     quantity=item.quantity,
                     line_total=item.line_total,
                 )
-            # Update totals
-            order.subtotal = cart.subtotal
-            order.total = cart.subtotal  # + delivery - discount later
-            order.save()
+            if coupon is not None:
+                from admin_panel.models import Coupon
+
+                Coupon.objects.filter(pk=coupon.pk).update(
+                    usage_count=F("usage_count") + 1
+                )
             # Clear cart
             cart.items.all().delete()
 

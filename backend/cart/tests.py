@@ -215,3 +215,41 @@ class CartTenancyTests(TestCase):
         self.assertEqual(res_solo.status_code, 201)
         self.assertIsNone(res_solo.data["tenant_id"])
         self.assertEqual(res_solo.data["seller_name"], "EasyGet")
+
+    def test_cart_item_quantity_can_be_updated(self):
+        Cart.objects.create(user=self.customer, store=self.store_a)
+        self.client.force_authenticate(user=self.customer)
+        created = self.client.post(
+            "/api/v1/cart/items/",
+            {"variant_id": self.variant_a.id, "quantity": 1},
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201)
+
+        res = self.client.patch(
+            f"/api/v1/cart/items/{created.data['id']}/",
+            {"quantity": 3},
+            format="json",
+        )
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["quantity"], 3)
+        self.assertEqual(
+            CartItem.objects.get(pk=created.data["id"]).quantity,
+            3,
+        )
+
+    def test_cart_item_can_be_removed(self):
+        Cart.objects.create(user=self.customer, store=self.store_a)
+        self.client.force_authenticate(user=self.customer)
+        created = self.client.post(
+            "/api/v1/cart/items/",
+            {"variant_id": self.variant_a.id, "quantity": 1},
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201)
+
+        res = self.client.delete(f"/api/v1/cart/items/{created.data['id']}/")
+
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(CartItem.objects.filter(pk=created.data["id"]).exists())

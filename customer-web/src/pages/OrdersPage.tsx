@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
-import { navigate } from "../hooks/useHashRoute";
+import { href, navigate } from "../hooks/useHashRoute";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import {
   asArray,
   cancelOrder,
@@ -11,8 +13,10 @@ import {
   listOrders,
   type Order,
 } from "../services/api";
-import { EmptyState, money, SignInGate, Spinner, StatusChip } from "../components/ui";
+import { EmptyState, money, PageCrumbs, SignInGate, Spinner, StatusChip } from "../components/ui";
 import { Icon } from "../components/icons";
+import { TotalsBreakdown } from "../components/TotalsBreakdown";
+import { orderTotals } from "../utils/pricing";
 
 const CANCELLABLE = new Set(["PENDING", "CONFIRMED", "PREPARING"]);
 
@@ -30,6 +34,7 @@ export function OrdersPage() {
 
   return (
     <div className="page">
+      <PageCrumbs current="Your orders" />
       <div className="pagehead">
         <h1>Your orders</h1>
         <p className="muted">Track and manage everything you've ordered.</p>
@@ -48,7 +53,7 @@ export function OrdersPage() {
         />
       ) : (
         orders.map((o) => (
-          <div className="order-card" key={o.id} onClick={() => navigate(`order/${o.id}`)} style={{ cursor: "pointer" }}>
+          <a className="order-card" key={o.id} href={href(`order/${o.id}`)}>
             <div>
               <div className="num">{o.order_number}</div>
               <div className="meta">
@@ -59,7 +64,7 @@ export function OrdersPage() {
               <div style={{ fontWeight: 800 }}>{money(o.total)}</div>
               <StatusChip status={o.status} />
             </div>
-          </div>
+          </a>
         ))
       )}
     </div>
@@ -68,6 +73,7 @@ export function OrdersPage() {
 
 export function OrderDetailPage({ id }: { id: string }) {
   const { user } = useAuth();
+  const { add } = useCart();
   const toast = useToast();
   const queryClient = useQueryClient();
   const orderKey = ["order", id, user?.id ?? null];
@@ -78,6 +84,14 @@ export function OrderDetailPage({ id }: { id: string }) {
   });
   const [cancelling, setCancelling] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const cancelTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const closeCancel = useCallback(() => setCancelling(false), []);
+  const cancelDialogRef = useFocusTrap<HTMLDivElement>(
+    cancelling,
+    closeCancel,
+    cancelTriggerRef,
+  );
   const errorMsg = error ? errText(error, "Order not found") : null;
 
   if (!user) return <SignInGate title="Order details" text="Sign in to view this order." />;
@@ -101,14 +115,50 @@ export function OrderDetailPage({ id }: { id: string }) {
     }
   };
 
+  const doReorder = async () => {
+    setReordering(true);
+    const unavailable: string[] = [];
+    let added = 0;
+    for (const item of order.items ?? []) {
+      const variant = item.variant;
+      if (!variant || variant.in_stock === false) {
+        unavailable.push(item.product_name);
+        continue;
+      }
+      try {
+        await add(variant.id, item.quantity);
+        added += 1;
+      } catch {
+        unavailable.push(item.product_name);
+      }
+    }
+
+    if (unavailable.length > 0) {
+      toast.push(
+        added > 0
+          ? `Added ${added} item${added === 1 ? "" : "s"} to cart. ${unavailable.length} item${unavailable.length === 1 ? "" : "s"} unavailable.`
+          : `No items were added. ${unavailable.length} item${unavailable.length === 1 ? "" : "s"} unavailable.`,
+        added > 0 ? "info" : "err",
+      );
+      toast.push(`Unavailable: ${unavailable.join(", ")}`, "info");
+    } else {
+      toast.push("All items added to cart.");
+    }
+
+    setReordering(false);
+    navigate("cart");
+  };
+
   const canCancel = CANCELLABLE.has(order.status);
+  const canReorder = order.status !== "CANCELLED" && (order.items?.length ?? 0) > 0;
 
   return (
     <div className="page page-narrow">
+      <PageCrumbs current={order.order_number} />
       <div style={{ marginBottom: 14 }}>
-        <span className="link" onClick={() => navigate("orders")}>
+        <a className="link" href={href("orders")}>
           <Icon name="arrowLeft" size={14} /> All orders
-        </span>
+        </a>
       </div>
       <div className="pagehead">
         <h1 style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -133,31 +183,31 @@ export function OrderDetailPage({ id }: { id: string }) {
           <span className="muted">Seller: {order.store_name ?? "EASYGET"}</span>
           <span />
         </div>
-        <div className="summary-line">
-          <span className="muted">Subtotal</span>
-          <span>{money(order.subtotal)}</span>
-        </div>
-        {Number(order.delivery_fee) > 0 ? (
-          <div className="summary-line">
-            <span className="muted">Delivery</span>
-            <span>{money(order.delivery_fee)}</span>
-          </div>
-        ) : null}
-        {Number(order.discount) > 0 ? (
-          <div className="summary-line">
-            <span className="muted">Discount</span>
-            <span>−{money(order.discount)}</span>
-          </div>
-        ) : null}
-        <div className="summary-line summary-total">
-          <span>Total</span>
-          <span>{money(order.total)}</span>
-        </div>
-        {canCancel ? (
+        <TotalsBreakdown
+          totals={orderTotals(order)}
+          showCod={order.payment_method === "cod" || Number(order.cod_fee ?? 0) > 0}
+        />
+        {canReorder || canCancel ? (
           <div className="form-actions">
-            <button className="btn btn-danger" disabled={busy} onClick={() => setCancelling(true)}>
-              Cancel order
-            </button>
+            {canReorder ? (
+              <button
+                className="btn btn-primary"
+                disabled={reordering}
+                onClick={() => void doReorder()}
+              >
+                {reordering ? "Adding to cart…" : "Reorder"}
+              </button>
+            ) : null}
+            {canCancel ? (
+              <button
+                ref={cancelTriggerRef}
+                className="btn btn-danger"
+                disabled={busy}
+                onClick={() => setCancelling(true)}
+              >
+                Cancel order
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -191,12 +241,20 @@ export function OrderDetailPage({ id }: { id: string }) {
       </div>
 
       {cancelling ? (
-        <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && setCancelling(false)}>
-          <div className="panel" role="dialog" style={{ maxWidth: 420, margin: "15vh auto" }}>
-            <h2>Cancel this order?</h2>
+        <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && closeCancel()}>
+          <div
+            ref={cancelDialogRef}
+            className="panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cancel-order-title"
+            tabIndex={-1}
+            style={{ maxWidth: 420, margin: "15vh auto" }}
+          >
+            <h2 id="cancel-order-title">Cancel this order?</h2>
             <p className="muted">This can't be undone once confirmed.</p>
             <div className="form-actions">
-              <button className="btn btn-ghost" onClick={() => setCancelling(false)}>Keep order</button>
+              <button className="btn btn-ghost" onClick={closeCancel}>Keep order</button>
               <button className="btn btn-danger" disabled={busy} onClick={() => void doCancel()}>
                 {busy ? "Cancelling…" : "Yes, cancel it"}
               </button>

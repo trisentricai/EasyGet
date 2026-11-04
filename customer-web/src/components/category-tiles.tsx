@@ -3,14 +3,17 @@
  * aisle"). Style comes from section.config.category_style, edited in the
  * admin storefront designer — no code change to re-skin a section.
  *
- *   avatars — circular faces in a horizontal rail (Instacart-style)
- *   cards   — classic grid cards (default; reuses legacy cat-card CSS)
+ *   avatars — compact rounded tiles (Instacart-style, no grey circles)
+ *   cards   — gradient tile grid (default)
  *   cover   — wide cover banners with overlaid names
- *   chips   — text pills (reuses legacy cat-chip CSS)
+ *   chips   — tinted text pills
  *
  * Image resolution: the designer's per-item image first, then the category's
- * own icon (uploaded in admin Categories), then a monogram fallback.
+ * own icon (uploaded in admin Categories), then an initials fallback on a
+ * stable pastel wash. The wash is exposed as `--wash`, so dark mode can
+ * re-tone the same hue instead of flashing a bright pastel card.
  */
+import type { CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { asArray, img, listCategories, type Category, type SectionItem } from "../services/api";
 import { href } from "../hooks/useHashRoute";
@@ -49,13 +52,20 @@ function categoryColorForSlug(slug: string): string {
   return CATEGORY_WASHES[Math.abs(hash) % CATEGORY_WASHES.length];
 }
 
-function washTextColor(wash: string): string {
-  // Pick dark or light text based on wash luminance for contrast.
-  const r = parseInt(wash.slice(1, 3), 16);
-  const g = parseInt(wash.slice(3, 5), 16);
-  const b = parseInt(wash.slice(5, 7), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#1a1815" : "#ffffff";
+function initialsFor(name: string): string {
+  const letters = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+  return letters || "·";
+}
+
+function washStyle(t: TileItem): CSSProperties {
+  return {
+    "--wash": categoryColorForSlug(t.slug || t.name),
+  } as CSSProperties;
 }
 
 function useCategoryIcons(): Map<string, string> {
@@ -132,35 +142,13 @@ export function TileLayout({
 
   if (style === "chips") {
     return (
-      <div className="filter-chips" role="list">
+      <div className="cat-pills" role="list">
         {shown.map((t) => (
-          <a key={t.key} role="listitem" className="cat-chip" href={href(`browse?category=${t.slug}`)}>
-            {t.name}
+          <a key={t.key} role="listitem" className="cat-pill" style={washStyle(t)} href={href(`browse?category=${t.slug}`)}>
+            <span className="cat-pill-dot" aria-hidden="true">{initialsFor(t.name)}</span>
+            <span className="cat-pill-name">{t.name}</span>
           </a>
         ))}
-      </div>
-    );
-  }
-
-  if (style === "avatars") {
-    return (
-      <div className="cat-avatars" role="list">
-        {shown.map((t) => {
-          const wash = t.image ? null : categoryColorForSlug(t.slug ?? "");
-          const textColor = wash ? washTextColor(wash) : "inherit";
-          return (
-            <a key={t.key} role="listitem" className="cat-avatar" href={href(`browse?category=${t.slug}`)}>
-              <span className="cat-avatar-img" style={wash ? { backgroundColor: wash, color: textColor } : {}}>
-                {t.image ? (
-                  <img src={t.image} alt="" loading="lazy" decoding="async" width={128} height={128} />
-                ) : (
-                  <span className="cat-avatar-monogram">{t.name.slice(0, 1).toUpperCase()}</span>
-                )}
-              </span>
-              <span className="cat-avatar-name">{t.name}</span>
-            </a>
-          );
-        })}
       </div>
     );
   }
@@ -168,73 +156,65 @@ export function TileLayout({
   if (style === "cover") {
     return (
       <>
-        <div className="cat-covers" role="list">
-          {shown.map((t) => {
-            const wash = t.image ? null : categoryColorForSlug(t.slug ?? "");
-            const textColor = wash ? washTextColor(wash) : "inherit";
-            return (
-              <a key={t.key} role="listitem" className="cat-cover" href={href(`browse?category=${t.slug}`)}>
-                <div className="cat-cover-media" style={wash ? { backgroundColor: wash, color: textColor } : {}}>
-                  {t.image ? (
-                    <img
-                      className="cat-cover-img"
-                      src={t.image}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      width={640}
-                      height={280}
-                    />
-                  ) : (
-                    <span className="cat-cover-monogram" aria-hidden="true">
-                      {t.name.slice(0, 1).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <span className="cat-cover-label">{t.name}</span>
-              </a>
-            );
-          })}
-        </div>
-        {more ? (
-          <div style={{ marginTop: 14 }}>
-            <a className="link link-arrow" href={href("categories")}>
-              See all {tiles.length} categories <Icon name="arrowRight" size={14} />
+        <div className="cat-banners" role="list">
+          {shown.map((t) => (
+            <a key={t.key} role="listitem" className="cat-banner" style={washStyle(t)} href={href(`browse?category=${t.slug}`)}>
+              <span className="cat-banner-media">
+                {t.image ? (
+                  <img src={t.image} alt="" loading="lazy" decoding="async" width={640} height={280} />
+                ) : (
+                  <span className="cat-banner-initials" aria-hidden="true">{initialsFor(t.name)}</span>
+                )}
+              </span>
+              <span className="cat-banner-scrim" aria-hidden="true" />
+              <span className="cat-banner-body">
+                <span className="cat-banner-name">{t.name}</span>
+                <span className="cat-banner-cta">
+                  Shop now <Icon name="arrowRight" size={14} />
+                </span>
+              </span>
             </a>
-          </div>
-        ) : null}
+          ))}
+        </div>
+        {more ? <SeeAll total={tiles.length} /> : null}
       </>
     );
   }
 
-  // cards (default): the classic grid card with vibrant color backgrounds.
+  const compact = style === "avatars";
+
   return (
     <>
-      <div className="grid grid-categories">
-        {shown.map((t) => {
-          const wash = t.image ? null : categoryColorForSlug(t.slug ?? "");
-          const textColor = wash ? washTextColor(wash) : "inherit";
-          return (
-            <a key={t.key} className="cat-card" href={href(`browse?category=${t.slug}`)}>
-              <span className="cat-ico" style={wash ? { backgroundColor: wash, color: textColor, borderColor: wash } : {}}>
-                {t.image ? (
-                  <img src={t.image} alt="" loading="lazy" decoding="async" width={300} height={300} />
-                ) : (
-                  <span className="cat-ico-monogram">{t.name.slice(0, 1).toUpperCase()}</span>
-                )}
+      <div className={`cat-tiles ${compact ? "cat-tiles--compact" : ""}`} role="list">
+        {shown.map((t) => (
+          <a key={t.key} role="listitem" className="cat-tile" style={washStyle(t)} href={href(`browse?category=${t.slug}`)}>
+            <span className="cat-tile-media">
+              {t.image ? (
+                <img src={t.image} alt="" loading="lazy" decoding="async" width={300} height={300} />
+              ) : (
+                <span className="cat-tile-initials" aria-hidden="true">{initialsFor(t.name)}</span>
+              )}
+            </span>
+            <span className="cat-tile-foot">
+              <span className="cat-tile-name">{t.name}</span>
+              <span className="cat-tile-arrow" aria-hidden="true">
+                <Icon name="arrowUpRight" size={14} />
               </span>
-              <span className="cat-name">{t.name}</span>
-            </a>
-          );
-        })}
-      </div>
-      {more ? (
-        <div style={{ marginTop: 14 }}>
-          <a className="link link-arrow" href={href("categories")}>
-            See all {tiles.length} categories <Icon name="arrowRight" size={14} />
+            </span>
           </a>
-        </div>
-      ) : null}
+        ))}
+      </div>
+      {more ? <SeeAll total={tiles.length} /> : null}
     </>
+  );
+}
+
+function SeeAll({ total }: { total: number }) {
+  return (
+    <div className="cat-see-all">
+      <a className="link link-arrow" href={href("categories")}>
+        See all {total} categories <Icon name="arrowRight" size={14} />
+      </a>
+    </div>
   );
 }

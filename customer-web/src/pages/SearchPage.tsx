@@ -5,7 +5,7 @@ import {
   getSearchSuggestions,
   searchWithFallback,
 } from "../services/api";
-import { CardSkeletonGrid, EmptyState, ProductCard, Section } from "../components/ui";
+import { CardSkeletonGrid, EmptyState, PageCrumbs, ProductCard, Section } from "../components/ui";
 import { CategorySidebar } from "./CategorySidebar";
 import {
   TRENDING_SEARCHES,
@@ -55,6 +55,7 @@ export function SearchPage({ initialQuery }: { initialQuery?: string }) {
 
   return (
     <div className="page">
+      <PageCrumbs current="Search" />
       <div className="browse-layout">
         <CategorySidebar
           activeCategory=""

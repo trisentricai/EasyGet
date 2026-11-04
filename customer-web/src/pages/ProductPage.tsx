@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { href, navigate } from "../hooks/useHashRoute";
+import { rememberPincode } from "../hooks/useDeliveryConfig";
 import {
   errText,
   getProduct,
@@ -15,9 +16,8 @@ import {
   checkPincode as fetchPincode,
   offerLine,
   type ImageDisplay,
-  type Product,
 } from "../services/api";
-import { EmptyState, Monogram, RatingPill, Spinner, WishButton } from "../components/ui";
+import { EmptyState, Monogram, ProductCard, RatingPill, Spinner, WishButton } from "../components/ui";
 import { Icon } from "../components/icons";
 import { SuccessCheck } from "../components/animations";
 import { recordView } from "../utils/history";
@@ -41,33 +41,56 @@ export function ProductPage({ slug }: { slug: string }) {
   const [pincode, setPincode] = useState("");
   const [pinResult, setPinResult] = useState<string | null>(null);
   const [pinBusy, setPinBusy] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const copyTimer = useRef<number | null>(null);
   const errorMsg = error ? errText(error, "Product not found") : null;
 
   useEffect(() => {
     setQty(1);
   }, [slug]);
 
-  // Clear the "Added" confirmation timer if the shopper navigates away.
+  // Clear the "Added" confirmation and coupon-copy timers if the shopper
+  // navigates away.
   useEffect(
     () => () => {
       if (addedTimer.current) window.clearTimeout(addedTimer.current);
+      if (copyTimer.current) window.clearTimeout(copyTimer.current);
     },
     [],
   );
 
   useEffect(() => {
     if (!product) return;
-    const firstActive = product.variants.find((v) => v.is_active) ?? product.variants[0];
+    const firstActive =
+      product.variants.find(
+        (v) => v.is_active && v.in_stock !== false && v.stock_quantity !== 0,
+      ) ??
+      product.variants.find((v) => v.is_active) ??
+      product.variants[0];
     setVariantId(firstActive?.id ?? null);
     setActiveImage(img(product.primary_image));
     setActiveFx(product.primary_image_display ?? null);
     recordView(product);
   }, [product]);
 
+  // Cap the stepper at the selected variant's stock (or the site max when
+  // stock is unmanaged). Switching variants clamps an already-high quantity.
+  const stockQuantity =
+    product?.variants.find((v) => v.id === variantId)?.stock_quantity ?? null;
+  const stockCap = Math.min(10, stockQuantity == null ? 10 : Math.max(0, stockQuantity));
+  useEffect(() => {
+    setQty((current) => Math.min(Math.max(1, current), Math.max(1, stockCap)));
+  }, [variantId, stockCap]);
+
   if (errorMsg) {
     return (
       <div className="page">
-        <EmptyState icon="search" title="Product not found" text={errorMsg} />
+        <EmptyState
+          icon="search"
+          title="Product not found"
+          text={errorMsg}
+          action={<a className="btn" href={href("home")}>Back to home</a>}
+        />
       </div>
     );
   }
@@ -75,7 +98,13 @@ export function ProductPage({ slug }: { slug: string }) {
 
   const activeVariant = product.variants.find((v) => v.id === variantId) ?? null;
   const price = activeVariant?.price ?? product.base_price;
-  const outOfStock = product.in_stock === false;
+  const variantOutOfStock =
+    activeVariant?.in_stock === false || activeVariant?.stock_quantity === 0;
+  const outOfStock = product.in_stock === false || variantOutOfStock;
+  const maxQty =
+    activeVariant?.stock_quantity == null
+      ? 10
+      : Math.min(10, Math.max(0, activeVariant.stock_quantity));
   const images = product.images.length
     ? product.images
     : product.primary_image
@@ -93,15 +122,26 @@ export function ProductPage({ slug }: { slug: string }) {
 
   const addToCart = async (thenCheckout = false) => {
     if (!variantId) return;
-    // Guests go to login first — the cart is a signed-in feature.
-    if (!user) {
-      toast.push("Sign in to add items to your cart");
-      navigate("login");
+    if (outOfStock) {
+      toast.push("Out of stock", "err");
       return;
     }
     setBusy(true);
     try {
-      await add(variantId, qty);
+      // Guests get a localStorage cart; signing in later merges it into the
+      // server cart. The snapshot keeps the local line readable until then.
+      await add(variantId, qty, {
+        name: product.name,
+        sku: activeVariant?.sku ?? "",
+        price: activeVariant?.price ?? product.base_price ?? "0",
+        productName: product.name,
+        productSlug: product.slug,
+        image: img(product.primary_image),
+        tenantId: null,
+        sellerName: "EASYGET",
+        inStock: activeVariant?.in_stock ?? product.in_stock ?? null,
+        stockQuantity: activeVariant?.stock_quantity ?? null,
+      });
       if (thenCheckout) navigate("checkout");
       else {
         toast.push("Added to cart");
@@ -126,6 +166,7 @@ export function ProductPage({ slug }: { slug: string }) {
     setPinResult("Checking…");
     try {
       const res = await fetchPincode(code);
+      rememberPincode(code);
       const eta = new Date();
       eta.setDate(eta.getDate() + (res.eta_days ?? 4));
       const feeLimit = Number(res.free_delivery_over ?? 499);
@@ -150,33 +191,69 @@ export function ProductPage({ slug }: { slug: string }) {
     }
   };
 
+  const copyCode = async (code: string) => {
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(code);
+      copied = true;
+    } catch {
+      /* Clipboard API can be blocked — fall back to a temporary textarea. */
+    }
+    if (!copied) {
+      try {
+        const field = document.createElement("textarea");
+        field.value = code;
+        field.setAttribute("readonly", "");
+        field.style.position = "fixed";
+        field.style.opacity = "0";
+        document.body.appendChild(field);
+        field.select();
+        copied = document.execCommand("copy");
+        document.body.removeChild(field);
+      } catch {
+        copied = false;
+      }
+    }
+    if (!copied) {
+      toast.push(`Could not copy — code: ${code}`, "err");
+      return;
+    }
+    setCopiedCode(code);
+    toast.push(`Coupon ${code} copied`);
+    if (copyTimer.current) window.clearTimeout(copyTimer.current);
+    copyTimer.current = window.setTimeout(() => setCopiedCode(null), 1800);
+  };
+
   const discount = activeVariant?.discount_percent || product.discount_percent;
 
   return (
-    <div className="page">
+    <div className="page pdp-page">
       <nav className="pdp-breadcrumb" aria-label="Breadcrumb">
-        <button type="button" className="pdp-back" onClick={() => history.back()}>
-          <Icon name="arrowLeft" size={15} /> Back
-        </button>
+        <a className="pdp-crumb-link pdp-crumb-home" href={href("home")}>
+          <Icon name="home" size={13} /> Home
+        </a>
         {product.category ? (
           <>
-            <span className="pdp-breadcrumb-sep">›</span>
+            <span className="pdp-breadcrumb-sep" aria-hidden="true">›</span>
             <a className="pdp-breadcrumb-link" href={href(`browse?category=${product.category.slug}`)}>
               {product.category.name}
             </a>
           </>
         ) : null}
+        <span className="pdp-breadcrumb-sep" aria-hidden="true">›</span>
+        <span className="pdp-crumb-current" aria-current="page">{product.name}</span>
       </nav>
 
       <div className="product-detail">
         {/* gallery */}
         <div className="pdp-gallery">
           <div
-            className={`product-thumb detail-thumb ${fxClass(activeFx)}`}
+            className={`pdp-stage ${fxClass(activeFx)}`}
             style={fxStyle(activeFx)}
           >
             {activeImage ? (
               <img
+                className="pdp-stage-img"
                 src={activeImage}
                 alt={product.name}
                 decoding="async"
@@ -184,7 +261,12 @@ export function ProductPage({ slug }: { slug: string }) {
                 height={800}
               />
             ) : (
-              <Monogram text={product.name} />
+              <div className="pdp-stage-fallback">
+                <div className="pdp-glass">
+                  <Monogram text={product.name} />
+                  <span className="pdp-glass-label">Image coming soon</span>
+                </div>
+              </div>
             )}
           </div>
           {images.length > 1 ? (
@@ -208,24 +290,24 @@ export function ProductPage({ slug }: { slug: string }) {
         </div>
 
         {/* info column */}
-        <div>
-          <div className="buybox-brand">{product.brand || product.category?.name || "EasyGet"}</div>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <h1 className="detail-title" style={{ flex: 1 }}>{product.name}</h1>
+        <div className="pdp-info">
+          <div className="pdp-brand">{product.brand || product.category?.name || "EasyGet"}</div>
+          <div className="pdp-title-row">
+            <h1 className="detail-title">{product.name}</h1>
             <WishButton slug={product.slug} className="wish-pdp" />
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div className="pdp-rating-row">
             <RatingPill avg={product.rating_avg} count={product.rating_count} size="lg" />
             {product.rating_count ? (
-              <span className="muted" style={{ fontSize: 13 }}>
+              <span className="muted pdp-rating-count">
                 {product.rating_count} ratings
               </span>
             ) : (
-              <span className="muted" style={{ fontSize: 13 }}>No ratings yet</span>
+              <span className="muted pdp-rating-count">No ratings yet</span>
             )}
           </div>
 
-          <div className="buybox-price" style={{ marginTop: 14 }}>
+          <div className="buybox-price pdp-price">
             <span className="now">₹{Number(price ?? 0).toLocaleString("en-IN")}</span>
             {product.mrp && Number(product.mrp) > Number(price ?? 0) ? (
               <span className="mrp">₹{Number(product.mrp).toLocaleString("en-IN")}</span>
@@ -243,32 +325,54 @@ export function ProductPage({ slug }: { slug: string }) {
           ) : null}
 
           {product.offers?.length ? (
-            <div className="buybox-section" style={{ marginTop: 16 }}>
+            <div className="buybox-section pdp-offer-section">
               <h4>Available offers</h4>
-              <ul className="offer-list">
-                {product.offers.map((o) => (
-                  <li key={o.code}>
-                    <b>{offerLine(o)}</b>
-                    <span className="offer-code">CODE: {o.code}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="pdp-offers">
+                {product.offers.map((o) => {
+                  const copied = copiedCode === o.code;
+                  return (
+                    <button
+                      key={o.code}
+                      type="button"
+                      className={`offer-pill ${copied ? "is-copied" : ""}`.trim()}
+                      onClick={() => void copyCode(o.code)}
+                      aria-label={`Copy coupon code ${o.code}`}
+                    >
+                      <span className="offer-pill-ico" aria-hidden="true">
+                        <Icon name={o.discount_type === "FREE_DELIVERY" ? "truck" : "tag"} size={15} />
+                      </span>
+                      <span className="offer-pill-copy">
+                        <span className="offer-pill-title">{offerLine(o)}</span>
+                        <span className="offer-pill-code">{copied ? "Copied!" : `CODE: ${o.code}`}</span>
+                      </span>
+                      <span className="offer-pill-action" aria-hidden="true">
+                        <Icon name={copied ? "check" : "copy"} size={14} />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
 
           {product.variants.length > 1 ? (
-            <div style={{ marginTop: 18 }}>
-              <h3 className="detail-option-label">Variants</h3>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {product.variants.filter((v) => v.is_active).map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setVariantId(v.id)}
-                    className={`variant-btn ${v.id === variantId ? "active" : ""}`}
-                  >
-                    {v.name || v.sku} · ₹{v.price}
-                  </button>
-                ))}
+            <div className="buybox-section pdp-variants">
+              <h4>Variants</h4>
+              <div className="pdp-variant-row">
+                {product.variants.filter((v) => v.is_active).map((v) => {
+                  const unavailable = v.in_stock === false || v.stock_quantity === 0;
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => setVariantId(v.id)}
+                      className={`variant-btn ${v.id === variantId ? "active" : ""} ${unavailable ? "is-oos" : ""}`.trim()}
+                      title={unavailable ? "Out of stock" : undefined}
+                    >
+                      {v.name || v.sku} · ₹{v.price}
+                      {unavailable ? " · Out of stock" : ""}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : null}
@@ -333,8 +437,31 @@ export function ProductPage({ slug }: { slug: string }) {
             <div className="qty-stepper">
               <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
               <span>{qty}</span>
-              <button onClick={() => setQty((q) => Math.min(10, q + 1))} aria-label="Increase quantity">+</button>
+              <button
+                onClick={() => {
+                  if (qty >= maxQty) {
+                    toast.push(
+                      activeVariant?.stock_quantity == null
+                        ? "Maximum 10 per item"
+                        : `Only ${maxQty} available`,
+                      "info",
+                    );
+                    return;
+                  }
+                  setQty((q) => Math.min(maxQty || 1, q + 1));
+                }}
+                aria-label="Increase quantity"
+                disabled={outOfStock}
+                title={activeVariant?.stock_quantity != null ? `Only ${maxQty} available` : undefined}
+              >
+                +
+              </button>
             </div>
+            {activeVariant?.stock_quantity != null &&
+            activeVariant.stock_quantity > 0 &&
+            activeVariant.stock_quantity <= 5 ? (
+              <div className="field-hint">Only {activeVariant.stock_quantity} left</div>
+            ) : null}
           </div>
 
           <div className="buybox-actions">
@@ -369,6 +496,30 @@ export function ProductPage({ slug }: { slug: string }) {
         </aside>
       </div>
 
+      {/* Mobile/tablet sticky purchase bar — desktop keeps the sticky buy box. */}
+      <div className="pdp-stickybar" role="region" aria-label="Purchase actions">
+        <div className="pdp-stickybar-price">
+          <span className="now">₹{Number(price ?? 0).toLocaleString("en-IN")}</span>
+          {product.mrp && Number(product.mrp) > Number(price ?? 0) ? (
+            <s className="mrp">₹{Number(product.mrp).toLocaleString("en-IN")}</s>
+          ) : null}
+        </div>
+        <div className="pdp-stickybar-actions">
+          <button
+            className={`btn-cart ${justAdded ? "is-added" : ""}`.trim()}
+            disabled={busy || !variantId || outOfStock}
+            onClick={() => void addToCart(false)}
+            aria-live="polite"
+          >
+            {justAdded ? <SuccessCheck size={19} /> : <Icon name="cart" size={17} />}
+            {outOfStock ? "Out of stock" : busy ? "Adding…" : justAdded ? "Added" : "Add to cart"}
+          </button>
+          <button className="btn-buy" disabled={busy || !variantId || outOfStock} onClick={() => void addToCart(true)}>
+            Buy now
+          </button>
+        </div>
+      </div>
+
       <SimilarRail slug={slug} categorySlug={product.category?.slug ?? null} />
       <ReviewsSection slug={slug} canReview={!!user} />
     </div>
@@ -385,64 +536,24 @@ function SimilarRail({ slug, categorySlug }: { slug: string; categorySlug: strin
 
   if (!categorySlug || !items || items.length === 0) return null;
   return (
-    <section className="section">
+    <section className="section pdp-similar">
       <div className="section-head">
-        <h2>Similar products</h2>
-        <a className="link" href={href(`browse?category=${categorySlug}`)}>See all</a>
+        <div>
+          <h2>Similar products</h2>
+          <p className="muted">More from this aisle, picked to go with your browse.</p>
+        </div>
+        <a className="link link-arrow" href={href(`browse?category=${categorySlug}`)}>
+          See all <Icon name="arrowRight" size={14} />
+        </a>
       </div>
-      <div className="rail">
+      <div className="rail pdp-rail">
         {items.map((p) => (
           <div className="rail-item" key={p.id}>
-            <SimilarCard product={p} />
+            <ProductCard product={p} size="sm" />
           </div>
         ))}
       </div>
     </section>
-  );
-}
-
-function SimilarCard({ product }: { product: Product }) {
-  const image = img(product.primary_image);
-  const out = product.in_stock === false;
-  return (
-    <a className="product-card" href={href(`product/${product.slug}`)}>
-      <div
-        className={`product-thumb ${fxClass(product.primary_image_display)}`}
-        style={fxStyle(product.primary_image_display)}
-      >
-        {image ? (
-          <img
-            src={image}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            width={600}
-            height={600}
-          />
-        ) : (
-          <Monogram text={product.name} />
-        )}
-        {out ? (
-          <span className="chip chip-out">Out of stock</span>
-        ) : null}
-      </div>
-      <div className="product-body">
-        <div className="product-brand">{product.brand || ""}</div>
-        <div className="product-name" title={product.name}>{product.name}</div>
-        <div className="product-rate-row">
-          <RatingPill avg={product.rating_avg} count={product.rating_count} />
-        </div>
-        <div className="price price-sm">
-          <span className="price-now">₹{Number(product.base_price ?? 0).toLocaleString("en-IN")}</span>
-          {product.mrp && Number(product.mrp) > Number(product.base_price ?? 0) ? (
-            <s className="price-mrp">₹{Number(product.mrp).toLocaleString("en-IN")}</s>
-          ) : null}
-          {product.discount_percent > 0 ? (
-            <span className="price-off">{product.discount_percent}% off</span>
-          ) : null}
-        </div>
-      </div>
-    </a>
   );
 }
 

@@ -1,4 +1,4 @@
-import { EmptyState } from "../components/ui";
+import { EmptyState, PageCrumbs } from "../components/ui";
 import { navigate } from "../hooks/useHashRoute";
 
 /**
@@ -9,6 +9,7 @@ import { navigate } from "../hooks/useHashRoute";
 export function NotFoundPage() {
   return (
     <div className="page">
+      <PageCrumbs current="Page not found" />
       <div className="pagehead">
         <h1>Page not found</h1>
         <p className="muted">The page you're looking for doesn't exist or may have moved.</p>

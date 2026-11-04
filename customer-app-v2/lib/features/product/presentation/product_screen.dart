@@ -16,6 +16,7 @@ import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
 import '../../../models/catalog_models.dart';
 import '../../../models/review_model.dart';
+import '../../cart/data/cart_enrichment.dart';
 import '../../cart/data/cart_repository.dart';
 import '../../catalog/presentation/widgets/price_block.dart';
 import '../../catalog/presentation/widgets/product_card.dart';
@@ -91,6 +92,14 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
               primaryImage: detail.primaryImage,
             ),
           );
+          ref.read(cartEnrichmentProvider.notifier).recordAll({
+            for (final v in detail.variants)
+              v.id: CartVariantProduct(
+                productName: detail.name,
+                productSlug: detail.slug,
+                imageUrl: detail.primaryImage,
+              ),
+          });
     });
 
     final detail = ref.watch(productDetailProvider(slug));
@@ -221,6 +230,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
         key: ValueKey('sticky-${selected?.id}'),
         productSlug: detail.slug,
         productName: detail.name,
+        imageUrl: detail.primaryImage,
         price: price,
         mrp: detail.mrp,
         discountPercent: detail.discountPercent,
@@ -928,11 +938,14 @@ class _StickyBar extends ConsumerStatefulWidget {
     super.key,
     required this.productSlug,
     required this.productName,
+    this.imageUrl,
     required this.price,
     required this.mrp,
     required this.discountPercent,
     required this.variantId,
   });
+
+  final String? imageUrl;
 
   final String productSlug;
   final String productName;
@@ -1114,6 +1127,14 @@ class _StickyBarState extends ConsumerState<_StickyBar> {
       await ref
           .read(cartRepositoryProvider)
           .addItem(variantId: variantId, quantity: _pending);
+      // Enrich the just-added line so the cart shows product name + photo
+      // instead of the bare variant unit (backend contract has none).
+      ref.read(cartEnrichmentProvider.notifier).record(
+            variantId,
+            productName: widget.productName,
+            productSlug: widget.productSlug,
+            imageUrl: widget.imageUrl,
+          );
       // Card grids read this map to render live steppers after a PDP add.
       ref
           .read(cardAdditionsProvider.notifier)

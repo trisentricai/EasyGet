@@ -43,8 +43,39 @@ class ProductImageWriteSerializer(serializers.ModelSerializer):
         fields = ["image", "caption", "is_primary", "sort_order"] + IMAGE_DISPLAY_FIELDS
 
 
+def _variant_stock(variant):
+    """(in_stock, stock_quantity) for a variant.
+
+    Mirrors the cart's server-side gate: legacy variants with no StockItem
+    rows are unmanaged (`(None, None)`); otherwise the quantity is the sum
+    across active stores. Cached on the instance so the two serializer
+    fields share one query.
+    """
+    cached = getattr(variant, "_stock_snapshot", None)
+    if cached is not None:
+        return cached
+
+    from django.db.models import Count, Q, Sum
+
+    from inventory.models import StockItem
+
+    agg = StockItem.objects.filter(variant=variant).aggregate(
+        rows=Count("id"),
+        total=Sum("quantity", filter=Q(store__is_active=True)),
+    )
+    if not agg["rows"]:
+        result = (None, None)
+    else:
+        quantity = agg["total"] or 0
+        result = (quantity > 0, quantity)
+    variant._stock_snapshot = result
+    return result
+
+
 class ProductVariantListSerializer(serializers.ModelSerializer):
     discount_percent = serializers.IntegerField(read_only=True)
+    in_stock = serializers.SerializerMethodField()
+    stock_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
@@ -55,8 +86,16 @@ class ProductVariantListSerializer(serializers.ModelSerializer):
             "price",
             "discount_percent",
             "is_active",
+            "in_stock",
+            "stock_quantity",
         ]
         read_only_fields = fields
+
+    def get_in_stock(self, obj):
+        return _variant_stock(obj)[0]
+
+    def get_stock_quantity(self, obj):
+        return _variant_stock(obj)[1]
 
 
 class ProductVariantWriteSerializer(serializers.ModelSerializer):
@@ -71,12 +110,30 @@ class ProductVariantWriteSerializer(serializers.ModelSerializer):
 
 
 class VariantBriefSerializer(serializers.ModelSerializer):
-    """Tiny variant payload referenced by inventory/cart modules."""
+    """Tiny variant payload referenced by inventory/cart/order modules."""
+
+    in_stock = serializers.SerializerMethodField()
+    stock_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
-        fields = ["id", "name", "sku", "attributes", "price", "is_active"]
+        fields = [
+            "id",
+            "name",
+            "sku",
+            "attributes",
+            "price",
+            "is_active",
+            "in_stock",
+            "stock_quantity",
+        ]
         read_only_fields = fields
+
+    def get_in_stock(self, obj):
+        return _variant_stock(obj)[0]
+
+    def get_stock_quantity(self, obj):
+        return _variant_stock(obj)[1]
 
 
 def _primary_image(obj):

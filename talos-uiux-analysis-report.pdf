@@ -1,0 +1,523 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 5638
+>>
+stream
+0.5670000000000001 w
+0 G
+0.55 0.36 0.96 rg
+0. 841.8899999999999864 595.2799999999999727 -70.8661417322834666 re
+f
+BT
+/F2 16 Tf
+18.3999999999999986 TL
+1. g
+56.6929133858267775 796.5356692913385359 Td
+(TALOS TOOLS) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+1. g
+402.5240944881888936 796.5356692913385359 Td
+(AI-Powered Website Analysis) Tj
+ET
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0. g
+56.6929133858267775 742.6774015748030706 Td
+(Website UI/UX Analysis Report) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+56.6929133858267775 714.3309448818897636 Td
+(URL: https://easyget-customer.pages.dev/) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+56.6929133858267775 700.15771653543311 Td
+(Analyzed: 10/31/2026, 6:49:22 AM) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.545 0.361 0.965 rg
+56.6929133858267775 666.1419685039369369 Td
+(Executive Summary) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 646.2994488188976447 Td
+(The site has a clean visual grid and well-labeled product imagery, but there are several accessibility and) Tj
+T* (semantic issues that make interactive controls and navigation confusing for assistive tech and keyboard) Tj
+T* (users. Fixing the top issues \(semantic roles/names, link vs button misuse, heading structure, and color) Tj
+T* (contrast\) will significantly improve usability and accessibility across devices.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.545 0.361 0.965 rg
+56.6929133858267775 566.9293700787401349 Td
+(Performance Scores) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 544.2522047244094665 Td
+(Accessibility: 68/100) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+198.4251968503937178 544.2522047244094665 Td
+(UI Design: 78/100) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+56.6929133858267775 530.0789763779526993 Td
+(UX: 72/100) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0. g
+198.4251968503937178 530.0789763779526993 Td
+(Overall: 73/100) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.545 0.361 0.965 rg
+56.6929133858267775 496.0632283464566399 Td
+(Issues Found \(4\)) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0. g
+56.6929133858267775 473.3860629921259147 Td
+([CRITICAL] Empty accessible name on critical navigation link \(cart\) \(~15 min\)) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.392 g
+56.6929133858267775 459.2128346456692611 Td
+(Category: accessibility | Device: all) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 445.0396062992125508 Td
+(The cart link in the header appears in the DOM/accessibility tree with an empty name, making it unlabeled to screen) Tj
+T* (reader users and preventing discoverability.) Tj
+ET
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.545 0.361 0.965 rg
+56.6929133858267775 416.69314960629913 Td
+(SOLUTION:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+119.0551181102362364 416.69314960629913 Td
+(Give the cart link a programmatic accessible name \(either visible text or aria-label/aria-labelledby\). Example: <a href="...") Tj
+T* (aria-label="Cart, view items in your cart"> or include a visible text node. Verify with a screen reader that the label is) Tj
+T* (announced.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0. g
+56.6929133858267775 360.0002362204724022 Td
+([HIGH] Actions implemented as links instead of buttons \(~1 hour\)) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.392 g
+56.6929133858267775 345.8270078740156919 Td
+(Category: accessibility | Device: all) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 331.6537795275589815 Td
+(Many interactive actions that modify state \(e.g., Add to bag / Add to wishlist\) are exposed as links in the accessibility tree) Tj
+T* (instead of semantic buttons, which is misleading for assistive technology and breaks expected keyboard/ARIA behavior.) Tj
+ET
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.545 0.361 0.965 rg
+56.6929133858267775 303.3073228346455608 Td
+(SOLUTION:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+119.0551181102362364 303.3073228346455608 Td
+(Replace action <a> elements used to perform in-page actions with <button> elements \(or add role="button" and) Tj
+T* (appropriate keyboard handlers and ARIA attributes if replacement isn't possible\). Ensure each button has a clear) Tj
+T* (accessible name, appropriate type attribute, and visible focus styles; update event handlers to prevent default link) Tj
+T* (navigation where applicable.) Tj
+ET
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0. g
+56.6929133858267775 235.2758267716534419 Td
+([MEDIUM] Inconsistent / duplicated heading structure and missing region landmarks \(~1 hour\)) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.392 g
+56.6929133858267775 221.1025984251967884 Td
+(Category: accessibility | Device: all) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 206.9293700787401349 Td
+(Heading levels are used \(H1 then multiple identical H2s and many H3s\) but repeated identical H2s and a very long flat list) Tj
+T* (of H3 product headings reduce navigability for screen reader users and make it hard to jump between logical sections.) Tj
+ET
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.545 0.361 0.965 rg
+56.6929133858267775 178.5829133858267141 Td
+(SOLUTION:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+119.0551181102362364 178.5829133858267141 Td
+(Group page regions using <section aria-labelledby="..."> or landmark elements and ensure each section has a unique,) Tj
+T* (meaningful heading. Collapse product lists into semantic lists \(ul/li\) or grids with aria-label/aria-labelledby and use) Tj
+T* (consistent heading levels \(H2 for section, H3 for product group titles\) to create a clear hierarchy for assistive tech.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.588 g
+227.7199999999999704 34.0159842519684616 Td
+(Generated by Talos Tools — talos.tools) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 1474
+>>
+stream
+0.5670000000000001 w
+0 G
+BT
+/F2 11 Tf
+12.6499999999999986 TL
+0. g
+56.6929133858267775 785.1970866141732586 Td
+([MEDIUM] Low contrast on secondary text \(old prices, metadata\) and some UI elements \(~2 hours\)) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.392 g
+56.6929133858267775 771.0238582677164914 Td
+(Category: accessibility | Device: all) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+56.6929133858267775 756.8506299212598378 Td
+(Some secondary information \(strike-through original prices, small meta text and light-gray labels\) appears to use) Tj
+T* (low-contrast greys on white backgrounds which may fall below WCAG contrast thresholds for regular text.) Tj
+ET
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.545 0.361 0.965 rg
+56.6929133858267775 728.5041732283464171 Td
+(SOLUTION:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0. g
+119.0551181102362364 728.5041732283464171 Td
+(Run contrast checks \(WCAG 2.1\) against the intended background and raise color contrast to meet at least 4.5:1 for) Tj
+T* (normal text \(or 3:1 for large text\). Options: darken gray tokens, increase font-weight/size for secondary text, or use a) Tj
+T* (stronger neutral \(e.g. #6B7280 -> a darker gray\) to meet thresholds.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.588 g
+227.7199999999999704 34.0159842519684616 Td
+(Generated by Talos Tools — talos.tools) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.588 g
+227.9599999999999795 19.8427559055116944 Td
+(© 2026 Talos Tools. All rights reserved.) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R ]
+/Count 2
+>>
+endobj
+7 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+8 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+9 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+15 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+16 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+19 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+20 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 7 0 R
+/F2 8 0 R
+/F3 9 0 R
+/F4 10 0 R
+/F5 11 0 R
+/F6 12 0 R
+/F7 13 0 R
+/F8 14 0 R
+/F9 15 0 R
+/F10 16 0 R
+/F11 17 0 R
+/F12 18 0 R
+/F13 19 0 R
+/F14 20 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+21 0 obj
+<<
+/Producer (jsPDF 4.2.1)
+/CreationDate (D:20261031065159+05'30')
+>>
+endobj
+22 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 23
+0000000000 65535 f 
+0000007505 00000 n 
+0000009330 00000 n 
+0000000015 00000 n 
+0000000152 00000 n 
+0000005842 00000 n 
+0000005979 00000 n 
+0000007568 00000 n 
+0000007693 00000 n 
+0000007823 00000 n 
+0000007956 00000 n 
+0000008094 00000 n 
+0000008218 00000 n 
+0000008347 00000 n 
+0000008479 00000 n 
+0000008615 00000 n 
+0000008743 00000 n 
+0000008870 00000 n 
+0000008999 00000 n 
+0000009132 00000 n 
+0000009234 00000 n 
+0000009580 00000 n 
+0000009666 00000 n 
+trailer
+<<
+/Size 23
+/Root 22 0 R
+/Info 21 0 R
+/ID [ <F8590E7E5D93E843FF2B33DF9E173728> <F8590E7E5D93E843FF2B33DF9E173728> ]
+>>
+startxref
+9770
+%%EOF

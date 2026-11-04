@@ -14,13 +14,30 @@ import { SearchPage } from "./pages/SearchPage";
 import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { OrderDetailPage, OrdersPage } from "./pages/OrdersPage";
+import { OrderConfirmationPage } from "./pages/OrderConfirmationPage";
 import { AccountPage } from "./pages/AccountPage";
 import { WishlistPage } from "./pages/WishlistPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { InfoPage } from "./pages/InfoPage";
 import { Icon } from "./components/icons";
+import { CartPreview } from "./components/CartPreview";
 import { Spinner, usePopOnChange } from "./components/ui";
 import { Ticker } from "./components/ticker";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CategoriesPage } from "./pages/CategoriesPage";
+import { rememberReturnTo } from "./utils/returnTo";
+
+/** Static policy/company pages linked from the footer. */
+const INFO_ROUTES = new Set([
+  "about",
+  "contact",
+  "careers",
+  "help",
+  "faq",
+  "returns",
+  "terms",
+  "privacy",
+]);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,8 +101,9 @@ function Shell() {
   const categories = asArray(categoriesQuery.data);
 
   // Routes that show personal data — guests are sent to login before
-  // anything renders (no cached-viewing window).
-  const personal = ["cart", "checkout", "orders", "order", "account", "wishlist"].includes(route.name);
+  // anything renders (no cached-viewing window). The cart is intentionally
+  // public: guests build a localStorage cart that merges on sign-in.
+  const personal = ["checkout", "orders", "order", "account", "wishlist"].includes(route.name);
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(() =>
     document.documentElement.dataset.theme === "dark" ? "dark" : "light",
@@ -116,7 +134,12 @@ function Shell() {
   };
 
   useEffect(() => {
-    if (ready && !user && personal) navigate("login", { replace: true });
+    if (ready && !user && personal) {
+      // Preserve the page the shopper was trying to reach; AuthPage consumes
+      // this after login/register instead of always dumping them on home.
+      rememberReturnTo(window.location.hash);
+      navigate("login", { replace: true });
+    }
   }, [ready, user, personal]);
 
   // Global 401 → sign out silently.
@@ -163,9 +186,16 @@ function Shell() {
     if (route.name === "cart") return <CartPage />;
     if (route.name === "checkout") return <CheckoutPage />;
     if (route.name === "orders") return <OrdersPage />;
-    if (route.name === "order") return <OrderDetailPage key={routeKey} id={route.params[0] ?? "0"} />;
+    if (route.name === "order") {
+      const orderId = route.params[0] ?? "0";
+      if (route.params[1] === "confirmation") {
+        return <OrderConfirmationPage key={routeKey} id={orderId} />;
+      }
+      return <OrderDetailPage key={routeKey} id={orderId} />;
+    }
     if (route.name === "account") return <AccountPage />;
     if (route.name === "wishlist") return <WishlistPage />;
+    if (INFO_ROUTES.has(route.name)) return <InfoPage page={route.name} />;
     return <NotFoundPage />;
   })();
 
@@ -200,6 +230,14 @@ function Shell() {
         </form>
 
         <div className="nav-actions">
+          <a
+            className="nav-search-mobile"
+            href={href("search")}
+            aria-label="Search"
+            aria-current={activeRoute === "search" ? "page" : undefined}
+          >
+            <Icon name="search" size={19} />
+          </a>
           <button
             className="nav-theme"
             type="button"
@@ -235,45 +273,40 @@ function Shell() {
             <Icon name="box" size={19} />
             <span>Orders</span>
           </a>
-          <a className="nav-cart" href={href("cart")} aria-label={`Cart${count > 0 ? `, ${count} items` : ""}`} aria-current={activeRoute === "cart" ? "page" : undefined}>
-            <span className="nav-cart-ico">
-              <Icon name="cart" size={20} />
-              {count > 0 ? <CartBubble count={count} /> : null}
-            </span>
-            <span>
-              <b>Cart</b>
-            </span>
-          </a>
+          <CartPreview
+            active={activeRoute === "cart"}
+            bubble={count > 0 ? <CartBubble count={count} /> : null}
+          />
         </div>
       </header>
 
-      {categories.length > 0 && <CategoryStrip categories={categories} activeRoute={activeRoute} activeCategory={route.query.get("category") ?? undefined} />}
-
       <Ticker />
 
+      {categories.length > 0 && <CategoryStrip categories={categories} activeRoute={activeRoute} activeCategory={route.query.get("category") ?? undefined} />}
+
       <main id="main-content" role="main">
-        {page}
+        <ErrorBoundary key={routeKey}>{page}</ErrorBoundary>
       </main>
 
       <footer className="footer" role="contentinfo">
         <div className="footer-cols">
           <div className="footer-col">
             <h4>About</h4>
-            <a href={href("home")}>Contact Us</a>
-            <a href={href("home")}>About Us</a>
-            <a href={href("home")}>Careers</a>
+            <a href={href("contact")}>Contact Us</a>
+            <a href={href("about")}>About Us</a>
+            <a href={href("careers")}>Careers</a>
           </div>
           <div className="footer-col">
             <h4>Help</h4>
             <a href={href("orders")}>Track Order</a>
-            <a href={href("home")}>Returns</a>
-            <a href={href("home")}>FAQ</a>
+            <a href={href("returns")}>Returns</a>
+            <a href={href("help")}>FAQ</a>
           </div>
           <div className="footer-col">
             <h4>Consumer Policy</h4>
-            <a href={href("home")}>Return Policy</a>
-            <a href={href("home")}>Terms of Use</a>
-            <a href={href("home")}>Privacy</a>
+            <a href={href("returns")}>Return Policy</a>
+            <a href={href("terms")}>Terms of Use</a>
+            <a href={href("privacy")}>Privacy</a>
           </div>
           <div className="footer-col footer-col-contact">
             <h4>Mail Us</h4>

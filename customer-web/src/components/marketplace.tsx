@@ -26,20 +26,51 @@ export function BannerCarousel({ sections }: { sections: StoreSection[] }) {
   );
   const count = slides.length;
   const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
 
+  // Full dwell after every slide (including manual navigation). Hover or
+  // keyboard focus inside the carousel pauses the rotation.
   useEffect(() => {
-    if (count < 2) return;
-    const t = window.setInterval(() => setIdx((i) => (i + 1) % count), 4500);
-    return () => window.clearInterval(t);
-  }, [count]);
+    if (count < 2 || paused) return;
+    const timer = window.setTimeout(() => setIdx((i) => (i + 1) % count), 4800);
+    return () => window.clearTimeout(timer);
+  }, [count, paused, idx]);
 
   if (count === 0) return null;
 
+  const go = (next: number) => setIdx(((next % count) + count) % count);
+
   return (
-    <div className="carousel">
+    <div
+      className="carousel"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Featured offers"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPaused(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          go(idx - 1);
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          go(idx + 1);
+        }
+      }}
+    >
       <div className="carousel-track">
         {slides.map((s, i) => (
-          <div key={s.id} className={`carousel-slide ${i === idx ? "on" : ""}`}>
+          <div
+            key={s.id}
+            className={`carousel-slide ${i === idx ? "on" : ""}`}
+            aria-hidden={i !== idx}
+            aria-roledescription="slide"
+            aria-label={`${i + 1} of ${count}`}
+          >
             <HeroSlide section={s} />
           </div>
         ))}
@@ -49,24 +80,26 @@ export function BannerCarousel({ sections }: { sections: StoreSection[] }) {
           <button
             className="carousel-arrow prev"
             aria-label="Previous banner"
-            onClick={() => setIdx((i) => (i - 1 + count) % count)}
+            onClick={() => go(idx - 1)}
           >
             <Icon name="chevronLeft" size={18} />
           </button>
           <button
             className="carousel-arrow next"
             aria-label="Next banner"
-            onClick={() => setIdx((i) => (i + 1) % count)}
+            onClick={() => go(idx + 1)}
           >
             <Icon name="chevronRight" size={18} />
           </button>
-          <div className="carousel-dots">
+          <div className="carousel-dots" role="tablist" aria-label="Choose banner">
             {slides.map((s, i) => (
               <button
                 key={s.id}
                 className={`carousel-dot ${i === idx ? "on" : ""}`}
+                role="tab"
+                aria-selected={i === idx}
                 aria-label={`Go to slide ${i + 1}`}
-                onClick={() => setIdx(i)}
+                onClick={() => go(i)}
               />
             ))}
           </div>
@@ -87,7 +120,7 @@ function HeroSlide({ section }: { section: StoreSection }) {
   const layout = (cfg.hero_layout as string) === "split" ? "split" : (cfg.hero_layout as string) === "minimal" ? "minimal" : "feature";
   const overlay = (cfg.hero_overlay as string) === "light" ? "light" : (cfg.hero_overlay as string) === "none" ? "none" : "dark";
   return (
-    <div className={`hero hero-slide hero-${layout} hero-overlay-${overlay}`}>
+    <div className={`hero hero-slide hero-${layout} hero-overlay-${overlay} ${image ? "" : "hero-gradient"}`.trim()}>
       {image ? (
         <img
           className={`hero-img ${fxClass(section)}`}

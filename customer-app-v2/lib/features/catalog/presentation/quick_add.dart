@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/snackbar.dart';
 import '../../../models/catalog_models.dart';
+import '../../cart/data/cart_enrichment.dart';
 import '../../cart/data/cart_repository.dart';
 import '../../product/presentation/product_providers.dart';
 import '../data/catalog_repository.dart';
@@ -67,6 +68,14 @@ Future<void> quickAddFromCard(
   Future<void> commit(int variantId, String name, double price) async {
     try {
       await cart.addItem(variantId: variantId, quantity: 1);
+      // Enrich at add time so cart lines show product name + photo instead
+      // of the bare variant unit (backend contract has none).
+      container.read(cartEnrichmentProvider.notifier).record(
+            variantId,
+            productName: product.name,
+            productSlug: product.slug,
+            imageUrl: product.primaryImage,
+          );
       container
           .read(cardAdditionsProvider.notifier)
           .record(product.slug, variantId);

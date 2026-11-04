@@ -15,7 +15,7 @@ from .serializers import CartSerializer, CartItemSerializer, CartWriteSerializer
 class CartViewSet(viewsets.ModelViewSet):
     """Cart API.
     GET/POST /api/v1/cart/ — current user's cart (creates if needed)
-    GET/PUT/DELETE /api/v1/cart/items/{id}/ — cart items
+    PATCH/DELETE /api/v1/cart/items/{id}/ — cart items
     """
 
     lookup_field = "id"
@@ -93,14 +93,25 @@ class CartViewSet(viewsets.ModelViewSet):
             item.save()
         return Response(CartItemSerializer(item).data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["patch"], url_path="items/(?P<item_id>[^/.]+)")
-    def update_item(self, request, item_id=None):
+    # PATCH and DELETE share one URL. Registering two actions with the same
+    # url_path silently shadows the second one (Django resolves the first
+    # match), which made quantity updates return 405.
+    @action(
+        detail=False,
+        methods=["patch", "delete"],
+        url_path="items/(?P<item_id>[^/.]+)",
+    )
+    def item_detail(self, request, item_id=None):
         cart = self.get_object()
         item = cart.items.filter(id=item_id).first()
         if not item:
             return Response(
                 {"detail": "Item not found"}, status=status.HTTP_404_NOT_FOUND
             )
+        if request.method == "DELETE":
+            item.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
         serializer = CartItemSerializer(item, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         new_quantity = serializer.validated_data.get("quantity", item.quantity)
@@ -116,16 +127,6 @@ class CartViewSet(viewsets.ModelViewSet):
                 )
         serializer.save()
         return Response(serializer.data)
-
-    @action(detail=False, methods=["delete"], url_path="items/(?P<item_id>[^/.]+)")
-    def remove_item(self, request, item_id=None):
-        cart = self.get_object()
-        deleted, _ = cart.items.filter(id=item_id).delete()
-        if not deleted:
-            return Response(
-                {"detail": "Item not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"], url_path="merge")
     def merge(self, request):

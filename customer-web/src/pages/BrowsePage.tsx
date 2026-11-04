@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { useHashRoute } from "../hooks/useHashRoute";
 import {
@@ -10,47 +10,87 @@ import {
   listProductsPaged,
   type Category,
 } from "../services/api";
-import { CardSkeletonGrid, EmptyState, ProductCard } from "../components/ui";
+import { brandNames, FALLBACK_BRANDS } from "../utils/brands";
+import { CardSkeletonGrid, EmptyState, PageCrumbs, ProductCard } from "../components/ui";
 import { Icon } from "../components/icons";
 export function BrowsePage() {
   const { user } = useAuth();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<string[]>([]);
   const route = useHashRoute();
-  const urlCategory = route.query.get("category") ?? "";
-  const [category, setCategory] = useState(urlCategory);
-  const [brand, setBrand] = useState("");
-  const [discount, setDiscount] = useState("");
-  const [sort, setSort] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [featuredOnly, setFeaturedOnly] = useState(false);
+  const queryString = route.query.toString();
+
+  // Every facet is URL-backed, so a filtered catalog is shareable and the
+  // header/sidebar links agree with what is rendered.
+  const [category, setCategory] = useState(route.query.get("category") ?? "");
+  const [brand, setBrand] = useState(route.query.get("brand") ?? "");
+  const [discount, setDiscount] = useState(route.query.get("min_discount") ?? "");
+  const [rating, setRating] = useState(route.query.get("min_rating") ?? "");
+  const [inStockOnly, setInStockOnly] = useState(route.query.get("in_stock") === "true");
+  const [sort, setSort] = useState(route.query.get("sort") ?? "");
+  const [minPrice, setMinPrice] = useState(route.query.get("min_price") ?? "");
+  const [maxPrice, setMaxPrice] = useState(route.query.get("max_price") ?? "");
+  const [featuredOnly, setFeaturedOnly] = useState(route.query.get("is_featured") === "true");
   const [sideOpen, setSideOpen] = useState(false);
 
-  // The hash is the source of truth on navigation (header/sidebar links).
-  // Adopting it in place — instead of remounting via a key — keeps the other
-  // filters (brand, sort, price) alive across category switches.
+  // Adopt the hash on navigation (header category links, shared URLs). Doing
+  // this in place — instead of remounting — keeps the page's scroll/focus.
   useEffect(() => {
-    setCategory(urlCategory);
-  }, [urlCategory]);
+    const q = new URLSearchParams(queryString);
+    setCategory(q.get("category") ?? "");
+    setBrand(q.get("brand") ?? "");
+    setDiscount(q.get("min_discount") ?? "");
+    setRating(q.get("min_rating") ?? "");
+    setInStockOnly(q.get("in_stock") === "true");
+    setSort(q.get("sort") ?? "");
+    setMinPrice(q.get("min_price") ?? "");
+    setMaxPrice(q.get("max_price") ?? "");
+    setFeaturedOnly(q.get("is_featured") === "true");
+  }, [queryString]);
 
-  // …and the sidebar writes back, so the URL never lies about what is on
-  // screen (it used to keep ?category=… after "All categories" was picked).
-  // replaceState fires no hashchange, so dispatch one for useHashRoute
-  // consumers (e.g. the header's active-category highlight).
+  // …and the sidebar writes back. replaceState fires no hashchange, so
+  // dispatch one for useHashRoute consumers (header active category).
   useEffect(() => {
-    const target = category ? `#/browse?category=${category}` : "#/browse";
+    const qs = new URLSearchParams();
+    if (category) qs.set("category", category);
+    if (brand) qs.set("brand", brand);
+    if (discount) qs.set("min_discount", discount);
+    if (rating) qs.set("min_rating", rating);
+    if (inStockOnly) qs.set("in_stock", "true");
+    if (sort === "price_asc" || sort === "price_desc" || sort === "newest" || sort === "rating") {
+      qs.set("sort", sort);
+    }
+    if (minPrice) qs.set("min_price", minPrice);
+    if (maxPrice) qs.set("max_price", maxPrice);
+    if (featuredOnly) qs.set("is_featured", "true");
+    const target = `#/browse${qs.toString() ? `?${qs.toString()}` : ""}`;
     if (window.location.hash !== target) {
       history.replaceState(null, "", target);
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     }
-  }, [category]);
+  }, [category, brand, discount, rating, inStockOnly, sort, minPrice, maxPrice, featuredOnly]);
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: listCategories,
+    staleTime: 5 * 60_000,
+  });
+  const categories = asArray<Category>(categoriesQuery.data);
+
+  const brandsQuery = useQuery({
+    queryKey: ["brands"],
+    queryFn: listBrands,
+    staleTime: 5 * 60_000,
+  });
+  const brands = brandsQuery.isError
+    ? FALLBACK_BRANDS
+    : brandNames(brandsQuery.data);
 
   const baseParams = (): Record<string, string> => {
     const params: Record<string, string> = {};
     if (category) params.category = category;
     if (brand) params.brand = brand;
     if (discount) params.min_discount = discount;
+    if (rating) params.min_rating = rating;
+    if (inStockOnly) params.in_stock = "true";
     if (sort === "price_asc" || sort === "price_desc" || sort === "newest" || sort === "rating") params.sort = sort;
     if (minPrice) params.min_price = minPrice;
     if (maxPrice) params.max_price = maxPrice;
@@ -67,6 +107,8 @@ export function BrowsePage() {
       : []),
     ...(brand ? [{ label: `Brand: ${brand}`, clear: () => setBrand("") }] : []),
     ...(discount ? [{ label: `${discount}% off or more`, clear: () => setDiscount("") }] : []),
+    ...(rating ? [{ label: `${rating}★ & up`, clear: () => setRating("") }] : []),
+    ...(inStockOnly ? [{ label: "In stock only", clear: () => setInStockOnly(false) }] : []),
     ...(featuredOnly ? [{ label: "Featured", clear: () => setFeaturedOnly(false) }] : []),
     ...((minPrice || maxPrice)
       ? [{
@@ -83,6 +125,8 @@ export function BrowsePage() {
     setCategory("");
     setBrand("");
     setDiscount("");
+    setRating("");
+    setInStockOnly(false);
     setSort("");
     setMinPrice("");
     setMaxPrice("");
@@ -131,19 +175,11 @@ export function BrowsePage() {
     void fetchNextPage();
   }
 
-  useEffect(() => {
-    listCategories()
-      .then((d) => setCategories(asArray(d)))
-      .catch(() => setCategories([]));
-    listBrands()
-      .then((d) => setBrands(asArray(d).map((b) => b.name)))
-      .catch(() => setBrands([]));
-  }, []);
-
   const categoryName = categories.find((c) => c.slug === category)?.name;
 
   return (
     <div className="page">
+      <PageCrumbs current={categoryName ?? "Browse products"} />
       <div className="browse-layout">
         <aside className={`filter-side ${sideOpen ? "open" : ""}`} aria-label="Filters">
           <div className="filter-group">
@@ -180,6 +216,39 @@ export function BrowsePage() {
                   {b}
                 </label>
               ))}
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <h4><Icon name="star" size={13} /> Rating</h4>
+            <div className="filter-opts">
+              {[["", "Any rating"], ["4", "4★ & up"], ["3", "3★ & up"], ["2", "2★ & up"]].map(
+                ([val, label]) => (
+                  <label key={val || "any"} className={`filter-opt ${rating === val ? "on" : ""}`}>
+                    <input
+                      type="radio"
+                      name="f-rating"
+                      checked={rating === val}
+                      onChange={() => setRating(val)}
+                    />
+                    {label}
+                  </label>
+                ),
+              )}
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <h4><Icon name="box" size={13} /> Availability</h4>
+            <div className="filter-opts">
+              <label className={`filter-opt ${inStockOnly ? "on" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={inStockOnly}
+                  onChange={(e) => setInStockOnly(e.target.checked)}
+                />
+                In stock only
+              </label>
             </div>
           </div>
 

@@ -1,6 +1,9 @@
 from datetime import timedelta
 
 from django.contrib.auth.password_validation import (
+    CommonPasswordValidator,
+    NumericPasswordValidator,
+    UserAttributeSimilarityValidator,
     validate_password as django_validate_password,
 )
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -148,6 +151,43 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ("id", "email", "role", "first_name", "last_name", "phone", "is_email_verified")
         read_only_fields = ("id", "email", "role", "is_email_verified")
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Self-service password change for the signed-in account.
+
+    The profile flow advertises 8+ characters, while registration keeps its
+    stricter 10+ rule. We therefore run the non-length validators explicitly
+    (similarity/common/numeric) and enforce the 8+ floor here.
+    """
+
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+
+    def validate_current_password(self, value):
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+
+    def validate(self, attrs):
+        if attrs["current_password"] == attrs["new_password"]:
+            raise serializers.ValidationError(
+                {"new_password": "New password must be different from the current one."}
+            )
+        user = self.context["request"].user
+        validators = [
+            UserAttributeSimilarityValidator(),
+            CommonPasswordValidator(),
+            NumericPasswordValidator(),
+        ]
+        for validator in validators:
+            try:
+                validator.validate(attrs["new_password"], user)
+            except DjangoValidationError as errors:
+                raise serializers.ValidationError(
+                    {"new_password": list(errors.messages)}
+                )
+        return attrs
 
 
 class AdminUserCreateSerializer(serializers.ModelSerializer):

@@ -35,6 +35,27 @@ class CartItem {
   final String? productSlug;
   final String? imageUrl;
 
+  CartItem copyWith({
+    String? productName,
+    String? productSlug,
+    String? imageUrl,
+  }) {
+    return CartItem(
+      id: id,
+      variantId: variantId,
+      variantLabel: variantLabel,
+      variantName: variantName,
+      price: price,
+      quantity: quantity,
+      lineTotal: lineTotal,
+      tenantId: tenantId,
+      sellerName: sellerName,
+      productName: productName ?? this.productName,
+      productSlug: productSlug ?? this.productSlug,
+      imageUrl: imageUrl ?? this.imageUrl,
+    );
+  }
+
   factory CartItem.fromJson(Map<String, dynamic> json) {
     final variant = (json['variant'] as Map?)?.cast<String, dynamic>() ??
         const <String, dynamic>{};

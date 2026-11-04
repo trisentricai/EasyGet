@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { navigate } from "../hooks/useHashRoute";
 import { asArray, errText, listWishlist, type Product } from "../services/api";
-import { EmptyState, ProductCard, SignInGate, Spinner } from "../components/ui";
+import { EmptyState, PageCrumbs, ProductCard, SignInGate, Spinner } from "../components/ui";
 import { CategorySidebar } from "./CategorySidebar";
 import { setWishlistCache } from "../utils/history";
 
@@ -37,6 +37,7 @@ export function WishlistPage() {
 
   return (
     <div className="page">
+      <PageCrumbs current="Your wishlist" />
       <div className="browse-layout">
         <CategorySidebar
           activeCategory=""

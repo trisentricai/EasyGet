@@ -56,6 +56,11 @@ class OrderListSerializer(serializers.ModelSerializer):
             "subtotal",
             "delivery_fee",
             "discount",
+            "coupon_code",
+            "coupon_type",
+            "tax",
+            "cod_fee",
+            "payment_method",
             "total",
             "item_count",
             "estimated_delivery_at",
@@ -81,6 +86,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "subtotal",
             "delivery_fee",
             "discount",
+            "coupon_code",
+            "coupon_type",
+            "tax",
+            "cod_fee",
+            "payment_method",
             "total",
             "delivery_address",
             "delivery_instructions",
@@ -102,6 +112,14 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     cart_id = serializers.UUIDField(write_only=True)
     delivery_address = serializers.JSONField()
     delivery_instructions = serializers.CharField(required=False, allow_blank=True)
+    coupon_code = serializers.CharField(
+        required=False, allow_blank=True, max_length=50
+    )
+    payment_method = serializers.ChoiceField(
+        choices=Order.PaymentMethod.choices,
+        required=False,
+        default=Order.PaymentMethod.COD,
+    )
 
     class Meta:
         model = Order
@@ -110,6 +128,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "store",
             "delivery_address",
             "delivery_instructions",
+            "coupon_code",
+            "payment_method",
         ]
         # store is optional: omitted -> the view splits the cart into one
         # order per seller tenant. Present -> legacy single-store mode.

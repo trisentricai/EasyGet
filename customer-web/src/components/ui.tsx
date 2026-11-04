@@ -152,7 +152,7 @@ export function ProductCard({
     >
       <div className="product-thumb-wrap">
         <div
-          className={`product-thumb ${fxClass(product.primary_image_display)}`}
+          className={`product-thumb ${fxClass(product.primary_image_display)} ${slide ? "" : "is-placeholder"}`.trim()}
           style={fxStyle(product.primary_image_display)}
         >
           {slide ? (
@@ -166,7 +166,9 @@ export function ProductCard({
               height={600}
             />
           ) : (
-            <Monogram text={product.name} />
+            <span className="ph-badge">
+              <Monogram text={product.name} />
+            </span>
           )}
         </div>
         {out ? (
@@ -181,11 +183,30 @@ export function ProductCard({
       <div className="product-body">
         <div className="product-brand">{product.category?.name || product.brand || ""}</div>
         <div className="product-name" title={product.name}>{product.name}</div>
+        {product.rating_count > 0 ? (
+          <div className="product-rate-row">
+            <RatingPill avg={product.rating_avg} count={product.rating_count} />
+          </div>
+        ) : null}
         <div className="product-price-row">
           <Price price={product.base_price} mrp={product.mrp} discount={discount} size="md" />
         </div>
       </div>
     </a>
+  );
+}
+
+/** Compact "Home / current" breadcrumb used on every inner page. */
+export function PageCrumbs({ current }: { current: string }) {
+  return (
+    <nav className="page-crumbs" aria-label="Breadcrumb">
+      <a className="page-crumbs-home" href={href("home")}>
+        <Icon name="home" size={13} />
+        Home
+      </a>
+      <span className="page-crumbs-sep" aria-hidden="true">/</span>
+      <span className="page-crumbs-current" aria-current="page">{current}</span>
+    </nav>
   );
 }
 

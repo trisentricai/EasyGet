@@ -12,6 +12,7 @@ import "@fontsource/geist-mono/500.css";
 import "./theme/index.css";
 import "./styles.css";
 import "./showcase.css";
+import "./polish.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

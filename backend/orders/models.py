@@ -22,6 +22,11 @@ class Order(models.Model):
         CANCELLED = "CANCELLED", "Cancelled"
         REFUNDED = "REFUNDED", "Refunded"
 
+    class PaymentMethod(models.TextChoices):
+        COD = "cod", "Cash on Delivery"
+        UPI = "upi", "UPI"
+        CARD = "card", "Card"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order_number = models.CharField(max_length=20, unique=True, editable=False)
     user = models.ForeignKey(
@@ -48,6 +53,17 @@ class Order(models.Model):
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    coupon_code = models.CharField(max_length=50, blank=True, default="")
+    coupon_type = models.CharField(max_length=20, blank=True, default="")
+    tax = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cod_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    payment_method = models.CharField(
+        max_length=10,
+        choices=PaymentMethod.choices,
+        blank=True,
+        default="",
+        help_text="chosen at checkout; blank on legacy orders",
+    )
     total = models.DecimalField(max_digits=10, decimal_places=2)
     delivery_address = models.JSONField(default=dict)
     delivery_instructions = models.TextField(blank=True, default="")
@@ -73,7 +89,13 @@ class Order(models.Model):
         if not self.order_number:
             self.order_number = self.generate_order_number()
         if not self.total:
-            self.total = self.subtotal + self.delivery_fee - self.discount
+            self.total = (
+                self.subtotal
+                + self.delivery_fee
+                - self.discount
+                + self.tax
+                + self.cod_fee
+            )
         if self.store_id:
             store_tenant_id = Store.objects.filter(pk=self.store_id).values_list(
                 "tenant_id", flat=True

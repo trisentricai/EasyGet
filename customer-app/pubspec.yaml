@@ -1,5 +1,5 @@
 name: easyget_customer_app
-description: EASYGET customer mobile application.
+description: EASYGET customer mobile application — Fresh Market quick-commerce.
 publish_to: "none"
 version: 0.1.0+1
 
@@ -9,25 +9,25 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # State management (Riverpod 3 — Notifier/AsyncNotifier, no codegen)
   flutter_riverpod: ^3.0.0
-  # Navigation with custom transitions
   go_router: ^17.0.0
-  # Networking
   dio: ^5.7.0
-  # Token storage (Keychain / Keystore)
   flutter_secure_storage: ^10.0.0
-  # Image caching + placeholders
   cached_network_image: ^3.4.1
-  # Currency / date formatting
   intl: ^0.20.2
-  # Google sign-in (ID token goes straight to our /auth/google/ — no Firebase)
   google_sign_in: ^7.2.0
+  google_fonts: ^6.2.0
+  connectivity_plus: ^6.1.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.11
 
 flutter:
   uses-material-design: true

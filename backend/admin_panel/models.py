@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.db import models
@@ -221,10 +222,19 @@ class Coupon(models.Model):
             return False, "Coupon usage limit reached"
         if user:
             from orders.models import Order
-            user_usage = Order.objects.filter(user=user, coupon=self).count()
+            user_usage = Order.objects.filter(
+                user=user, coupon_code__iexact=self.code
+            ).count()
             if user_usage >= self.user_limit:
                 return False, "User usage limit reached"
-        if self.applies_to == self.AppliesTo.MIN_ORDER and order_value:
-            if order_value < self.min_order_value:
-                return False, f"Minimum order value {self.min_order_value} required"
+        if self.min_order_value and order_value is not None:
+            try:
+                value = Decimal(str(order_value))
+            except (InvalidOperation, TypeError, ValueError):
+                value = None
+            if value is not None and value < self.min_order_value:
+                return (
+                    False,
+                    f"Minimum order value ₹{self.min_order_value} required",
+                )
         return True, "Valid"

@@ -12,7 +12,7 @@ from inventory.models import StockItem
 from stores.models import Store
 from tenants.services import provision_tenant
 
-from .models import Product, ProductImage, ProductVariant
+from .models import Product, ProductImage, ProductReview, ProductVariant
 
 User = get_user_model()
 
@@ -152,6 +152,28 @@ class ProductDiscoveryTests(TestCase):
         # Deal Dal = 40% off; others <= 10% off.
         slugs = self._slugs({"min_discount": "25"})
         self.assertEqual(slugs, [self.deal.slug])
+
+    def test_min_rating_filter_uses_review_average(self):
+        # Budget Rice averages 5★, Deal Dal 4★, Premium Oil is unrated.
+        other = User.objects.create_user(
+            "second-reviewer@example.com", "strongpass123", is_email_verified=True
+        )
+        ProductReview.objects.create(product=self.cheap, user=self.user, rating=5)
+        ProductReview.objects.create(product=self.deal, user=other, rating=4)
+
+        self.assertEqual(
+            set(self._slugs({"min_rating": "4"})),
+            {self.cheap.slug, self.deal.slug},
+        )
+        self.assertEqual(self._slugs({"min_rating": "5"}), [self.cheap.slug])
+
+    def test_in_stock_filter_excludes_zero_stock(self):
+        StockItem.objects.filter(variant__product=self.premium).update(quantity=0)
+
+        slugs = self._slugs({"in_stock": "true"})
+        self.assertIn(self.cheap.slug, slugs)
+        self.assertIn(self.deal.slug, slugs)
+        self.assertNotIn(self.premium.slug, slugs)
 
     def test_sort_price_asc(self):
         slugs = self._slugs({"sort": "price_asc"})

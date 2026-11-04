@@ -313,6 +313,16 @@ export async function logout(refresh: string) {
 
 export const getMe = () => api<User>("/users/me/");
 
+export type ProfileUpdate = Pick<User, "first_name" | "last_name" | "phone">;
+
+export const updateMe = (body: Partial<ProfileUpdate>) =>
+  api<User>("/users/me/", { method: "PATCH", body });
+
+export const changePassword = (body: {
+  current_password: string;
+  new_password: string;
+}) => api<{ message: string }>("/users/me/change-password/", { method: "POST", body });
+
 /* ---------------- Addresses ---------------- */
 
 export type Address = {
@@ -382,7 +392,17 @@ export type ProductImageItem = {
 export type ProductDetail = Product & {
   description: string;
   offers: Offer[];
-  variants: { id: number; name: string; sku: string; price: string; discount_percent: number; is_active: boolean }[];
+  variants: {
+    id: number;
+    name: string;
+    sku: string;
+    price: string;
+    discount_percent: number;
+    is_active: boolean;
+    /** Mirrors the cart gate: null when the variant has no stock rows. */
+    in_stock?: boolean | null;
+    stock_quantity?: number | null;
+  }[];
   images: ProductImageItem[];
 };
 
@@ -448,6 +468,29 @@ export function offerLine(o: Offer): string {
   const body = cap(o.description || "");
   return body ? `${head} · ${body}` : head;
 }
+
+/* ---------------- Coupons ---------------- */
+
+export type CouponValidation =
+  | { valid: false; message: string }
+  | {
+      valid: true;
+      code: string;
+      discount_type: Offer["discount_type"];
+      product_discount: string;
+      delivery_discount: string;
+      discount: string;
+      delivery_fee: string;
+      free_delivery: boolean;
+      coupon: Offer;
+    };
+
+/** Public endpoint: guests can validate before signing in. */
+export const validateCoupon = (code: string, orderValue: number) =>
+  api<CouponValidation>("/admin/coupons/validate/", {
+    method: "POST",
+    body: { code, order_value: orderValue.toFixed(2) },
+  });
 
 /* ---------------- Wishlist (server-backed heart) ---------------- */
 
@@ -581,6 +624,9 @@ export type CartVariant = {
   sku: string;
   price: string;
   attributes?: Record<string, unknown>;
+  /** Mirrors the cart gate; null/undefined when the variant has no stock rows. */
+  in_stock?: boolean | null;
+  stock_quantity?: number | null;
 };
 
 export type CartItem = {
@@ -618,6 +664,8 @@ export const clearCart = () => api<void>("/cart/clear/", { method: "DELETE" });
 
 /* ---------------- Orders (authed) ---------------- */
 
+export type PaymentMethod = "cod" | "upi" | "card";
+
 export type Order = {
   /** The orders API uses UUID primary keys. */
   id: string;
@@ -628,12 +676,28 @@ export type Order = {
   subtotal: string;
   delivery_fee: string;
   discount: string;
+  coupon_code?: string;
+  coupon_type?: string;
+  tax?: string;
+  cod_fee?: string;
+  payment_method?: PaymentMethod | "";
   total: string;
   item_count?: number;
   delivery_address?: Record<string, unknown>;
   delivery_instructions?: string;
+  estimated_delivery_at?: string | null;
+  delivered_at?: string | null;
   items?: {
     id: number;
+    /** Present on order detail; lets Reorder add the exact variant again. */
+    variant?: {
+      id: number;
+      name: string;
+      sku: string;
+      price: string;
+      in_stock?: boolean | null;
+      stock_quantity?: number | null;
+    };
     product_name: string;
     variant_name: string;
     sku: string;
@@ -654,6 +718,9 @@ export type OrderCreateInput = {
   store?: number;
   delivery_address: Record<string, unknown>;
   delivery_instructions?: string;
+  /** Revalidated server-side; the coupon is never trusted from the client. */
+  coupon_code?: string;
+  payment_method?: PaymentMethod;
 };
 
 /** Split mode returns `{orders}`; the legacy path echoes a single order. */
