@@ -11,6 +11,7 @@ import {
   errText,
   listAddresses,
   listOrders,
+  ApiError,
   type Address,
   type Order,
   type PaymentMethod,
@@ -20,6 +21,7 @@ import { Icon, type IconName } from "../components/icons";
 import { CouponInput } from "../components/CouponInput";
 import { TotalsBreakdown } from "../components/TotalsBreakdown";
 import { computeTotals } from "../utils/pricing";
+import { checkPincode as lookupPincode } from "../utils/pincode";
 
 export function CheckoutPage() {
   const { user } = useAuth();
@@ -81,18 +83,24 @@ export function CheckoutPage() {
     setPinLookup(true);
     setPinHint(null);
     try {
-      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-      const data = await res.json();
-      const info = Array.isArray(data) && data[0]?.PostOffice?.[0];
-      if (info) {
-        setForm((f) => ({ ...f, city: info.District || f.city, state: info.State || f.state }));
-        setPinHint(`${info.District}, ${info.State}`);
-        rememberPincode(pin);
-      } else {
-        setPinHint("PIN code not found — enter city/state manually.");
+      const res = await lookupPincode(pin);
+      if (res.city || res.state) {
+        setForm((f) => ({ ...f, city: res.city || f.city, state: res.state || f.state }));
       }
-    } catch {
-      setPinHint("Couldn't look up PIN code — enter city/state manually.");
+      if (!res.valid) {
+        setPinHint(res.reason ?? "PIN code not found — enter city/state manually.");
+        return;
+      }
+      rememberPincode(pin);
+      const place = [res.city, res.state].filter(Boolean).join(", ");
+      setPinHint(place || "PIN code verified.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        const reason = (err.payload as { reason?: string } | null)?.reason;
+        setPinHint(reason ?? "PIN code not found — enter city/state manually.");
+      } else {
+        setPinHint("Couldn't look up PIN code — enter city/state manually.");
+      }
     } finally {
       setPinLookup(false);
     }

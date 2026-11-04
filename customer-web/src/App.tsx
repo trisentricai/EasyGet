@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CartProvider, useCart } from "./context/CartContext";
@@ -6,26 +6,43 @@ import { StorefrontProvider, useStorefront } from "./context/StorefrontContext";
 import { ToastProvider } from "./context/ToastContext";
 import { href, navigate, useHashRoute } from "./hooks/useHashRoute";
 import { asArray, listCategories, setUnauthorizedHandler, type Category } from "./services/api";
-import { HomePage } from "./pages/HomePage";
-import { AuthPage } from "./pages/AuthPage";
-import { BrowsePage } from "./pages/BrowsePage";
-import { ProductPage } from "./pages/ProductPage";
-import { SearchPage } from "./pages/SearchPage";
-import { CartPage } from "./pages/CartPage";
-import { CheckoutPage } from "./pages/CheckoutPage";
-import { OrderDetailPage, OrdersPage } from "./pages/OrdersPage";
-import { OrderConfirmationPage } from "./pages/OrderConfirmationPage";
-import { AccountPage } from "./pages/AccountPage";
-import { WishlistPage } from "./pages/WishlistPage";
-import { NotFoundPage } from "./pages/NotFoundPage";
-import { InfoPage } from "./pages/InfoPage";
 import { Icon } from "./components/icons";
 import { CartPreview } from "./components/CartPreview";
 import { Spinner, usePopOnChange } from "./components/ui";
 import { Ticker } from "./components/ticker";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { CategoriesPage } from "./pages/CategoriesPage";
 import { rememberReturnTo } from "./utils/returnTo";
+
+// Route-level chunks: the shell (header/cart/auth) paints immediately and
+// each page is fetched only when first visited. Named page exports are
+// adapted to the default export shape React.lazy expects.
+const HomePage = lazy(() => import("./pages/HomePage").then((m) => ({ default: m.HomePage })));
+const AuthPage = lazy(() => import("./pages/AuthPage").then((m) => ({ default: m.AuthPage })));
+const BrowsePage = lazy(() => import("./pages/BrowsePage").then((m) => ({ default: m.BrowsePage })));
+const CategoriesPage = lazy(() =>
+  import("./pages/CategoriesPage").then((m) => ({ default: m.CategoriesPage })),
+);
+const ProductPage = lazy(() => import("./pages/ProductPage").then((m) => ({ default: m.ProductPage })));
+const SearchPage = lazy(() => import("./pages/SearchPage").then((m) => ({ default: m.SearchPage })));
+const CartPage = lazy(() => import("./pages/CartPage").then((m) => ({ default: m.CartPage })));
+const CheckoutPage = lazy(() =>
+  import("./pages/CheckoutPage").then((m) => ({ default: m.CheckoutPage })),
+);
+const OrdersPage = lazy(() => import("./pages/OrdersPage").then((m) => ({ default: m.OrdersPage })));
+const OrderDetailPage = lazy(() =>
+  import("./pages/OrdersPage").then((m) => ({ default: m.OrderDetailPage })),
+);
+const OrderConfirmationPage = lazy(() =>
+  import("./pages/OrderConfirmationPage").then((m) => ({ default: m.OrderConfirmationPage })),
+);
+const AccountPage = lazy(() => import("./pages/AccountPage").then((m) => ({ default: m.AccountPage })));
+const WishlistPage = lazy(() =>
+  import("./pages/WishlistPage").then((m) => ({ default: m.WishlistPage })),
+);
+const NotFoundPage = lazy(() =>
+  import("./pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })),
+);
+const InfoPage = lazy(() => import("./pages/InfoPage").then((m) => ({ default: m.InfoPage })));
 
 /** Static policy/company pages linked from the footer. */
 const INFO_ROUTES = new Set([
@@ -201,6 +218,7 @@ function Shell() {
 
   return (
     <>
+      <SkipToContent />
       <header className="topnav" role="banner">
         <a className="brand" href={href("home")} aria-label={`${storeName} home`}>
           <span className="brand-mark">EG</span>
@@ -284,8 +302,10 @@ function Shell() {
 
       {categories.length > 0 && <CategoryStrip categories={categories} activeRoute={activeRoute} activeCategory={route.query.get("category") ?? undefined} />}
 
-      <main id="main-content" role="main">
-        <ErrorBoundary key={routeKey}>{page}</ErrorBoundary>
+      <main id="main-content" role="main" tabIndex={-1}>
+        <ErrorBoundary key={routeKey}>
+          <Suspense fallback={<PageFallback />}>{page}</Suspense>
+        </ErrorBoundary>
       </main>
 
       <footer className="footer" role="contentinfo">
@@ -365,6 +385,63 @@ function Shell() {
         </a>
       </nav>
     </>
+  );
+}
+
+/** Lightweight route-level Suspense fallback; matches the shell's page width. */
+function PageFallback() {
+  return (
+    <div
+      className="page"
+      aria-busy="true"
+      style={{ minHeight: "52vh", display: "grid", placeItems: "center" }}
+    >
+      <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+        <Spinner />
+        <span className="muted" style={{ fontSize: 13 }}>
+          Loading…
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * First focusable element on the page. It is visually off-screen until
+ * focused, then appears at the top-left. The hash router owns location.hash,
+ * so the anchor's default jump is intercepted and focus is moved manually.
+ */
+function SkipToContent() {
+  const [focused, setFocused] = useState(false);
+  return (
+    <a
+      href="#main-content"
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onClick={(e) => {
+        e.preventDefault();
+        const main = document.getElementById("main-content");
+        if (!main) return;
+        main.focus({ preventScroll: true });
+        main.scrollIntoView({ block: "start", behavior: "auto" });
+      }}
+      style={{
+        position: "fixed",
+        top: focused ? 8 : -96,
+        left: 8,
+        zIndex: 2000,
+        padding: "10px 16px",
+        borderRadius: 8,
+        background: "var(--primary)",
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: 600,
+        textDecoration: "none",
+        boxShadow: "var(--shadow)",
+      }}
+    >
+      Skip to content
+    </a>
   );
 }
 

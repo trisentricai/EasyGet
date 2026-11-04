@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { checkPincode } from "../services/api";
+import { checkPincode } from "../utils/pincode";
 import {
   DEFAULT_DELIVERY_CONFIG,
   DELIVERY_FEE,

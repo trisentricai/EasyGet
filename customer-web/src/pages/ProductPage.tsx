@@ -13,7 +13,6 @@ import {
   listReviews,
   postReview,
   ApiError,
-  checkPincode as fetchPincode,
   offerLine,
   type ImageDisplay,
 } from "../services/api";
@@ -22,6 +21,7 @@ import { Icon } from "../components/icons";
 import { SuccessCheck } from "../components/animations";
 import { recordView } from "../utils/history";
 import { fxClass, fxStyle } from "../utils/imageFx";
+import { checkPincode as lookupPincode } from "../utils/pincode";
 
 export function ProductPage({ slug }: { slug: string }) {
   const { user } = useAuth();
@@ -165,7 +165,11 @@ export function ProductPage({ slug }: { slug: string }) {
     setPinBusy(true);
     setPinResult("Checking…");
     try {
-      const res = await fetchPincode(code);
+      const res = await lookupPincode(code);
+      if (!res.valid) {
+        setPinResult(res.reason ?? "We do not deliver to this pincode yet.");
+        return;
+      }
       rememberPincode(code);
       const eta = new Date();
       eta.setDate(eta.getDate() + (res.eta_days ?? 4));

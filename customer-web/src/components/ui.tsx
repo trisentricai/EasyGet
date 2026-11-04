@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { href } from "../hooks/useHashRoute";
 import {
   addToWishlist,
@@ -114,7 +114,7 @@ export function WishButton({ slug, className = "" }: { slug: string; className?:
   );
 }
 
-export function ProductCard({
+function ProductCardComponent({
   product,
   size = "sm",
   effects,
@@ -195,6 +195,48 @@ export function ProductCard({
     </a>
   );
 }
+
+function sameEffects(prev?: string[], next?: string[]): boolean {
+  if (prev === next) return true;
+  if (!prev || !next || prev.length !== next.length) return false;
+  return prev.every((value, index) => value === next[index]);
+}
+
+/**
+ * Cards are pure once rendered; parent filter/typing state should not force
+ * every tile in a long grid to re-render. Compare the fields that actually
+ * affect the card plus the wishlist/stock flags supplied by list payloads.
+ */
+function sameProductCard(
+  prev: { product: Product; size?: "sm" | "md" | "lg"; effects?: string[] },
+  next: { product: Product; size?: "sm" | "md" | "lg"; effects?: string[] },
+): boolean {
+  if (prev.size !== next.size || !sameEffects(prev.effects, next.effects)) return false;
+  const a = prev.product;
+  const b = next.product;
+  if (a === b) return true;
+  const aw = a as Product & { is_wished?: boolean };
+  const bw = b as Product & { is_wished?: boolean };
+  return (
+    a.id === b.id &&
+    a.slug === b.slug &&
+    a.name === b.name &&
+    a.brand === b.brand &&
+    a.category?.name === b.category?.name &&
+    a.base_price === b.base_price &&
+    a.mrp === b.mrp &&
+    a.discount_percent === b.discount_percent &&
+    a.is_featured === b.is_featured &&
+    a.in_stock === b.in_stock &&
+    a.primary_image === b.primary_image &&
+    a.primary_image_display === b.primary_image_display &&
+    a.rating_avg === b.rating_avg &&
+    a.rating_count === b.rating_count &&
+    aw.is_wished === bw.is_wished
+  );
+}
+
+export const ProductCard = memo(ProductCardComponent, sameProductCard);
 
 /** Compact "Home / current" breadcrumb used on every inner page. */
 export function PageCrumbs({ current }: { current: string }) {

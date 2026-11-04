@@ -71,6 +71,11 @@ export function withViewTransition(update: () => void) {
   }
 }
 
+function focusMainContent() {
+  const main = document.getElementById("main-content");
+  if (main instanceof HTMLElement) main.focus({ preventScroll: true });
+}
+
 function onHashChange() {
   if (window.location.hash === currentHash) return;
   const prev = current;
@@ -85,6 +90,10 @@ function onHashChange() {
     // page (browse sort/price) keep the shopper's scroll position.
     if (pageChanged) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   });
+
+  // Move screen-reader focus to the new page's landmark. Deferring one tick
+  // lets React commit the lazy page before the announcement.
+  if (pageChanged) window.setTimeout(focusMainContent, 0);
 }
 
 function subscribe(listener: () => void) {

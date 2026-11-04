@@ -27,18 +27,105 @@ export function BannerCarousel({ sections }: { sections: StoreSection[] }) {
   const count = slides.length;
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const drag = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    dx: number;
+    horizontal: boolean;
+    moved: boolean;
+  } | null>(null);
+  const suppressClickUntil = useRef(0);
 
-  // Full dwell after every slide (including manual navigation). Hover or
-  // keyboard focus inside the carousel pauses the rotation.
+  // Full dwell after every slide (including manual navigation). Hover,
+  // keyboard focus, or a touch drag pauses the rotation.
   useEffect(() => {
-    if (count < 2 || paused) return;
+    if (count < 2 || paused || dragging) return;
     const timer = window.setTimeout(() => setIdx((i) => (i + 1) % count), 4800);
     return () => window.clearTimeout(timer);
-  }, [count, paused, idx]);
+  }, [count, paused, idx, dragging]);
 
   if (count === 0) return null;
 
-  const go = (next: number) => setIdx(((next % count) + count) % count);
+  const go = (next: number) => {
+    setDragX(0);
+    setIdx(((next % count) + count) % count);
+  };
+
+  // Touch/pen swipe. Mouse is intentionally excluded so desktop arrows,
+  // hover-pause, and CTA clicks keep their existing behaviour.
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (count < 2 || e.pointerType === "mouse" || !e.isPrimary) return;
+    if ((e.target as HTMLElement).closest(".carousel-arrow, .carousel-dots")) return;
+    drag.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      dx: 0,
+      horizontal: false,
+      moved: false,
+    };
+    setDragging(true);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* Synthetic/test pointers may not support capture. */
+    }
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+
+    if (!d.horizontal) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      // Vertical intent belongs to the page scroller; let it take over.
+      if (Math.abs(dy) > Math.abs(dx)) {
+        drag.current = null;
+        setDragging(false);
+        setDragX(0);
+        try {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+        } catch {
+          /* Pointer capture is best-effort. */
+        }
+        return;
+      }
+      d.horizontal = true;
+    }
+
+    if (Math.abs(dx) > 6) d.moved = true;
+    d.dx = dx;
+    setDragX(dx);
+  };
+
+  const finishDrag = (e: React.PointerEvent<HTMLDivElement>, cancelled = false) => {
+    const d = drag.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    drag.current = null;
+    setDragging(false);
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      /* Pointer capture is best-effort. */
+    }
+
+    if (d.moved) suppressClickUntil.current = Date.now() + 400;
+    if (!cancelled && d.horizontal && Math.abs(d.dx) >= 50) {
+      go(d.dx < 0 ? idx + 1 : idx - 1);
+    } else {
+      // Below the threshold: snap back to the current slide.
+      setDragX(0);
+    }
+  };
 
   return (
     <div
@@ -61,8 +148,31 @@ export function BannerCarousel({ sections }: { sections: StoreSection[] }) {
           go(idx + 1);
         }
       }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={(e) => finishDrag(e)}
+      onPointerCancel={(e) => finishDrag(e, true)}
+      onDragStart={(e) => e.preventDefault()}
+      onClickCapture={(e) => {
+        // A swipe ends with a synthetic click on whatever is under the
+        // finger; swallow it so dragging never opens a CTA link.
+        if (Date.now() < suppressClickUntil.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          suppressClickUntil.current = 0;
+        }
+      }}
+      style={{ touchAction: "pan-y" }}
     >
-      <div className="carousel-track">
+      <div
+        className="carousel-track"
+        style={{
+          transform: `translateX(${dragX}px)`,
+          transition: dragging ? "none" : "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+          touchAction: "pan-y",
+          userSelect: dragging ? "none" : undefined,
+        }}
+      >
         {slides.map((s, i) => (
           <div
             key={s.id}
@@ -130,6 +240,7 @@ function HeroSlide({ section }: { section: StoreSection }) {
           decoding="async"
           width={1200}
           height={675}
+          draggable={false}
         />
       ) : null}
       <div className="hero-content">
