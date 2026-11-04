@@ -27,7 +27,7 @@ export interface NextProductCardData {
   mrp?: string | number | null;
   ratingAvg?: number | null;
   ratingCount?: number | null;
-  /** absolute image URL (resolve with `img()` at the call site); null = category wash */
+  /** absolute image URL (resolve with `resolveImageUrl()` at the call site); null = category wash */
   image?: string | null;
   slug?: string;
   /** drives the placeholder wash when image is null */
@@ -169,6 +169,9 @@ export function ProductCard({
   const dark = useDarkTheme();
   const coarse = useCoarsePointer();
   const wash = washFor(product.category);
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [product.image]);
+  const showImage = Boolean(product.image) && !imageFailed;
 
   const nameNode = interactive ? (
     <h3 className="min-h-12">
@@ -192,14 +195,15 @@ export function ProductCard({
       className="group flex flex-col overflow-hidden rounded-md bg-surface shadow-elev-1 transition-shadow duration-micro hover:shadow-elev-2"
     >
       <div className="relative aspect-[4/5] bg-sunken">
-        {product.image ? (
+        {showImage ? (
           <img
-            src={product.image}
+            src={product.image ?? undefined}
             alt=""
             loading="lazy"
             decoding="async"
             draggable={false}
             className="h-full w-full object-cover"
+            onError={() => setImageFailed(true)}
           />
         ) : (
           <div

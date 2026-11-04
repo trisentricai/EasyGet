@@ -749,8 +749,29 @@ export function asArray<T>(data: { results?: T[] } | T[] | undefined | null): T[
   return [];
 }
 
-export function img(path: string | null | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith("http") || path.startsWith("data:")) return path;
-  return `${ORIGIN}${path.startsWith("/") ? "" : "/media/"}${path}`;
+/**
+ * Resolve any backend image value to an absolute URL.
+ *
+ * Django's ImageField serializers can return:
+ *  - a storage name ("categories/foo.webp"),
+ *  - an absolute media path ("/media/categories/foo.webp"),
+ *  - an absolute URL (CDN / S3 / Unsplash),
+ *  - a protocol-relative URL ("//cdn.example.com/x.jpg").
+ * Relative values must resolve against the API origin, never the storefront
+ * host, so /media keeps working when the frontend is served by Pages.
+ */
+export function resolveImageUrl(path: string | null | undefined): string | null {
+  if (typeof path !== "string") return null;
+  const value = path.trim();
+  if (!value || value === "null" || value === "undefined") return null;
+  if (value.startsWith("data:image/") || value.startsWith("blob:")) return value;
+  if (value.startsWith("//")) return `https:${value}`;
+  if (/^https?:\/\//i.test(value)) return value;
+  // Absolute API paths (e.g. "/media/...") already carry their prefix;
+  // storage names (e.g. "categories/foo.webp") need the media prefix.
+  if (value.startsWith("/")) return `${ORIGIN}${value}`;
+  return `${ORIGIN}/media/${value.replace(/^media\//i, "")}`;
 }
+
+/** Short alias used by older call sites. */
+export const img = resolveImageUrl;

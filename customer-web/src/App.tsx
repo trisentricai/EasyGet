@@ -2,10 +2,17 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CartProvider, useCart } from "./context/CartContext";
+import { NetworkProvider } from "./context/NetworkContext";
 import { StorefrontProvider, useStorefront } from "./context/StorefrontContext";
 import { ToastProvider } from "./context/ToastContext";
 import { href, navigate, useHashRoute } from "./hooks/useHashRoute";
-import { asArray, listCategories, setUnauthorizedHandler, type Category } from "./services/api";
+import {
+  ApiError,
+  asArray,
+  listCategories,
+  setUnauthorizedHandler,
+  type Category,
+} from "./services/api";
 import { Icon } from "./components/icons";
 import { CartPreview } from "./components/CartPreview";
 import { Spinner, usePopOnChange } from "./components/ui";
@@ -56,9 +63,24 @@ const INFO_ROUTES = new Set([
   "privacy",
 ]);
 
+/** One retry for transient failures; auth/permission and missing resources fail fast. */
+function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+    return false;
+  }
+  return failureCount < 1;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },
+    queries: {
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      retry: shouldRetry,
+    },
+    // Never replay a mutation automatically: order creation and other writes
+    // are not idempotent, so the user must choose to retry.
+    mutations: { retry: 0 },
   },
 });
 
@@ -78,9 +100,11 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <CartProvider>
-            <StorefrontProvider>
-              <Shell />
-            </StorefrontProvider>
+            <NetworkProvider>
+              <StorefrontProvider>
+                <Shell />
+              </StorefrontProvider>
+            </NetworkProvider>
           </CartProvider>
         </AuthProvider>
       </ToastProvider>

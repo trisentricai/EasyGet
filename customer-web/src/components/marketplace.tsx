@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   asArray,
   errText,
-  img,
+  resolveImageUrl,
   listCategories,
   listProductsPaged,
   type StoreSection,
@@ -11,6 +11,7 @@ import {
 import { href } from "../hooks/useHashRoute";
 import { fxClass, fxStyle } from "../utils/imageFx";
 import { Icon } from "./icons";
+import { SafeImage } from "./safe-image";
 import { ProductCard, Section, CardSkeletonGrid, EmptyState } from "./ui";
 import {
   getRecentViews,
@@ -221,7 +222,10 @@ export function BannerCarousel({ sections }: { sections: StoreSection[] }) {
 
 function HeroSlide({ section }: { section: StoreSection }) {
   const cfg = section.config ?? {};
-  const image = img(section.image) ?? img((cfg.hero_image as string) ?? null);
+  const image = resolveImageUrl(section.image) ?? resolveImageUrl((cfg.hero_image as string) ?? null);
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [image]);
+  const showImage = Boolean(image) && !imageFailed;
   const cta = (cfg.cta_label as string) ?? "Shop now";
   const ctaLink = (cfg.cta_link as string) ?? "browse";
   const link = ctaLink.startsWith("/") || ctaLink.startsWith("#") ? ctaLink : href(ctaLink);
@@ -230,9 +234,9 @@ function HeroSlide({ section }: { section: StoreSection }) {
   const layout = (cfg.hero_layout as string) === "split" ? "split" : (cfg.hero_layout as string) === "minimal" ? "minimal" : "feature";
   const overlay = (cfg.hero_overlay as string) === "light" ? "light" : (cfg.hero_overlay as string) === "none" ? "none" : "dark";
   return (
-    <div className={`hero hero-slide hero-${layout} hero-overlay-${overlay} ${image ? "" : "hero-gradient"}`.trim()}>
-      {image ? (
-        <img
+    <div className={`hero hero-slide hero-${layout} hero-overlay-${overlay} ${showImage ? "" : "hero-gradient"}`.trim()}>
+      {showImage ? (
+        <SafeImage
           className={`hero-img ${fxClass(section)}`}
           style={fxStyle(section)}
           src={image}
@@ -241,6 +245,7 @@ function HeroSlide({ section }: { section: StoreSection }) {
           width={1200}
           height={675}
           draggable={false}
+          onError={() => setImageFailed(true)}
         />
       ) : null}
       <div className="hero-content">

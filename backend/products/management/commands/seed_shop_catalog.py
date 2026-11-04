@@ -24,6 +24,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from categories.models import Category
+from common.seed_images import CATEGORY_IMAGE_URLS, HERO_IMAGE_URLS, ensure_image
 from inventory.models import StockItem
 from products.models import Product, ProductVariant
 from stores.models import Store
@@ -216,7 +217,10 @@ class Command(BaseCommand):
         )
 
         if store.storefront_sections.exists():
-            self.stdout.write("Storefront sections: exist — skipped.")
+            self._seed_images(store)
+            self.stdout.write(
+                "Storefront sections: exist — seed imagery refreshed where missing."
+            )
             return
 
         sections = []
@@ -253,11 +257,58 @@ class Command(BaseCommand):
                 section=product_row, item_type=SectionItem.ItemType.PRODUCT,
                 product=product, position=position,
             )
+        self._seed_images(store)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Storefront: {len(sections)} starter sections "
                 f"({sum(s.items.count() for s in sections)} items)."
             )
+        )
+
+    def _seed_images(self, store):
+        """Attach the curated starter art without overwriting valid uploads.
+
+        Both the HERO image and category icons go through the usual upload
+        path (WebP compression + absolute serializer URLs). A failed download
+        simply leaves the placeholder fallback visible.
+        """
+        seeded = kept = failed = 0
+        categories = Category.objects.filter(is_active=True).order_by(
+            "sort_order", "id"
+        )
+        for category in categories:
+            result = ensure_image(
+                category,
+                "icon",
+                CATEGORY_IMAGE_URLS.get(category.slug),
+                prefix=f"category-{category.slug}",
+            )
+            if result == "seeded":
+                seeded += 1
+            elif result == "kept":
+                kept += 1
+            elif result == "failed":
+                failed += 1
+
+        hero = store.storefront_sections.filter(
+            section_type=StoreSection.SectionType.HERO
+        ).order_by("position", "id").first()
+        if hero is not None:
+            result = ensure_image(
+                hero, "image", HERO_IMAGE_URLS[0], prefix="storefront-hero"
+            )
+            if result == "seeded":
+                seeded += 1
+            elif result == "kept":
+                kept += 1
+            elif result == "failed":
+                failed += 1
+
+        self.stdout.write(
+            "Seed imagery: "
+            f"{seeded} added, {kept} already present"
+            + (f", {failed} unavailable (fallback will render)" if failed else "")
+            + "."
         )
 
     @staticmethod

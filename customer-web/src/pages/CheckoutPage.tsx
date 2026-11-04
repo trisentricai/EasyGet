@@ -20,6 +20,7 @@ import { money, PageCrumbs, SignInGate } from "../components/ui";
 import { Icon, type IconName } from "../components/icons";
 import { CouponInput } from "../components/CouponInput";
 import { TotalsBreakdown } from "../components/TotalsBreakdown";
+import { trackEvent } from "../utils/analytics";
 import { computeTotals } from "../utils/pricing";
 import { checkPincode as lookupPincode } from "../utils/pincode";
 
@@ -164,17 +165,27 @@ export function CheckoutPage() {
     setError(null);
     try {
       const address = addresses.find((a) => a.id === selected)!;
+      const couponCode = appliedCoupon?.code || null;
       const created = await createOrder({
         cart_id: cart.id,
         delivery_address: { ...address },
         delivery_instructions: instructions || undefined,
-        coupon_code: appliedCoupon?.code || undefined,
+        coupon_code: couponCode || undefined,
         payment_method: paymentMethod,
       });
       await refresh();
       removeCoupon();
       if (created.orders && created.orders.length > 0) {
         const first = created.orders[0];
+        trackEvent("purchase", {
+          transaction_id: first.id,
+          order_id: first.id,
+          order_ids: created.orders.map((order) => order.id),
+          value: created.orders.reduce((sum, order) => sum + Number(order.total), 0),
+          currency: "INR",
+          coupon: couponCode,
+          payment_method: paymentMethod,
+        });
         toast.push(
           created.orders.length === 1
             ? `Order ${first.order_number} placed! 🎉`
@@ -197,6 +208,14 @@ export function CheckoutPage() {
       } catch {
         /* fall through to success toast without navigation */
       }
+      trackEvent("purchase", {
+        transaction_id: orderId ?? orderNumber,
+        order_id: orderId,
+        value: Number(created.total ?? totals.total),
+        currency: "INR",
+        coupon: couponCode,
+        payment_method: paymentMethod,
+      });
       toast.push(`Order ${orderNumber || ""} placed! 🎉`.replace("  ", " "));
       if (orderId !== null) navigate(`order/${orderId}/confirmation`);
       else navigate("orders");

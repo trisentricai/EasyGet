@@ -632,11 +632,19 @@ html[data-theme="dark"] .monogram {
 
 /* ---------- PDP layout ---------- */
 .product-detail {
+  /* One shared breakpoint keeps the gallery and buy box locked to the same
+     line while the middle column scrolls. 100px clears the 58px header
+     with a comfortable gap. */
+  --pdp-sticky-top: 100px;
   grid-template-columns: minmax(300px, 480px) minmax(0, 1fr) 320px;
   gap: 34px;
   align-items: start;
 }
-.pdp-gallery { position: sticky; top: calc(var(--nav-h) + 24px); }
+.pdp-gallery { position: sticky; top: var(--pdp-sticky-top); align-self: start; }
+/* The wrapper is the grid item and stretches to the full product row, so the
+   buy box can stay sticky for the whole column and release cleanly at the
+   end of the product detail section. */
+.pdp-aside { min-width: 0; align-self: stretch; }
 
 .pdp-stage {
   position: relative;
@@ -860,7 +868,12 @@ html[data-theme="dark"] .pdp-glass-label { color: color-mix(in srgb, var(--ink) 
 
 /* ---------- PDP buy box ---------- */
 .buybox {
-  top: calc(var(--nav-h) + 20px);
+  position: sticky;
+  top: var(--pdp-sticky-top, 100px);
+  max-height: calc(100dvh - var(--pdp-sticky-top, 100px) - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   gap: 16px;
   padding: 22px;
   border: 1px solid transparent;
@@ -880,21 +893,23 @@ html[data-theme="dark"] .buybox {
   border-color: color-mix(in srgb, var(--ink) 12%, transparent);
 }
 .qty-stepper button { color: var(--primary); }
-.buybox-actions { gap: 10px; }
+.buybox-actions { gap: 12px; grid-template-columns: 1fr; }
 .btn-cart,
 .btn-buy {
-  min-height: 48px;
-  padding: 13px 16px;
-  border-radius: 14px;
+  min-height: 56px;
+  padding: 16px 20px;
+  border-radius: 16px;
   text-transform: none;
-  letter-spacing: 0;
-  font-size: 14px;
+  letter-spacing: 0.005em;
+  font-size: 16.5px;
   font-weight: 700;
   transition:
     transform var(--dur-micro) var(--ease-out),
     box-shadow var(--dur-micro) var(--ease-out),
     background var(--dur-micro) var(--ease-out);
 }
+.btn-cart svg,
+.btn-buy svg { flex: none; }
 .btn-cart {
   background: color-mix(in srgb, var(--primary) 9%, var(--surface));
   color: var(--primary);
@@ -1053,10 +1068,21 @@ html[data-theme="dark"] .pdp-stickybar { box-shadow: 0 -12px 32px rgb(0 0 0 / 0.
   .cat-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .cat-tiles--compact { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
+@media (min-width: 1101px) {
+  /* Desktop has the sticky buy box; a second fixed action bar would cover
+     content and duplicate the CTAs. */
+  .pdp-stickybar { display: none; }
+  .pdp-page { padding-bottom: 76px; }
+}
 
 @media (max-width: 1100px) {
   .product-detail { grid-template-columns: minmax(260px, 420px) minmax(0, 1fr); gap: 26px; }
-  .product-detail .buybox { grid-column: 1 / -1; position: static; }
+  .pdp-aside { grid-column: 1 / -1; }
+  .product-detail .buybox {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
   .pdp-gallery { position: static; }
 }
 
@@ -1112,7 +1138,7 @@ html[data-theme="dark"] .pdp-stickybar { box-shadow: 0 -12px 32px rgb(0 0 0 / 0.
   .carousel-arrow { width: 34px; height: 34px; }
   .carousel-arrow.prev { left: 9px; }
   .carousel-arrow.next { right: 9px; }
-  .product-detail { gap: 20px; }
+  .product-detail { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .detail-title { font-size: 23px; }
   .pdp-stage, .pdp-glass { border-radius: 22px; }
   .pdp-stage { aspect-ratio: 1 / 1; }

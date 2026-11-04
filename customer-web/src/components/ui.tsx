@@ -1,15 +1,19 @@
 import { memo, useEffect, useRef, useState, type ReactNode } from "react";
+import { useNetwork } from "../context/NetworkContext";
+import { useToast } from "../context/ToastContext";
 import { href } from "../hooks/useHashRoute";
 import {
   addToWishlist,
   getTokens,
-  img,
+  resolveImageUrl,
   removeFromWishlist,
   type Product,
 } from "../services/api";
 import { isWished, syncWishlistCache, toggleWishlist } from "../utils/history";
+import { queueWishlistAction } from "../utils/wishlistQueue";
 import { fxClass, fxStyle } from "../utils/imageFx";
 import { Icon, type IconName } from "./icons";
+import { SafeImage } from "./safe-image";
 import { AnimatedArt, type ArtKind } from "./animations";
 
 export function money(value: string | number | null | undefined): string {
@@ -73,6 +77,8 @@ export function RatingPill({
 export function WishButton({ slug, className = "" }: { slug: string; className?: string }) {
   const [wished, setWished] = useState(() => isWished(slug));
   const [busy, setBusy] = useState(false);
+  const { online } = useNetwork();
+  const toast = useToast();
 
   const toggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -81,6 +87,14 @@ export function WishButton({ slug, className = "" }: { slug: string; className?:
     const next = !wished;
     setWished(next);
     if (getTokens()) {
+      if (!online) {
+        // Signed in but disconnected: keep the optimistic heart, persist the
+        // desired state, and let NetworkProvider replay it on reconnect.
+        syncWishlistCache(slug, next);
+        queueWishlistAction(slug, next);
+        toast.push("Action saved locally. Will sync when online", "info");
+        return;
+      }
       // Signed in: server is the source of truth (optimistic, rolls back).
       setBusy(true);
       try {
@@ -125,18 +139,20 @@ function ProductCardComponent({
 }) {
   const fx = Array.isArray(effects) ? effects : [];
   const fadeClass = fx.includes("fade_in") ? "fx-fade-in" : "";
-  const image = img(product.primary_image);
+  const image = resolveImageUrl(product.primary_image);
 
   // Optional multi-image gallery: activates only when the backend exposes
   // additional images; otherwise renders the single primary_image.
   const gallery = Array.isArray((product as { images?: string[] }).images)
     ? ((product as { images?: string[] }).images as string[])
-        .map((u) => img(u))
+        .map((u) => resolveImageUrl(u))
         .filter((u): u is string => Boolean(u))
     : [];
   const slides = gallery.length ? gallery : image ? [image] : [];
   const [active, setActive] = useState(0);
   const slide = slides[active] ?? image;
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [slide]);
 
   const out = product.in_stock === false;
   const discount = product.discount_percent ?? 0;
@@ -152,24 +168,24 @@ function ProductCardComponent({
     >
       <div className="product-thumb-wrap">
         <div
-          className={`product-thumb ${fxClass(product.primary_image_display)} ${slide ? "" : "is-placeholder"}`.trim()}
+          className={`product-thumb ${fxClass(product.primary_image_display)} ${slide && !imageFailed ? "" : "is-placeholder"}`.trim()}
           style={fxStyle(product.primary_image_display)}
         >
-          {slide ? (
-            <img
-              key={slide}
-              src={slide}
-              alt={product.name}
-              loading="lazy"
-              decoding="async"
-              width={600}
-              height={600}
-            />
-          ) : (
-            <span className="ph-badge">
-              <Monogram text={product.name} />
-            </span>
-          )}
+          <SafeImage
+            key={slide ?? "placeholder"}
+            src={slide}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            width={600}
+            height={600}
+            onError={() => setImageFailed(true)}
+            fallback={
+              <span className="ph-badge">
+                <Monogram text={product.name} />
+              </span>
+            }
+          />
         </div>
         {out ? (
           <span className="product-chip chip chip-out">Out of stock</span>

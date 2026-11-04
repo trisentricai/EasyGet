@@ -15,9 +15,10 @@
  */
 import type { CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { asArray, img, listCategories, type Category, type SectionItem } from "../services/api";
+import { asArray, resolveImageUrl, listCategories, type Category, type SectionItem } from "../services/api";
 import { href } from "../hooks/useHashRoute";
 import { Icon } from "./icons";
+import { SafeImage } from "./safe-image";
 
 export type CategoryTileStyle = "avatars" | "cards" | "cover" | "chips";
 
@@ -95,7 +96,10 @@ export function toTiles(items: SectionItem[], icons: Map<string, string>): TileI
       key: i.id,
       slug: i.category_slug,
       name: i.category_name || i.caption || "Category",
-      image: img(i.image) ?? (i.category_slug ? img(icons.get(i.category_slug) ?? null) : null),
+      image:
+        resolveImageUrl(i.image) ??
+        resolveImageUrl((i.config?.image_url as string) ?? null) ??
+        (i.category_slug ? resolveImageUrl(icons.get(i.category_slug) ?? null) : null),
     }));
 }
 
@@ -118,7 +122,7 @@ export function CategoryTilesFromCategories({
     key: c.slug,
     slug: c.slug,
     name: c.name,
-    image: img(c.icon ?? null),
+    image: resolveImageUrl(c.icon ?? null),
   }));
   if (tiles.length === 0) return <p className="muted">No categories configured.</p>;
   return <TileLayout tiles={tiles} style={style} />;
@@ -160,11 +164,19 @@ export function TileLayout({
           {shown.map((t) => (
             <a key={t.key} role="listitem" className="cat-banner" style={washStyle(t)} href={href(`browse?category=${t.slug}`)}>
               <span className="cat-banner-media">
-                {t.image ? (
-                  <img src={t.image} alt="" loading="lazy" decoding="async" width={640} height={280} />
-                ) : (
-                  <span className="cat-banner-initials" aria-hidden="true">{initialsFor(t.name)}</span>
-                )}
+                <SafeImage
+                  src={t.image}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  width={640}
+                  height={280}
+                  fallback={
+                    <span className="cat-banner-initials" aria-hidden="true">
+                      {initialsFor(t.name)}
+                    </span>
+                  }
+                />
               </span>
               <span className="cat-banner-scrim" aria-hidden="true" />
               <span className="cat-banner-body">
@@ -189,11 +201,19 @@ export function TileLayout({
         {shown.map((t) => (
           <a key={t.key} role="listitem" className="cat-tile" style={washStyle(t)} href={href(`browse?category=${t.slug}`)}>
             <span className="cat-tile-media">
-              {t.image ? (
-                <img src={t.image} alt="" loading="lazy" decoding="async" width={300} height={300} />
-              ) : (
-                <span className="cat-tile-initials" aria-hidden="true">{initialsFor(t.name)}</span>
-              )}
+              <SafeImage
+                src={t.image}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                width={300}
+                height={300}
+                fallback={
+                  <span className="cat-tile-initials" aria-hidden="true">
+                    {initialsFor(t.name)}
+                  </span>
+                }
+              />
             </span>
             <span className="cat-tile-foot">
               <span className="cat-tile-name">{t.name}</span>

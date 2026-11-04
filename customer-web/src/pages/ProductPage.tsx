@@ -8,7 +8,7 @@ import { rememberPincode } from "../hooks/useDeliveryConfig";
 import {
   errText,
   getProduct,
-  img,
+  resolveImageUrl,
   listProductsPaged,
   listReviews,
   postReview,
@@ -18,7 +18,9 @@ import {
 } from "../services/api";
 import { EmptyState, Monogram, ProductCard, RatingPill, Spinner, WishButton } from "../components/ui";
 import { Icon } from "../components/icons";
+import { SafeImage } from "../components/safe-image";
 import { SuccessCheck } from "../components/animations";
+import { trackEvent } from "../utils/analytics";
 import { recordView } from "../utils/history";
 import { fxClass, fxStyle } from "../utils/imageFx";
 import { checkPincode as lookupPincode } from "../utils/pincode";
@@ -43,6 +45,8 @@ export function ProductPage({ slug }: { slug: string }) {
   const [pinBusy, setPinBusy] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const copyTimer = useRef<number | null>(null);
+  // StrictMode double-runs mount effects in development; one view per product.
+  const viewedSlug = useRef<string | null>(null);
   const errorMsg = error ? errText(error, "Product not found") : null;
 
   useEffect(() => {
@@ -68,9 +72,18 @@ export function ProductPage({ slug }: { slug: string }) {
       product.variants.find((v) => v.is_active) ??
       product.variants[0];
     setVariantId(firstActive?.id ?? null);
-    setActiveImage(img(product.primary_image));
+    setActiveImage(resolveImageUrl(product.primary_image));
     setActiveFx(product.primary_image_display ?? null);
     recordView(product);
+    if (viewedSlug.current !== product.slug) {
+      viewedSlug.current = product.slug;
+      trackEvent("view_item", {
+        item_id: product.id,
+        item_name: product.name,
+        price: Number(product.base_price ?? 0),
+        currency: "INR",
+      });
+    }
   }, [product]);
 
   // Cap the stepper at the selected variant's stock (or the site max when
@@ -136,11 +149,19 @@ export function ProductPage({ slug }: { slug: string }) {
         price: activeVariant?.price ?? product.base_price ?? "0",
         productName: product.name,
         productSlug: product.slug,
-        image: img(product.primary_image),
+        image: resolveImageUrl(product.primary_image),
         tenantId: null,
         sellerName: "EASYGET",
         inStock: activeVariant?.in_stock ?? product.in_stock ?? null,
         stockQuantity: activeVariant?.stock_quantity ?? null,
+      });
+      trackEvent("add_to_cart", {
+        item_id: product.id,
+        item_name: product.name,
+        variant_id: variantId,
+        quantity: qty,
+        value: Number(price ?? 0) * qty,
+        currency: "INR",
       });
       if (thenCheckout) navigate("checkout");
       else {
@@ -255,23 +276,22 @@ export function ProductPage({ slug }: { slug: string }) {
             className={`pdp-stage ${fxClass(activeFx)}`}
             style={fxStyle(activeFx)}
           >
-            {activeImage ? (
-              <img
-                className="pdp-stage-img"
-                src={activeImage}
-                alt={product.name}
-                decoding="async"
-                width={800}
-                height={800}
-              />
-            ) : (
-              <div className="pdp-stage-fallback">
-                <div className="pdp-glass">
-                  <Monogram text={product.name} />
-                  <span className="pdp-glass-label">Image coming soon</span>
+            <SafeImage
+              className="pdp-stage-img"
+              src={activeImage}
+              alt={product.name}
+              decoding="async"
+              width={800}
+              height={800}
+              fallback={
+                <div className="pdp-stage-fallback">
+                  <div className="pdp-glass">
+                    <Monogram text={product.name} />
+                    <span className="pdp-glass-label">Image coming soon</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              }
+            />
           </div>
           {images.length > 1 ? (
             <div className="thumb-row">
@@ -279,14 +299,19 @@ export function ProductPage({ slug }: { slug: string }) {
                 <button
                   key={im.id}
                   onClick={() => {
-                    setActiveImage(img(im.image));
+                    setActiveImage(resolveImageUrl(im.image));
                     setActiveFx(im);
                   }}
                   aria-label={`Show image: ${im.caption || "product"}`}
-                  className={`thumb-btn ${fxClass(im)} ${img(im.image) === activeImage ? "active" : ""}`}
+                  className={`thumb-btn ${fxClass(im)} ${resolveImageUrl(im.image) === activeImage ? "active" : ""}`}
                   style={fxStyle(im)}
                 >
-                  <img src={img(im.image)!} alt={im.caption} loading="lazy" decoding="async" />
+                  <SafeImage
+                    src={resolveImageUrl(im.image)}
+                    alt={im.caption}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </button>
               ))}
             </div>
@@ -400,104 +425,107 @@ export function ProductPage({ slug }: { slug: string }) {
         </div>
 
         {/* buy box */}
-        <aside className="buybox">
-          <div className="buybox-section">
-            <h4>Delivery</h4>
-            <div className="pincode-row">
-              <input
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="Enter pincode"
-                value={pincode}
-                onChange={(e) => {
-                  setPincode(e.target.value.replace(/\D/g, ""));
-                  setPinResult(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") checkPincode();
-                }}
-                aria-label="Delivery pincode"
-              />
-              <button
-                className="link"
-                onClick={() => void checkPincode()}
-                type="button"
-                disabled={pinBusy}
-              >
-                {pinBusy ? "Checking…" : "Check"}
-              </button>
-            </div>
-            {pinResult ? (
-              <div className={`pincode-eta ${/valid/i.test(pinResult) ? "muted" : ""}`}>{pinResult}</div>
-            ) : (
-              <div className="pincode-eta muted" style={{ marginTop: 6 }}>
-                Pay on delivery · Usually delivered in 3–5 days
+        <div className="pdp-aside">
+          <aside className="buybox">
+            <div className="buybox-section">
+              <h4>Delivery</h4>
+              <div className="pincode-row">
+                <input
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Enter pincode"
+                  value={pincode}
+                  onChange={(e) => {
+                    setPincode(e.target.value.replace(/\D/g, ""));
+                    setPinResult(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") checkPincode();
+                  }}
+                  aria-label="Delivery pincode"
+                />
+                <button
+                  className="link"
+                  onClick={() => void checkPincode()}
+                  type="button"
+                  disabled={pinBusy}
+                >
+                  {pinBusy ? "Checking…" : "Check"}
+                </button>
               </div>
-            )}
-          </div>
+              {pinResult ? (
+                <div className={`pincode-eta ${/valid/i.test(pinResult) ? "muted" : ""}`}>{pinResult}</div>
+              ) : (
+                <div className="pincode-eta muted" style={{ marginTop: 6 }}>
+                  Pay on delivery · Usually delivered in 3–5 days
+                </div>
+              )}
+            </div>
 
-          <div className="buybox-section">
-            <h4>Quantity</h4>
-            <div className="qty-stepper">
-              <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
-              <span>{qty}</span>
+            <div className="buybox-section">
+              <h4>Quantity</h4>
+              <div className="qty-stepper">
+                <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
+                <span>{qty}</span>
+                <button
+                  onClick={() => {
+                    if (qty >= maxQty) {
+                      toast.push(
+                        activeVariant?.stock_quantity == null
+                          ? "Maximum 10 per item"
+                          : `Only ${maxQty} available`,
+                        "info",
+                      );
+                      return;
+                    }
+                    setQty((q) => Math.min(maxQty || 1, q + 1));
+                  }}
+                  aria-label="Increase quantity"
+                  disabled={outOfStock}
+                  title={activeVariant?.stock_quantity != null ? `Only ${maxQty} available` : undefined}
+                >
+                  +
+                </button>
+              </div>
+              {activeVariant?.stock_quantity != null &&
+              activeVariant.stock_quantity > 0 &&
+              activeVariant.stock_quantity <= 5 ? (
+                <div className="field-hint">Only {activeVariant.stock_quantity} left</div>
+              ) : null}
+            </div>
+
+            <div className="buybox-actions">
               <button
-                onClick={() => {
-                  if (qty >= maxQty) {
-                    toast.push(
-                      activeVariant?.stock_quantity == null
-                        ? "Maximum 10 per item"
-                        : `Only ${maxQty} available`,
-                      "info",
-                    );
-                    return;
-                  }
-                  setQty((q) => Math.min(maxQty || 1, q + 1));
-                }}
-                aria-label="Increase quantity"
-                disabled={outOfStock}
-                title={activeVariant?.stock_quantity != null ? `Only ${maxQty} available` : undefined}
+                className={`btn-cart ${justAdded ? "is-added" : ""}`.trim()}
+                disabled={busy || !variantId || outOfStock}
+                onClick={() => void addToCart(false)}
+                aria-live="polite"
               >
-                +
+                {justAdded ? <SuccessCheck size={22} /> : <Icon name="cart" size={20} />}
+                {outOfStock ? "Out of stock" : busy ? "Adding…" : justAdded ? "Added" : "Add to cart"}
+              </button>
+              <button className="btn-buy" disabled={busy || !variantId || outOfStock} onClick={() => void addToCart(true)}>
+                <Icon name="zap" size={20} />
+                Buy now
               </button>
             </div>
-            {activeVariant?.stock_quantity != null &&
-            activeVariant.stock_quantity > 0 &&
-            activeVariant.stock_quantity <= 5 ? (
-              <div className="field-hint">Only {activeVariant.stock_quantity} left</div>
-            ) : null}
-          </div>
 
-          <div className="buybox-actions">
-            <button
-              className={`btn-cart ${justAdded ? "is-added" : ""}`.trim()}
-              disabled={busy || !variantId || outOfStock}
-              onClick={() => void addToCart(false)}
-              aria-live="polite"
-            >
-              {justAdded ? <SuccessCheck size={19} /> : <Icon name="cart" size={17} />}
-              {outOfStock ? "Out of stock" : busy ? "Adding…" : justAdded ? "Added" : "Add to cart"}
-            </button>
-            <button className="btn-buy" disabled={busy || !variantId || outOfStock} onClick={() => void addToCart(true)}>
-              Buy now
-            </button>
-          </div>
-
-          <div className="seller-box">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-              <span className="muted">Sold by</span>
-              <b>EASYGET</b>
+            <div className="seller-box">
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <span className="muted">Sold by</span>
+                <b>EASYGET</b>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
+                <span className="muted">Returns</span>
+                <span style={{ color: "var(--savings)", fontWeight: 700 }}>7 days</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
+                <span className="muted">Payment</span>
+                <span style={{ fontWeight: 700 }}>COD / UPI</span>
+              </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
-              <span className="muted">Returns</span>
-              <span style={{ color: "var(--savings)", fontWeight: 700 }}>7 days</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 6 }}>
-              <span className="muted">Payment</span>
-              <span style={{ fontWeight: 700 }}>COD / UPI</span>
-            </div>
-          </div>
-        </aside>
+          </aside>
+        </div>
       </div>
 
       {/* Mobile/tablet sticky purchase bar — desktop keeps the sticky buy box. */}
@@ -519,6 +547,7 @@ export function ProductPage({ slug }: { slug: string }) {
             {outOfStock ? "Out of stock" : busy ? "Adding…" : justAdded ? "Added" : "Add to cart"}
           </button>
           <button className="btn-buy" disabled={busy || !variantId || outOfStock} onClick={() => void addToCart(true)}>
+            <Icon name="zap" size={17} />
             Buy now
           </button>
         </div>

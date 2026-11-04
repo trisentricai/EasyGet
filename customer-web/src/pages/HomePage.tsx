@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useStorefront } from "../context/StorefrontContext";
 import { href } from "../hooks/useHashRoute";
-import { asArray, img, listCategories, type SectionItem, type StoreSection } from "../services/api";
+import { asArray, resolveImageUrl, listCategories, type SectionItem, type StoreSection } from "../services/api";
 import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/ui";
+import { SafeImage } from "../components/safe-image";
 import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
 import { CategorySidebar } from "./CategorySidebar";
 import { fxClass, fxStyle } from "../utils/imageFx";
@@ -280,20 +281,29 @@ function GallerySection({ section }: { section: StoreSection }) {
     <Section title={section.title || undefined} subtitle={section.subtitle || undefined}>
       <div className="grid grid-gallery">
         {images.map((i) => (
-          <figure key={i.id} style={{ margin: 0 }}>
-            <img
-              className={`gallery-img ${fxClass(section)}`}
-              style={fxStyle(section)}
-              src={img(i.image)!}
-              alt={i.caption}
-              loading="lazy"
-              decoding="async"
-            />
-            {i.caption ? <figcaption className="muted" style={{ fontSize: 12, marginTop: 6 }}>{i.caption}</figcaption> : null}
-          </figure>
+          <GalleryFigure key={i.id} item={i} section={section} />
         ))}
       </div>
     </Section>
+  );
+}
+
+function GalleryFigure({ item, section }: { item: SectionItem; section: StoreSection }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <figure style={{ margin: 0 }}>
+      <SafeImage
+        className={`gallery-img ${fxClass(section)}`}
+        style={fxStyle(section)}
+        src={resolveImageUrl(item.image)}
+        alt={item.caption}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+      {item.caption ? <figcaption className="muted" style={{ fontSize: 12, marginTop: 6 }}>{item.caption}</figcaption> : null}
+    </figure>
   );
 }
 

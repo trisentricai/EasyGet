@@ -5,7 +5,7 @@
  */
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { asArray, img, listProductsPaged } from "./services/api";
+import { asArray, resolveImageUrl, listProductsPaged } from "./services/api";
 import { isNextUi } from "./flags";
 import {
   ProductCard,
@@ -49,7 +49,7 @@ function toCard(r: LooseRow, index: number): NextProductCardData {
     mrp: typeof r.mrp === "string" || typeof r.mrp === "number" ? r.mrp : null,
     ratingAvg: num(r.rating_avg),
     ratingCount: num(r.rating_count) ?? 0,
-    image: img(str(r.primary_image)),
+    image: resolveImageUrl(str(r.primary_image)),
     slug: str(r.slug) ?? undefined,
     category: toCategory(r.category),
   };

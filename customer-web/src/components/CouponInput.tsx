@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
+import { trackEvent } from "../utils/analytics";
 import { couponLabel } from "../utils/coupon";
 import { Icon } from "./icons";
 
@@ -23,6 +24,7 @@ export function CouponInput({ id = "coupon-code" }: { id?: string }) {
     }
     const result = await applyCoupon(clean);
     if (result.ok) {
+      trackEvent("apply_coupon", { coupon: clean.toUpperCase() });
       toast.push(`Coupon ${clean.toUpperCase()} applied`);
       setCode("");
     } else {
@@ -46,6 +48,7 @@ export function CouponInput({ id = "coupon-code" }: { id?: string }) {
           aria-label={`Remove coupon ${appliedCoupon.code}`}
           title="Remove coupon"
           onClick={() => {
+            trackEvent("remove_coupon", { coupon: appliedCoupon.code });
             removeCoupon();
             toast.push(`Coupon ${appliedCoupon.code} removed`, "info");
           }}

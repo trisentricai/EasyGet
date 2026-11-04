@@ -10,6 +10,7 @@ import { Icon } from "../components/icons";
 import { CouponInput } from "../components/CouponInput";
 import { FreeShippingProgress } from "../components/FreeShippingProgress";
 import { TotalsBreakdown } from "../components/TotalsBreakdown";
+import { trackEvent } from "../utils/analytics";
 import { MAX_CART_QTY } from "../utils/guestCart";
 import { computeTotals } from "../utils/pricing";
 
@@ -218,7 +219,15 @@ export function CartPage() {
             ) : null}
             <button
               className="btn btn-primary cart-checkout"
-              onClick={() => navigate("checkout")}
+              onClick={() => {
+                trackEvent("begin_checkout", {
+                  item_count: items.reduce((sum, item) => sum + item.quantity, 0),
+                  value: totals.total,
+                  currency: "INR",
+                  coupon: appliedCoupon?.code ?? null,
+                });
+                navigate("checkout");
+              }}
               disabled={hasStockIssue}
             >
               Proceed to checkout
