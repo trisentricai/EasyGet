@@ -31,6 +31,7 @@ type Draft = {
   category: number | "";
   description: string;
   brand: string;
+  tags: string;
   mrp: string;
   is_active: boolean;
   is_featured: boolean;
@@ -39,8 +40,11 @@ type Draft = {
 type VariantRow = {
   id: number | null;
   name: string;
+  sku: string;
   price: string;
   is_active: boolean;
+  in_stock?: boolean | null;
+  stock_quantity?: number | null;
 };
 
 const emptyDraft: Draft = {
@@ -48,6 +52,7 @@ const emptyDraft: Draft = {
   category: "",
   description: "",
   brand: "",
+  tags: "",
   mrp: "",
   is_active: true,
   is_featured: false,
@@ -56,7 +61,13 @@ const emptyDraft: Draft = {
 /** Quick-add names, grouped the way grocery catalogs think: weight, volume, count. */
 const VARIANT_PRESETS = ["250g", "500g", "1kg", "150ml", "300ml", "500ml", "1L", "Pack of 2"];
 
-const blankVariant = (name = "1 unit"): VariantRow => ({ id: null, name, price: "", is_active: true });
+const blankVariant = (name = "1 unit"): VariantRow => ({
+  id: null,
+  name,
+  sku: "",
+  price: "",
+  is_active: true,
+});
 
 function toArray<T>(res: { results: T[] } | T[]): T[] {
   return Array.isArray(res) ? res : res.results;
@@ -115,6 +126,7 @@ export function ProductsPage() {
       category: p.category?.id ?? "",
       description: "",
       brand: p.brand ?? "",
+      tags: p.tags ?? "",
       mrp: p.mrp ?? "",
       is_active: p.is_active,
       is_featured: p.is_featured,
@@ -122,11 +134,19 @@ export function ProductsPage() {
     getProduct(p.slug)
       .then((detail) => {
         setImages(detail.images ?? []);
+        setDraft((d) => ({
+          ...d,
+          description: detail.description ?? d.description,
+          tags: detail.tags ?? d.tags,
+        }));
         const rows = (detail.variants ?? []).map((v) => ({
           id: v.id as number,
           name: v.name,
+          sku: v.sku ?? "",
           price: v.price ?? "",
           is_active: (v as { is_active?: boolean }).is_active ?? true,
+          in_stock: v.in_stock ?? null,
+          stock_quantity: v.stock_quantity ?? null,
         }));
         setVariants(rows.length ? rows : [blankVariant()]);
       })
@@ -143,6 +163,7 @@ export function ProductsPage() {
     if (draft.description) body.description = draft.description;
     if (draft.brand) body.brand = draft.brand;
     if (draft.mrp) body.mrp = draft.mrp;
+    body.tags = draft.tags.trim();
     // Variants round-trip by id (update in place); rows without an id are
     // created. Empty-price rows are skipped, never sent.
     const priced = variants
@@ -150,6 +171,7 @@ export function ProductsPage() {
       .map((v) => ({
         ...(v.id != null ? { id: v.id } : {}),
         name: v.name.trim() || "1 unit",
+        ...(v.sku.trim() ? { sku: v.sku.trim() } : {}),
         price: v.price,
         is_active: v.is_active,
       }));
@@ -443,7 +465,7 @@ export function ProductsPage() {
               {variants.map((v, i) => (
                 <div
                   key={v.id ?? `new-${i}`}
-                  style={{ display: "grid", gridTemplateColumns: "1fr 130px auto auto", gap: 8, marginBottom: 8, alignItems: "center" }}
+                  style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px auto auto", gap: 8, marginBottom: 8, alignItems: "center" }}
                 >
                   <input
                     className="input"
@@ -453,6 +475,15 @@ export function ProductsPage() {
                     }
                     placeholder="1 unit"
                     aria-label="Variant name"
+                  />
+                  <input
+                    className="input"
+                    value={v.sku}
+                    onChange={(e) =>
+                      setVariants((list) => list.map((row, j) => (j === i ? { ...row, sku: e.target.value } : row)))
+                    }
+                    placeholder="SKU (auto)"
+                    aria-label="Variant SKU"
                   />
                   <input
                     className="input"
@@ -466,7 +497,15 @@ export function ProductsPage() {
                     placeholder="₹ price"
                     aria-label="Variant price"
                   />
-                  <label className="muted" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}>
+                  <label
+                    className="muted"
+                    style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}
+                    title={
+                      v.stock_quantity == null
+                        ? "Stock is managed in Inventory"
+                        : `${v.stock_quantity} in stock`
+                    }
+                  >
                     <input
                       type="checkbox"
                       checked={v.is_active}
@@ -475,6 +514,11 @@ export function ProductsPage() {
                       }
                     />
                     Live
+                    {v.in_stock === false ? (
+                      <span className="badge err">Out</span>
+                    ) : v.stock_quantity != null ? (
+                      <span className="badge ok">{v.stock_quantity}</span>
+                    ) : null}
                   </label>
                   <button
                     type="button"
@@ -524,6 +568,18 @@ export function ProductsPage() {
                 onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                 placeholder="Shown on the product page (optional)"
               />
+            </label>
+            <label>
+              Tags / search keywords
+              <input
+                className="input"
+                value={draft.tags}
+                onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
+                placeholder="e.g. rice, basmati, grocery"
+              />
+              <span className="muted" style={{ fontSize: 12, fontWeight: 500 }}>
+                Comma-separated. Powers search and mobile category filters.
+              </span>
             </label>
             <div style={{ display: "flex", gap: 22 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
