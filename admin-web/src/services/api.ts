@@ -150,6 +150,41 @@ export type AdminSummary = {
 
 export const getSummary = () => api<AdminSummary>("/admin/dashboard/");
 
+/* ---------------- Analytics ---------------- */
+
+export type AnalyticsTopProduct = {
+  name: string;
+  variant: string;
+  sku: string;
+  quantity: number;
+  revenue: number;
+};
+
+export type AnalyticsRevenueTrendPoint = {
+  date: string;
+  revenue: number;
+  orders: number;
+};
+
+export type AnalyticsCategory = {
+  name: string;
+  slug: string;
+  revenue: number;
+  quantity: number;
+};
+
+export type AnalyticsResponse = {
+  total_revenue: number;
+  avg_order_value: number;
+  mom_growth: number;
+  total_orders: number;
+  top_products: AnalyticsTopProduct[];
+  revenue_trend: AnalyticsRevenueTrendPoint[];
+  top_categories: AnalyticsCategory[];
+};
+
+export const getAnalytics = () => api<AnalyticsResponse>("/analytics/dashboard/analytics/");
+
 /* ---------------- Categories ---------------- */
 
 export type Category = {

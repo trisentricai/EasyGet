@@ -502,6 +502,39 @@ select.input {
   opacity: 0.85;
 }
 
+/* Growth indicators */
+.positive-growth {
+  color: var(--c-success);
+  font-weight: 700;
+}
+.negative-growth {
+  color: var(--c-danger);
+  font-weight: 700;
+}
+
+/* Chart skeleton loader */
+.chart-skeleton {
+  background: linear-gradient(100deg, var(--bg-elevated) 40%, var(--bg-hover) 50%, var(--bg-elevated) 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s infinite;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+/* Error state */
+.error-state {
+  text-align: center;
+}
+.error-state .muted {
+  margin-bottom: 12px;
+}
+
+/* Animations */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* ---------- Tables ---------- */
 .table-wrap {
   overflow-x: auto;

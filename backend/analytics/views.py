@@ -1,5 +1,6 @@
 from datetime import timedelta
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count, Sum, F, Q
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -281,4 +282,130 @@ class DashboardViewSet(viewsets.GenericViewSet):
             "revenue_by_channel": RevenueByChannelSerializer(
                 RevenueByChannel.objects.filter(date=today).order_by("-revenue")[:5], many=True
             ).data,
+        })
+
+    @action(detail=False, methods=["get"])
+    def analytics(self, request):
+        """
+        Comprehensive analytics for the admin dashboard.
+        Returns:
+        - total_revenue, avg_order_value, mom_growth
+        - top_selling_products (by quantity)
+        - revenue_trend (last 30 days)
+        - top_categories (by revenue)
+        """
+        from orders.models import Order, OrderItem
+        from products.models import Product, Category
+        from django.db.models import Sum, Count, DecimalField
+        from django.db.models.functions import TruncDate, Coalesce
+        from decimal import Decimal
+
+        today = timezone.now().date()
+        thirty_days_ago = today - timedelta(days=30)
+        sixty_days_ago = today - timedelta(days=60)
+
+        # Base queryset: exclude cancelled orders
+        base_orders = Order.objects.exclude(status="CANCELLED")
+
+        # Total revenue (all time, excluding cancelled)
+        total_revenue = base_orders.aggregate(total=Sum("total"))["total"] or Decimal("0")
+
+        # Total valid orders (excluding cancelled)
+        total_valid_orders = base_orders.count()
+
+        # Average Order Value
+        avg_order_value = (total_revenue / total_valid_orders) if total_valid_orders > 0 else Decimal("0")
+
+        # MoM Growth: Compare current month vs previous month
+        current_month_start = today.replace(day=1)
+        prev_month_end = current_month_start - timedelta(days=1)
+        prev_month_start = prev_month_end.replace(day=1)
+
+        current_month_revenue = base_orders.filter(
+            created_at__date__gte=current_month_start
+        ).aggregate(total=Sum("total"))["total"] or Decimal("0")
+
+        prev_month_revenue = base_orders.filter(
+            created_at__date__gte=prev_month_start,
+            created_at__date__lte=prev_month_end
+        ).aggregate(total=Sum("total"))["total"] or Decimal("0")
+
+        if prev_month_revenue > 0:
+            mom_growth = round(
+                ((current_month_revenue - prev_month_revenue) / prev_month_revenue) * 100, 2
+            )
+        else:
+            mom_growth = 0 if current_month_revenue == 0 else 100
+
+        # Top 5 selling products by quantity ordered
+        top_products_qs = OrderItem.objects.filter(
+            order__in=base_orders
+        ).values(
+            "product_name", "variant_name", "sku"
+        ).annotate(
+            total_quantity=Sum("quantity"),
+            total_revenue=Sum("line_total")
+        ).order_by("-total_quantity")[:5]
+
+        top_products = list(top_products_qs)
+
+        # 30-day revenue trend (daily)
+        daily_revenue = base_orders.filter(
+            created_at__date__gte=thirty_days_ago
+        ).annotate(
+            date=TruncDate("created_at")
+        ).values("date").annotate(
+            revenue=Sum("total"),
+            orders=Count("id")
+        ).order_by("date")
+
+        # Fill in missing dates with 0
+        revenue_trend = []
+        for i in range(31):
+            date = thirty_days_ago + timedelta(days=i)
+            day_data = next((d for d in daily_revenue if d["date"] == date), None)
+            revenue_trend.append({
+                "date": date.isoformat(),
+                "revenue": float(day_data["revenue"]) if day_data else 0,
+                "orders": day_data["orders"] if day_data else 0,
+            })
+
+        # Top categories by revenue (using order items)
+        category_revenue = OrderItem.objects.filter(
+            order__in=base_orders.filter(created_at__date__gte=thirty_days_ago)
+        ).select_related("variant__product__category").values(
+            "variant__product__category__name",
+            "variant__product__category__slug"
+        ).annotate(
+            revenue=Sum("line_total"),
+            quantity=Sum("quantity")
+        ).order_by("-revenue")[:10]
+
+        top_categories = list(category_revenue)
+
+        return Response({
+            "total_revenue": float(total_revenue),
+            "avg_order_value": float(avg_order_value),
+            "mom_growth": mom_growth,
+            "total_orders": total_valid_orders,
+            "top_products": [
+                {
+                    "name": p["product_name"],
+                    "variant": p["variant_name"],
+                    "sku": p["sku"],
+                    "quantity": p["total_quantity"],
+                    "revenue": float(p["total_revenue"]),
+                }
+                for p in top_products
+            ],
+            "revenue_trend": revenue_trend,
+            "top_categories": [
+                {
+                    "name": c["variant__product__category__name"] or "Uncategorized",
+                    "slug": c["variant__product__category__slug"],
+                    "revenue": float(c["revenue"]),
+                    "quantity": c["quantity"],
+                }
+                for c in top_categories
+            ],
         })

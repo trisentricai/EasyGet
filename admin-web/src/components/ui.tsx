@@ -23,7 +23,7 @@ export function StatCard({
 }: {
   label: string;
   value: string | number;
-  sub?: string;
+  sub?: React.ReactNode;
   icon: string;
 }) {
   return (
