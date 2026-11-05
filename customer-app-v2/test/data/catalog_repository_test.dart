@@ -78,7 +78,9 @@ const _storefrontJson = '''
   "description":"Everything, fast"},
  "theme":{"primary_color":"#E4572E","secondary_color":"#F0A202",
   "background_color":"#FBF7F0","font_family":"Poppins","logo":"theme/logo.png",
-  "hero_image":"theme/hero.jpg","button_style":"ROUNDED"},
+  "hero_image":"theme/hero.jpg","button_style":"ROUNDED",
+  "enable_glassmorphism":false,"glass_blur_intensity":24,
+  "mobile_default_theme":"DARK"},
  "sections":[
    {"id":1,"type":"HERO","title":"Fresh in 10","subtitle":"Groceries",
     "image":"sec/hero.jpg","config":{"height":220},
@@ -268,6 +270,9 @@ void main() {
       expect(render.store.slug, 'easyget');
       expect(render.theme.primaryColor, '#E4572E');
       expect(render.theme.fontFamily, 'Poppins');
+      expect(render.theme.enableGlassmorphism, isFalse);
+      expect(render.theme.glassBlurIntensity, 24);
+      expect(render.theme.mobileDefaultTheme, 'DARK');
       expect(render.sections, hasLength(2));
       expect(render.sections.first.type, 'HERO');
       expect(render.sections.first.title, 'Fresh in 10');

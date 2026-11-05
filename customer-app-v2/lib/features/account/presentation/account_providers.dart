@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/storefront_appearance.dart';
 import '../../auth/data/app_user.dart';
 import '../data/profile_repository.dart';
 
@@ -21,6 +22,14 @@ final themeModeProvider =
     NotifierProvider<ThemeModeController, ThemeMode>(
   ThemeModeController.new,
 );
+
+/// MaterialApp's mode: the shopper's explicit Light/Dark choice wins; on
+/// "Auto" (system) the admin-configured mobile default applies.
+final effectiveThemeModeProvider = Provider<ThemeMode>((ref) {
+  final local = ref.watch(themeModeProvider);
+  if (local != ThemeMode.system) return local;
+  return ref.watch(storefrontAppearanceProvider).themeMode;
+});
 
 /// Notification toggle (local stub — server preferences land later).
 class NotificationsController extends Notifier<bool> {

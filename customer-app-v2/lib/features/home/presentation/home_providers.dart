@@ -1,14 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../catalog/data/catalog_repository.dart';
+import '../../../core/theme/storefront_appearance.dart';
 import '../../../models/catalog_models.dart';
 import '../../../models/storefront_models.dart';
 
 /// S4 · Home data: the platform render drives ticker/banners/rails/story;
 /// the category grid reads the catalog (8 tiles + See all).
-final homeStorefrontProvider = FutureProvider<StorefrontRender>(
-  (ref) => ref.watch(catalogRepositoryProvider).platformStorefront(),
-);
+///
+/// The render also carries the Admin Panel's mobile appearance settings;
+/// mirroring them here keeps theme mode and glass tokens in sync on every
+/// load and pull-to-refresh.
+final homeStorefrontProvider = FutureProvider<StorefrontRender>((ref) async {
+  final render =
+      await ref.watch(catalogRepositoryProvider).platformStorefront();
+  ref.read(storefrontAppearanceProvider.notifier).apply(render.theme);
+  return render;
+});
 
 final homeCategoriesProvider = FutureProvider<List<Category>>(
   (ref) => ref.watch(catalogRepositoryProvider).categories(),

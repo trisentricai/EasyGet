@@ -58,7 +58,7 @@ class _EasyGetAppState extends ConsumerState<EasyGetApp> {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
-        themeMode: ref.watch(themeModeProvider),
+        themeMode: ref.watch(effectiveThemeModeProvider),
         routerConfig: ref.watch(routerProvider),
       ),
     );

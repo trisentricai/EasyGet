@@ -36,6 +36,9 @@ class StoreTheme {
     this.logo,
     this.heroImage,
     this.buttonStyle,
+    this.enableGlassmorphism = true,
+    this.glassBlurIntensity = 16,
+    this.mobileDefaultTheme = 'SYSTEM',
     this.raw = const {},
   });
 
@@ -46,6 +49,12 @@ class StoreTheme {
   final String? logo;
   final String? heroImage;
   final String? buttonStyle;
+
+  /// Admin Panel → Storefront → Mobile app appearance. Defaults keep the
+  /// pre-settings look when the backend payload predates these fields.
+  final bool enableGlassmorphism;
+  final double glassBlurIntensity;
+  final String mobileDefaultTheme;
   final Map<String, dynamic> raw;
 
   factory StoreTheme.fromJson(Map<String, dynamic>? json) {
@@ -58,6 +67,11 @@ class StoreTheme {
       logo: map['logo'] as String?,
       heroImage: map['hero_image'] as String?,
       buttonStyle: map['button_style'] as String?,
+      enableGlassmorphism: map['enable_glassmorphism'] != false,
+      glassBlurIntensity:
+          numToDouble(map['glass_blur_intensity'], 16).clamp(0, 40).toDouble(),
+      mobileDefaultTheme:
+          (map['mobile_default_theme'] as String?) ?? 'SYSTEM',
       raw: map.cast<String, dynamic>(),
     );
   }
