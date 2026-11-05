@@ -220,10 +220,12 @@ export type Product = {
   slug: string;
   category: { id: number; name: string; slug: string };
   brand: string;
+  description?: string;
   mrp: string | null;
   base_price: string | null;
   is_featured: boolean;
   is_active: boolean;
+  tags?: string;
   /** False when no qty > 0 sits in an active store (detail still opens). */
   in_stock?: boolean | null;
 };
@@ -268,7 +270,15 @@ export type ProductImage = {
 
 export type ProductDetail = Product & {
   images: ProductImage[];
-  variants: Array<{ id: number; name: string; price: string }>;
+  variants: Array<{
+    id: number;
+    name: string;
+    sku?: string;
+    price: string;
+    is_active?: boolean;
+    in_stock?: boolean | null;
+    stock_quantity?: number | null;
+  }>;
 };
 
 export function listProducts(params: Record<string, string> = {}) {
@@ -382,6 +392,9 @@ export type Theme = {
   font_family: string;
   button_style: "ROUNDED" | "SQUARE" | "PILL";
   effects: Record<string, unknown>;
+  enable_glassmorphism?: boolean;
+  glass_blur_intensity?: number;
+  mobile_default_theme?: "SYSTEM" | "LIGHT" | "DARK";
 };
 
 export function getStoreSlug(): string {
@@ -523,6 +536,7 @@ export type Order = {
   discount: string;
   total: string;
   item_count?: number;
+  source?: "web" | "mobile_app" | "admin";
   delivery_address?: Record<string, unknown>;
   delivery_instructions?: string;
   estimated_delivery_at?: string | null;

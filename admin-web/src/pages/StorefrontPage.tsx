@@ -295,6 +295,9 @@ export function StorefrontPage() {
         font_family: "system-ui",
         button_style: "ROUNDED" as const,
         effects: {},
+        enable_glassmorphism: true,
+        glass_blur_intensity: 16,
+        mobile_default_theme: "SYSTEM" as const,
       },
     [theme],
   );
@@ -550,6 +553,77 @@ export function StorefrontPage() {
                 <option value="Georgia, serif">Georgia (serif)</option>
                 <option value="'Courier New', monospace">Courier (mono)</option>
                 <option value="Verdana, sans-serif">Verdana</option>
+              </select>
+            </label>
+
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                borderTop: "1px solid var(--border)",
+                paddingTop: 16,
+                marginTop: 4,
+              }}
+            >
+              <div className="muted" style={{ fontWeight: 800 }}>
+                📱 Mobile app appearance
+              </div>
+              <p className="muted" style={{ margin: "4px 0 0", fontSize: 12.5 }}>
+                Read by the Flutter customer app from the storefront theme payload — no app
+                release needed.
+              </p>
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input
+                type="checkbox"
+                checked={themeValue.enable_glassmorphism ?? true}
+                onChange={(e) => saveTheme({ enable_glassmorphism: e.target.checked })}
+              />
+              Enable glassmorphism cards
+            </label>
+            <label>
+              Glass blur intensity
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="range"
+                  min={0}
+                  max={40}
+                  step={1}
+                  value={themeValue.glass_blur_intensity ?? 16}
+                  onChange={(e) =>
+                    setTheme({
+                      ...(theme ?? themeValue),
+                      glass_blur_intensity: Number(e.target.value),
+                    } as Theme)
+                  }
+                  onPointerUp={(e) =>
+                    saveTheme({
+                      glass_blur_intensity: Number(e.currentTarget.value),
+                    })
+                  }
+                  onKeyUp={(e) =>
+                    saveTheme({
+                      glass_blur_intensity: Number(e.currentTarget.value),
+                    })
+                  }
+                  style={{ flex: 1, accentColor: "var(--c-primary)" }}
+                />
+                <span className="badge">{themeValue.glass_blur_intensity ?? 16}</span>
+              </div>
+            </label>
+            <label>
+              Mobile default theme
+              <select
+                className="input"
+                value={themeValue.mobile_default_theme ?? "SYSTEM"}
+                onChange={(e) =>
+                  saveTheme({
+                    mobile_default_theme: e.target.value as Theme["mobile_default_theme"],
+                  })
+                }
+              >
+                <option value="SYSTEM">System — follow the device</option>
+                <option value="LIGHT">Light</option>
+                <option value="DARK">Dark</option>
               </select>
             </label>
           </div>
