@@ -40,6 +40,12 @@ function statusClass(s: string): string {
   return "";
 }
 
+function sourceMeta(source?: string): { label: string; cls: string } {
+  if (source === "mobile_app") return { label: "📱 Mobile app", cls: "ok" };
+  if (source === "admin") return { label: "🛠️ Admin", cls: "warn" };
+  return { label: "🌐 Web", cls: "" };
+}
+
 export function OrdersPage() {
   const { push } = useToast();
   const queryClient = useQueryClient();
@@ -103,6 +109,7 @@ export function OrdersPage() {
                 <tr>
                   <th>Order</th>
                   <th>Store</th>
+                  <th>Source</th>
                   <th>Items</th>
                   <th>Total</th>
                   <th>Status</th>
@@ -115,6 +122,11 @@ export function OrdersPage() {
                   <tr key={o.id}>
                     <td style={{ fontWeight: 700 }}>{o.order_number}</td>
                     <td>{o.store_name ?? "—"}</td>
+                    <td>
+                      <span className={`badge ${sourceMeta(o.source).cls}`}>
+                        {sourceMeta(o.source).label}
+                      </span>
+                    </td>
                     <td>{o.item_count ?? "—"}</td>
                     <td>₹{o.total}</td>
                     <td>
@@ -275,7 +287,7 @@ function OrderDetailModal({
   return (
     <Modal
       title={order ? `Order ${order.order_number}` : "Order"}
-      subtitle={order ? `${order.store_name ?? ""} · ₹${order.total} · ${order.status.replace(/_/g, " ")}` : undefined}
+      subtitle={order ? `${order.store_name ?? ""} · ₹${order.total} · ${order.status.replace(/_/g, " ")} · ${sourceMeta(order.source).label}` : undefined}
       onClose={onClose}
     >
       {!order ? (
