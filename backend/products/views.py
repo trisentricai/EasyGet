@@ -1,3 +1,6 @@
+import csv
+import io
+from decimal import Decimal
 from django.db import transaction
 from django.db.models import (
     Avg,
@@ -11,7 +14,9 @@ from django.db.models import (
     Q,
     Subquery,
 )
+from django.http import HttpResponse
 from rest_framework import generics, status
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -22,7 +27,7 @@ from rest_framework.viewsets import ModelViewSet
 from tenants.permissions import IsTenantObjectMember, IsTenantWriter
 from tenants.services import resolve_tenant_for_create, user_tenant_ids
 
-from .models import Product, ProductImage, ProductReview, WishlistItem
+from .models import Product, ProductImage, ProductReview, ProductVariant, WishlistItem
 from .serializers import (
     ProductDetailSerializer,
     ProductImageListSerializer,
@@ -284,6 +289,323 @@ class ProductViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated, IsTenantWriter])
+    def bulk_update(self, request):
+        """
+        Bulk update products (price and/or stock).
+        Body: {
+            "product_ids": [1, 2, 3],
+            "action": "increase_percent" | "decrease_percent" | "set_flat" | "set_stock",
+            "value": 10
+        }
+        """
+        product_ids = request.data.get("product_ids", [])
+        action = request.data.get("action")
+        value = request.data.get("value")
+
+        if not product_ids:
+            return Response({"detail": "product_ids is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not action:
+            return Response({"detail": "action is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if value is None:
+            return Response({"detail": "value is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            value = Decimal(str(value))
+        except (ValueError, TypeError):
+            return Response({"detail": "value must be a number."}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_actions = ["increase_percent", "decrease_percent", "set_flat", "set_stock"]
+        if action not in valid_actions:
+            return Response(
+                {"detail": f"Invalid action. Must be one of: {', '.join(valid_actions)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if value < 0:
+            return Response({"detail": "value cannot be negative."}, status=status.HTTP_400_BAD_REQUEST)
+        if action == "set_stock" and value != value.to_integral_value():
+            return Response(
+                {"detail": "Stock quantity must be a whole number."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Filter products the user has permission to modify
+        qs = self.get_queryset().filter(id__in=product_ids)
+        if not request.user.is_staff:
+            tenant_ids = user_tenant_ids(request.user)
+            if tenant_ids:
+                qs = qs.filter(tenant_id__in=tenant_ids)
+            else:
+                qs = qs.none()
+
+        products = list(qs)
+        if not products:
+            return Response({"detail": "No valid products found or no permission."}, status=status.HTTP_404_NOT_FOUND)
+
+        updated_count = 0
+        with transaction.atomic():
+            if action == "set_stock":
+                from inventory.models import StockItem
+                from stores.models import Store
+
+                platform_store = Store.objects.filter(is_platform=True).first()
+
+            for product in products:
+                variants = product.variants.filter(is_active=True)
+                if not variants.exists():
+                    continue
+
+                for variant in variants:
+                    if action in ["increase_percent", "decrease_percent", "set_flat"]:
+                        # Price action
+                        if action == "increase_percent":
+                            variant.price = variant.price * (Decimal("1") + value / Decimal("100"))
+                        elif action == "decrease_percent":
+                            variant.price = variant.price * (Decimal("1") - value / Decimal("100"))
+                        else:  # set_flat
+                            variant.price = value
+                        variant.price = max(Decimal("0"), variant.price).quantize(Decimal("0.01"))
+                        variant.save(update_fields=["price", "updated_at"])
+                    elif action == "set_stock":
+                        # Stock action — set every stock row for the variant,
+                        # creating a platform-store row when none exists yet
+                        # (products with 0 stock have no row to update).
+                        quantity = int(value)
+                        stock_items = StockItem.objects.filter(variant=variant)
+                        if stock_items.exists():
+                            for stock_item in stock_items:
+                                stock_item.quantity = quantity
+                                stock_item.save(update_fields=["quantity", "updated_at"])
+                        elif platform_store is not None:
+                            StockItem.objects.create(
+                                store=platform_store,
+                                variant=variant,
+                                quantity=quantity,
+                                tenant=product.tenant or platform_store.tenant,
+                            )
+
+                    updated_count += 1
+
+        return Response({"updated": updated_count, "message": f"Updated {updated_count} variants."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
+    def export_csv(self, request):
+        """
+        Export products to CSV with columns: id, name, sku, price, stock, category, brand, is_active, is_demo
+        """
+        # Get queryset with same filtering as list
+        qs = self.filter_queryset(self.get_queryset())
+
+        # Prefetch variants for stock/price
+        qs = qs.prefetch_related("variants", "category")
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="products_export.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "id", "name", "slug", "sku", "price", "stock", "category", "brand",
+            "is_active", "is_demo", "mrp", "description"
+        ])
+
+        for product in qs:
+            variants = list(product.variants.filter(is_active=True))
+            if variants:
+                for variant in variants:
+                    # Get stock quantity
+                    stock_qty = 0
+                    for stock_item in variant.stock_items.all():
+                        if stock_item.store.is_active:
+                            stock_qty += stock_item.quantity
+
+                    writer.writerow([
+                        product.id,
+                        product.name,
+                        product.slug,
+                        variant.sku or "",
+                        str(variant.price),
+                        stock_qty,
+                        product.category.name if product.category else "",
+                        product.brand or "",
+                        product.is_active,
+                        product.is_demo,
+                        str(product.mrp) if product.mrp else "",
+                        product.description or "",
+                    ])
+            else:
+                writer.writerow([
+                    product.id,
+                    product.name,
+                    product.slug,
+                    "",
+                    "",
+                    0,
+                    product.category.name if product.category else "",
+                    product.brand or "",
+                    product.is_active,
+                    product.is_demo,
+                    str(product.mrp) if product.mrp else "",
+                    product.description or "",
+                ])
+
+        return response
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated, IsTenantWriter], parser_classes=[FormParser, MultiPartParser, JSONParser])
+    def import_csv(self, request):
+        """
+        Import products from CSV.
+        Expected columns: id (optional), name, sku, price, stock, category, brand, is_active, is_demo, mrp, description
+        """
+        if "file" not in request.FILES:
+            return Response({"detail": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+        file = request.FILES["file"]
+        if not file.name.endswith(".csv"):
+            return Response({"detail": "File must be a CSV."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            decoded_file = file.read().decode("utf-8")
+        except UnicodeDecodeError:
+            return Response({"detail": "File must be UTF-8 encoded."}, status=status.HTTP_400_BAD_REQUEST)
+
+        reader = csv.DictReader(io.StringIO(decoded_file))
+        required_columns = {"name", "sku", "price"}
+        if not required_columns.issubset(set(reader.fieldnames or [])):
+            missing = required_columns - set(reader.fieldnames or [])
+            return Response({"detail": f"Missing required columns: {', '.join(missing)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        results = {"created": 0, "updated": 0, "errors": []}
+        tenant = None
+        if not request.user.is_staff:
+            from tenants.services import resolve_tenant_for_create
+            tenant = resolve_tenant_for_create(request.user)
+
+        for row_num, row in enumerate(reader, start=2):
+            try:
+                # Skip empty rows
+                if not row.get("name") or not row.get("sku"):
+                    continue
+
+                sku = row["sku"].strip()
+                name = row["name"].strip()
+
+                with transaction.atomic():
+                    # Check if product exists by SKU (via variant) or ID
+                    product = None
+                    variant = None
+
+                    if row.get("id"):
+                        try:
+                            product = Product.objects.get(id=row["id"])
+                            variant = product.variants.filter(sku=sku).first()
+                        except Product.DoesNotExist:
+                            pass
+
+                    if not product and sku:
+                        # Try to find by variant SKU
+                        variant = ProductVariant.objects.select_related("product").filter(sku=sku).first()
+                        if variant:
+                            product = variant.product
+
+                    if product:
+                        # Update existing product/variant
+                        # Check tenant permission
+                        if not request.user.is_staff and product.tenant and not user_tenant_ids(request.user).__contains__(product.tenant_id):
+                            results["errors"].append(f"Row {row_num}: No permission to update product {product.name}")
+                            continue
+
+                        if row.get("name"):
+                            product.name = row["name"]
+                        if row.get("description"):
+                            product.description = row["description"]
+                        if row.get("brand"):
+                            product.brand = row["brand"]
+                        if row.get("category"):
+                            from categories.models import Category
+                            category = (
+                                Category.objects.filter(slug=row["category"]).first()
+                                or Category.objects.filter(name__iexact=row["category"]).first()
+                            )
+                            if category:
+                                product.category = category
+                        if row.get("mrp"):
+                            product.mrp = Decimal(row["mrp"])
+                        if row.get("is_active") is not None:
+                            product.is_active = row["is_active"].lower() in ("true", "1", "yes")
+                        if row.get("is_demo") is not None:
+                            product.is_demo = row["is_demo"].lower() in ("true", "1", "yes")
+                        product.save()
+
+                        if variant and row.get("price"):
+                            variant.price = Decimal(row["price"])
+                            variant.save()
+
+                        if variant and row.get("stock"):
+                            from inventory.models import StockItem
+                            stock_qty = int(row["stock"])
+                            for stock_item in variant.stock_items.all():
+                                if stock_item.store.is_active:
+                                    stock_item.quantity = stock_qty
+                                    stock_item.save(update_fields=["quantity", "updated_at"])
+
+                        results["updated"] += 1
+                    else:
+                        # Create new product
+                        if not request.user.is_staff and not tenant:
+                            results["errors"].append(f"Row {row_num}: No tenant resolved for new product")
+                            continue
+
+                        from categories.models import Category
+                        category = None
+                        if row.get("category"):
+                            category = (
+                                Category.objects.filter(slug=row["category"]).first()
+                                or Category.objects.filter(name__iexact=row["category"]).first()
+                            )
+                        if category is None:
+                            results["errors"].append(
+                                f"Row {row_num}: Category '{row.get('category') or ''}' not found — new products need a valid category."
+                            )
+                            continue
+
+                        product = Product.objects.create(
+                            tenant=tenant,
+                            category=category,
+                            name=row["name"],
+                            description=row.get("description", ""),
+                            brand=row.get("brand", ""),
+                            mrp=Decimal(row["mrp"]) if row.get("mrp") else None,
+                            is_active=row.get("is_active", "true").lower() in ("true", "1", "yes"),
+                            is_demo=row.get("is_demo", "false").lower() in ("true", "1", "yes"),
+                        )
+
+                        variant = ProductVariant.objects.create(
+                            product=product,
+                            name=row.get("name", "Default"),
+                            sku=sku,
+                            price=Decimal(row["price"]),
+                            is_active=True,
+                        )
+
+                        if row.get("stock"):
+                            from inventory.models import StockItem
+                            from stores.models import Store
+                            platform_store = Store.objects.filter(is_platform=True).first()
+                            if platform_store:
+                                StockItem.objects.create(
+                                    store=platform_store,
+                                    variant=variant,
+                                    quantity=int(row["stock"]),
+                                    tenant=tenant or platform_store.tenant,
+                                )
+
+                        results["created"] += 1
+
+            except Exception as e:
+                results["errors"].append(f"Row {row_num}: {str(e)}")
+
+        return Response(results, status=status.HTTP_200_OK)
 
 
 class ProductImageListCreateView(generics.ListCreateAPIView):

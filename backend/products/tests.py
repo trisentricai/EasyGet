@@ -1,3 +1,5 @@
+import csv
+import io
 import tempfile
 from datetime import timedelta
 from decimal import Decimal
@@ -658,3 +660,153 @@ class ProductImageEndpointTests(TestCase):
             format="multipart",
         )
         self.assertEqual(res.status_code, 201, res.data)
+
+class ProductBulkAndCsvTests(TestCase):
+    """Phase B: bulk price/stock updates and CSV import/export."""
+
+    def setUp(self):
+        self.category = Category.objects.create(
+            name="Grocery", is_active=True, sort_order=0
+        )
+        self.store = Store.objects.filter(is_platform=True).first()
+        if self.store is None:
+            self.store = Store.objects.create(
+                name="Platform Store",
+                city="Pune",
+                state="MH",
+                postal_code="411001",
+                latitude=Decimal("18.5204"),
+                longitude=Decimal("73.8567"),
+                is_active=True,
+                is_platform=True,
+            )
+        self.staff = User.objects.create_user(
+            "catalog-staff@example.com",
+            "strongpass123",
+            is_staff=True,
+            is_email_verified=True,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.staff)
+
+        self.product = Product.objects.create(
+            name="Basmati Rice", category=self.category, is_active=True
+        )
+        self.variant = ProductVariant.objects.create(
+            product=self.product,
+            name="1kg",
+            sku="RICE-1KG",
+            price=Decimal("100.00"),
+            is_active=True,
+        )
+        StockItem.objects.create(
+            store=self.store, variant=self.variant, quantity=5
+        )
+
+    def _bulk(self, action, value, ids=None):
+        return self.client.post(
+            "/api/v1/products/bulk_update/",
+            {
+                "product_ids": ids or [self.product.id],
+                "action": action,
+                "value": value,
+            },
+            format="json",
+        )
+
+    def test_increase_percent_is_exact(self):
+        res = self._bulk("increase_percent", 10)
+        self.assertEqual(res.status_code, 200, res.data)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.price, Decimal("110.00"))
+
+    def test_decrease_percent_and_flat_price(self):
+        self.assertEqual(self._bulk("decrease_percent", 25).status_code, 200)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.price, Decimal("75.00"))
+
+        self.assertEqual(self._bulk("set_flat", "149.99").status_code, 200)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.price, Decimal("149.99"))
+
+    def test_set_stock_updates_existing_row(self):
+        res = self._bulk("set_stock", 42)
+        self.assertEqual(res.status_code, 200, res.data)
+        item = StockItem.objects.get(store=self.store, variant=self.variant)
+        self.assertEqual(item.quantity, 42)
+
+    def test_set_stock_creates_row_for_zero_stock_product(self):
+        bare = Product.objects.create(
+            name="Bare Product", category=self.category, is_active=True
+        )
+        bare_variant = ProductVariant.objects.create(
+            product=bare,
+            name="std",
+            sku="BARE-1",
+            price=Decimal("10.00"),
+            is_active=True,
+        )
+        res = self._bulk("set_stock", 25, ids=[bare.id])
+        self.assertEqual(res.status_code, 200, res.data)
+        item = StockItem.objects.get(variant=bare_variant)
+        self.assertEqual(item.quantity, 25)
+
+    def test_negative_value_rejected(self):
+        res = self._bulk("increase_percent", -5)
+        self.assertEqual(res.status_code, 400)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.price, Decimal("100.00"))
+
+    def test_export_csv_contains_expected_columns_and_rows(self):
+        res = self.client.get("/api/v1/products/export_csv/")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("text/csv", res["Content-Type"])
+        self.assertIn("products_export.csv", res["Content-Disposition"])
+
+        rows = list(csv.DictReader(io.StringIO(res.content.decode("utf-8"))))
+        self.assertEqual(
+            list(rows[0].keys()),
+            [
+                "id", "name", "slug", "sku", "price", "stock", "category",
+                "brand", "is_active", "is_demo", "mrp", "description",
+            ],
+        )
+        rice = next(r for r in rows if r["sku"] == "RICE-1KG")
+        self.assertEqual(rice["price"], "100.00")
+        self.assertEqual(rice["stock"], "5")
+        self.assertEqual(rice["category"], "Grocery")
+
+    def test_import_csv_reports_row_errors_and_updates(self):
+        content = (
+            "id,name,sku,price,stock,category,brand,is_active,is_demo,mrp,description\n"
+            ",Basmati Rice Premium,RICE-1KG,120.00,7,Grocery,,true,false,,,"
+            "\n"
+            ",New Atta,NEW-ATTA,50.00,3,Grocery,FarmLite,true,false,60.00,New item\n"
+            ",Broken Item,BROKEN-1,not-a-number,1,Grocery,,,,,\n"
+        )
+        upload = SimpleUploadedFile(
+            "products.csv", content.encode("utf-8"), content_type="text/csv"
+        )
+        res = self.client.post(
+            "/api/v1/products/import_csv/", {"file": upload}, format="multipart"
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data["updated"], 1)
+        self.assertEqual(res.data["created"], 1)
+        self.assertEqual(len(res.data["errors"]), 1)
+        self.assertIn("Row 4", res.data["errors"][0])
+
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.price, Decimal("120.00"))
+        self.assertTrue(Product.objects.filter(name="New Atta").exists())
+        self.assertFalse(ProductVariant.objects.filter(sku="BROKEN-1").exists())
+
+    def test_import_requires_core_columns(self):
+        upload = SimpleUploadedFile(
+            "bad.csv", b"name\nNo SKU\n", content_type="text/csv"
+        )
+        res = self.client.post(
+            "/api/v1/products/import_csv/", {"file": upload}, format="multipart"
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Missing required columns", res.data["detail"])
