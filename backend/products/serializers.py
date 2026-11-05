@@ -181,6 +181,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "discount_percent",
             "is_featured",
             "is_active",
+            "tags",
             "primary_image",
             "primary_image_display",
             "rating_avg",
@@ -262,6 +263,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "discount_percent",
             "is_featured",
             "is_active",
+            "tags",
             "primary_image",
             "primary_image_display",
             "rating_avg",
@@ -378,6 +380,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             "mrp",
             "is_featured",
             "is_active",
+            "tags",
             "variants",
             "images",
         ]
