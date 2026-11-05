@@ -564,68 +564,98 @@ export function StorefrontPage() {
                 marginTop: 4,
               }}
             >
-              <div className="muted" style={{ fontWeight: 800 }}>
-                📱 Mobile app appearance
-              </div>
-              <p className="muted" style={{ margin: "4px 0 0", fontSize: 12.5 }}>
-                Read by the Flutter customer app from the storefront theme payload — no app
-                release needed.
-              </p>
-            </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <input
-                type="checkbox"
-                checked={themeValue.enable_glassmorphism ?? true}
-                onChange={(e) => saveTheme({ enable_glassmorphism: e.target.checked })}
-              />
-              Enable glassmorphism cards
-            </label>
-            <label>
-              Glass blur intensity
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input
-                  type="range"
-                  min={0}
-                  max={40}
-                  step={1}
-                  value={themeValue.glass_blur_intensity ?? 16}
-                  onChange={(e) =>
-                    setTheme({
-                      ...(theme ?? themeValue),
-                      glass_blur_intensity: Number(e.target.value),
-                    } as Theme)
-                  }
-                  onPointerUp={(e) =>
-                    saveTheme({
-                      glass_blur_intensity: Number(e.currentTarget.value),
-                    })
-                  }
-                  onKeyUp={(e) =>
-                    saveTheme({
-                      glass_blur_intensity: Number(e.currentTarget.value),
-                    })
-                  }
-                  style={{ flex: 1, accentColor: "var(--c-primary)" }}
-                />
-                <span className="badge">{themeValue.glass_blur_intensity ?? 16}</span>
-              </div>
-            </label>
-            <label>
-              Mobile default theme
-              <select
-                className="input"
-                value={themeValue.mobile_default_theme ?? "SYSTEM"}
-                onChange={(e) =>
-                  saveTheme({
-                    mobile_default_theme: e.target.value as Theme["mobile_default_theme"],
-                  })
-                }
+              <div
+                style={{
+                  display: "grid",
+                  gap: 14,
+                  padding: 16,
+                  border: "1px solid var(--border)",
+                  borderRadius: 16,
+                  background: "var(--bg-sunken)",
+                }}
               >
-                <option value="SYSTEM">System — follow the device</option>
-                <option value="LIGHT">Light</option>
-                <option value="DARK">Dark</option>
-              </select>
-            </label>
+                <div>
+                  <div style={{ fontWeight: 800 }}>📱 Mobile app appearance</div>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: 12.5 }}>
+                    Saved to the storefront theme payload and applied by the Flutter
+                    customer app — no app release needed.
+                  </p>
+                </div>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: 12,
+                    background: "var(--bg-elevated)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={themeValue.enable_glassmorphism ?? true}
+                    onChange={(e) => saveTheme({ enable_glassmorphism: e.target.checked })}
+                  />
+                  <span>
+                    <strong>Enable glassmorphism cards</strong>
+                    <span
+                      className="muted"
+                      style={{ display: "block", fontSize: 12, fontWeight: 500 }}
+                    >
+                      Frosted blur behind product cards in the app.
+                    </span>
+                  </span>
+                </label>
+                <label>
+                  Glass blur intensity
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <input
+                      type="range"
+                      min={0}
+                      max={40}
+                      step={1}
+                      value={themeValue.glass_blur_intensity ?? 16}
+                      onChange={(e) =>
+                        setTheme({
+                          ...(theme ?? themeValue),
+                          glass_blur_intensity: Number(e.target.value),
+                        } as Theme)
+                      }
+                      onPointerUp={(e) =>
+                        saveTheme({
+                          glass_blur_intensity: Number(e.currentTarget.value),
+                        })
+                      }
+                      onKeyUp={(e) =>
+                        saveTheme({
+                          glass_blur_intensity: Number(e.currentTarget.value),
+                        })
+                      }
+                      style={{ flex: 1, accentColor: "var(--c-primary)" }}
+                    />
+                    <span className="badge">{themeValue.glass_blur_intensity ?? 16}</span>
+                  </div>
+                </label>
+                <label>
+                  Mobile default theme
+                  <select
+                    className="input"
+                    value={themeValue.mobile_default_theme ?? "SYSTEM"}
+                    onChange={(e) =>
+                      saveTheme({
+                        mobile_default_theme: e.target.value as Theme["mobile_default_theme"],
+                      })
+                    }
+                  >
+                    <option value="SYSTEM">System — follow the device</option>
+                    <option value="LIGHT">Light</option>
+                    <option value="DARK">Dark</option>
+                  </select>
+                </label>
+              </div>
+            </div>
           </div>
         </Card>
       )}
