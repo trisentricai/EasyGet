@@ -76,6 +76,10 @@ class Product(models.Model):
     mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_featured = models.BooleanField(default=False)
+    is_demo = models.BooleanField(
+        default=False,
+        help_text="True for seeded/demo products, False for manually added ones.",
+    )
     tags = models.CharField(max_length=500, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

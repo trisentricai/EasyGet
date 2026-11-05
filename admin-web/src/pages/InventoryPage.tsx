@@ -15,6 +15,22 @@ type StockItem = {
   updated_at: string;
 };
 
+type ProductWithStock = Product & {
+  stockItems: Array<{
+    id: number;
+    store: { id: number; name: string; slug: string };
+    variant: { id: number; name: string; sku: string; price: string };
+    quantity: number;
+    low_stock_threshold: number;
+    is_available: boolean;
+    is_low_stock: boolean;
+    updated_at: string;
+  }>;
+  totalQuantity: number;
+  isLowStock: boolean;
+  isOutOfStock: boolean;
+};
+
 function toArray<T>(res: { results: T[] } | T[]): T[] {
   return Array.isArray(res) ? res : res.results;
 }
@@ -32,90 +48,205 @@ export function InventoryPage() {
       toArray(await api<{ results: StockItem[] } | StockItem[]>("/inventory/")),
   });
 
-  // Catalog for the "Needs stock" section — unstocked products added via the
-  // product panel have no StockItem yet, so they never appear in the stock
-  // table above. Shares the ["admin","products"] cache key with ProductsPage,
-  // so invalidating after a create refreshes this list automatically.
   const productsQuery = useQuery({
     queryKey: ["admin", "products"],
     queryFn: () => listAllProducts(),
   });
 
-  const unstockedProducts = useMemo(() => {
-    const rows = productsQuery.data ?? [];
+  // Merge products with their stock items
+  const productsWithStock = useMemo(() => {
+    const stockItems = itemsQuery.data ?? [];
+    const products = productsQuery.data ?? [];
     const q = query.trim().toLowerCase();
-    return rows.filter(
-      (p) =>
-        p.in_stock === false &&
-        (!q ||
-          p.name.toLowerCase().includes(q) ||
-          (p.category?.name ?? "").toLowerCase().includes(q)),
-    );
-  }, [productsQuery.data, query]);
 
-  const items = itemsQuery.data ?? null;
+    // Group stock items by variant ID
+    const stockByVariant = new Map<number, StockItem[]>();
+    for (const item of stockItems) {
+      if (item.variant?.id) {
+        const arr = stockByVariant.get(item.variant.id) ?? [];
+        arr.push(item);
+        stockByVariant.set(item.variant.id, arr);
+      }
+    }
+
+    return products
+      .filter((p) => {
+        if (!q) return true;
+        return (
+          p.name.toLowerCase().includes(q) ||
+          (p.category?.name ?? "").toLowerCase().includes(q) ||
+          (p.slug ?? "").toLowerCase().includes(q)
+        );
+      })
+      .map((p): ProductWithStock => {
+        const variantIds = (p.variants ?? []).map((v: { id: number }) => v.id);
+        const stockItemsForProduct = variantIds.flatMap((id: number) =>
+          stockByVariant.get(id) ?? [],
+        );
+        const totalQuantity = stockItemsForProduct.reduce(
+          (sum: number, i: StockItem) => sum + i.quantity,
+          0,
+        );
+        const isLowStock = stockItemsForProduct.some(
+          (i: StockItem) => i.is_low_stock && i.quantity > 0,
+        );
+        const isOutOfStock = totalQuantity === 0;
+
+        return {
+          ...p,
+          stockItems: stockItemsForProduct,
+          totalQuantity,
+          isLowStock,
+          isOutOfStock,
+        };
+      });
+  }, [itemsQuery.data, productsQuery.data, query]);
 
   useEffect(() => {
     if (itemsQuery.error)
       push(itemsQuery.error?.message ?? "Failed to load inventory", "err");
   }, [itemsQuery.error, push]);
 
+  useEffect(() => {
+    if (productsQuery.error)
+      push(productsQuery.error?.message ?? "Failed to load products", "err");
+  }, [productsQuery.error, push]);
+
   const reload = () =>
     queryClient.invalidateQueries({ queryKey: ["admin", "inventory"] });
 
-  const filtered = (items ?? []).filter((i) =>
-    (i.variant?.sku ?? "").toLowerCase().includes(query.toLowerCase()) ||
-    (i.store?.name ?? "").toLowerCase().includes(query.toLowerCase()),
-  );
+  const loading = itemsQuery.isLoading || productsQuery.isLoading;
 
   return (
     <div>
       <div className="toolbar">
         <input
           className="input"
-          placeholder="Search by SKU or store…"
+          placeholder="Search by name, SKU, or category…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        <span className="muted" style={{ marginLeft: 12 }}>
+          {productsWithStock.length} product{productsWithStock.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
       <Card>
-        {items === null ? (
+        {loading ? (
           <Spinner />
-        ) : filtered.length === 0 ? (
-          <EmptyState text="No stock items yet." />
+        ) : productsWithStock.length === 0 ? (
+          <EmptyState text="No products found." />
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Product / SKU</th>
-                  <th>Store</th>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>SKU</th>
                   <th>Price</th>
-                  <th>In stock</th>
+                  <th>Total Stock</th>
                   <th>Status</th>
-                  <th style={{ width: 160 }} />
+                  <th style={{ width: 180 }} />
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((i) => (
-                  <tr key={i.id}>
-                    <td style={{ fontWeight: 700 }}>{i.variant?.sku}</td>
-                    <td>{i.store?.name}</td>
-                    <td>₹{i.variant?.price}</td>
+                {productsWithStock.map((p) => (
+                  <tr key={p.id}>
                     <td>
-                      <strong style={{ fontSize: 16 }}>{i.quantity}</strong>
-                      <span className="muted" style={{ fontSize: 12.5 }}> / {i.low_stock_threshold} min</span>
+                      <div style={{ fontWeight: 700 }}>
+                        {p.name}
+                        {p.is_demo && (
+                          <span
+                            className="badge"
+                            style={{
+                              marginLeft: 8,
+                              background: "var(--c-accent)",
+                              color: "#fff",
+                              fontSize: 10.5,
+                            }}
+                          >
+                            Demo
+                          </span>
+                        )}
+                        {!p.is_demo && (
+                          <span
+                            className="badge"
+                            style={{
+                              marginLeft: 8,
+                              background: "var(--c-primary)",
+                              color: "#fff",
+                              fontSize: 10.5,
+                            }}
+                          >
+                            Manual
+                          </span>
+                        )}
+                      </div>
+                      <div className="muted" style={{ fontSize: 12.5 }}>
+                        {p.slug}
+                      </div>
+                    </td>
+                    <td>{p.category?.name ?? "—"}</td>
+                    <td>
+                      {p.variants?.map((v) => (
+                        <div key={v.id} className="muted" style={{ fontSize: 12.5 }}>
+                          {v.sku ?? v.name}
+                        </div>
+                      ))}
                     </td>
                     <td>
-                      <span className={`badge ${i.quantity === 0 ? "err" : i.is_low_stock ? "warn" : "ok"}`}>
-                        {i.quantity === 0 ? "Out of stock" : i.is_low_stock ? "Low stock" : "Healthy"}
-                      </span>
+                      {p.variants?.map((v) => (
+                        <div key={v.id} style={{ fontWeight: 600, fontSize: 13 }}>
+                          ₹{v.price}
+                        </div>
+                      ))}
                     </td>
                     <td>
-                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                        <button className="btn btn-sm btn-primary" onClick={() => setAdjusting(i)}>
-                          Adjust stock
+                      <strong style={{ fontSize: 16 }}>
+                        {p.totalQuantity > 0 ? p.totalQuantity : "0"}
+                      </strong>
+                      {p.stockItems.length > 0 && (
+                        <span className="muted" style={{ fontSize: 12.5 }}>
+                          {" "}
+                          across {p.stockItems.length} store{p.stockItems.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {p.isOutOfStock ? (
+                        <span className="badge err">Out of Stock</span>
+                      ) : p.isLowStock ? (
+                        <span className="badge warn">Low Stock</span>
+                      ) : (
+                        <span className="badge ok">In Stock</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        {p.stockItems.length > 0 && (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setAdjusting(p.stockItems[0])}
+                          >
+                            Adjust stock
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => setAdding(p)}
+                        >
+                          {p.stockItems.length > 0 ? "Add more stock" : "Add stock"}
+                        </button>
+                        <button
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => {
+                            // Navigate to products page to edit
+                            window.location.hash = `#/products`;
+                            // Could also use navigate if we had router context
+                          }}
+                        >
+                          Edit product
                         </button>
                       </div>
                     </td>
@@ -126,47 +257,6 @@ export function InventoryPage() {
           </div>
         )}
       </Card>
-
-      {unstockedProducts.length > 0 ? (
-        <Card>
-          <h3 style={{ marginTop: 0 }}>Needs stock</h3>
-          <p className="muted" style={{ marginTop: -8 }}>
-            Products with <strong>no stock row yet</strong> — added from the product
-            panel but never stocked. Add stock and the storefront flips them to
-            “In stock” immediately.
-          </p>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Category</th>
-                  <th>Stock</th>
-                  <th style={{ width: 160 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {unstockedProducts.map((p) => (
-                  <tr key={p.id}>
-                    <td style={{ fontWeight: 700 }}>{p.name}</td>
-                    <td>{p.category?.name ?? "—"}</td>
-                    <td>
-                      <span className="badge err">No stock</span>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                        <button className="btn btn-sm btn-primary" onClick={() => setAdding(p)}>
-                          Add stock
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      ) : null}
 
       {adjusting && (
         <AdjustModal
@@ -315,8 +405,7 @@ function AddStockModal({
     Array<{ id: number; name: string; sku: string; price: string; is_active?: boolean }>
   >([]);
 
-  // Resolve the product's variants (with ids) — list rows don't carry them,
-  // detail does; the add-stock create endpoint needs the variant id.
+  // Resolve the product's variants (with ids)
   useEffect(() => {
     let alive = true;
     getProduct(product.slug)
@@ -342,9 +431,6 @@ function AddStockModal({
 
   const active = variants.find((v) => v.is_active) ?? variants[0];
   const stores = storesQuery.data ?? [];
-  // Single source of truth for storefront stock: the EASYGET platform store.
-  // (fallback to slug match for safety; never blindly take stores[0] — that
-  // could resolve to the legacy demo store.)
   const platformStore =
     stores.find((s) => s.is_platform) ?? stores.find((s) => s.slug === "easyget") ?? null;
   const effectiveStoreId = storeId ?? platformStore?.id ?? null;
@@ -367,7 +453,7 @@ function AddStockModal({
       });
       await queryClient.invalidateQueries({ queryKey: ["admin", "inventory"] });
       await queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
-      push(`Stock added: ${active.sku} × ${quantity} — now “In stock”.`);
+      push(`Stock added: ${active.sku} × ${quantity} — now "In stock".`);
       onClose();
     } catch (e) {
       push(errText(e, "Couldn't add stock"), "err");
@@ -416,7 +502,7 @@ function AddStockModal({
         </label>
         {existing ? (
           <p className="muted">
-            This variant already has a stock row — use “Adjust stock” on the stock table instead.
+            This variant already has a stock row — use "Adjust stock" on the stock table instead.
           </p>
         ) : null}
       </div>

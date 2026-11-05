@@ -11,6 +11,7 @@ import { UsersPage } from "./pages/UsersPage";
 import { InventoryPage } from "./pages/InventoryPage";
 import { StorefrontPage } from "./pages/StorefrontPage";
 import { Spinner } from "./components/ui";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const NAV: Array<{ route: string; icon: string; label: string; adminOnly?: boolean }> = [
   { route: "dashboard", icon: "📊", label: "Dashboard" },
@@ -49,7 +50,8 @@ export default function App() {
   if (!user) return <LoginPage onDone={() => navigate("dashboard")} />;
 
   return (
-    <Shell route={route} email={user.email} role={user.role} onSignOut={signOut}>
+    <ErrorBoundary>
+      <Shell route={route} email={user.email} role={user.role} onSignOut={signOut}>
       {route === "dashboard" && <DashboardPage />}
       {route === "orders" && <OrdersPage />}
       {route === "categories" && <CategoriesPage />}
@@ -64,7 +66,7 @@ export default function App() {
         <div className="card not-found">
           <div className="empty">
             <h2>Page not found</h2>
-            <p className="muted">The admin section “{route}” doesn't exist.</p>
+            <p className="muted">The admin section "{route}" doesn't exist.</p>
             <button className="btn btn-primary" onClick={() => navigate("dashboard")}>
               Back to dashboard
             </button>
@@ -72,6 +74,7 @@ export default function App() {
         </div>
       )}
     </Shell>
+    </ErrorBoundary>
   );
 }
 

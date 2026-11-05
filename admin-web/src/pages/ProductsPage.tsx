@@ -17,6 +17,7 @@ import {
   DEFAULT_IMAGE_DISPLAY,
   type ImageDisplay,
   type Product,
+  type ProductDetail,
   type ProductImage,
 } from "../services/api";
 import ImageDisplayEditor, {
@@ -132,7 +133,7 @@ export function ProductsPage() {
       is_featured: p.is_featured,
     });
     getProduct(p.slug)
-      .then((detail) => {
+      .then((detail: ProductDetail) => {
         setImages(detail.images ?? []);
         setDraft((d) => ({
           ...d,
@@ -368,7 +369,33 @@ export function ProductsPage() {
                 {filtered.map((p) => (
                   <tr key={p.id}>
                     <td>
-                      <div style={{ fontWeight: 700 }}>{p.name}</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                        <div style={{ fontWeight: 700 }}>{p.name}</div>
+                        {p.is_demo && (
+                          <span
+                            className="badge"
+                            style={{
+                              background: "var(--c-accent)",
+                              color: "#fff",
+                              fontSize: 10.5,
+                            }}
+                          >
+                            Demo
+                          </span>
+                        )}
+                        {!p.is_demo && (
+                          <span
+                            className="badge"
+                            style={{
+                              background: "var(--c-primary)",
+                              color: "#fff",
+                              fontSize: 10.5,
+                            }}
+                          >
+                            Manual
+                          </span>
+                        )}
+                      </div>
                       <div className="muted" style={{ fontSize: 12.5 }}>
                         {p.slug}
                       </div>

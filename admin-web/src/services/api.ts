@@ -225,9 +225,19 @@ export type Product = {
   base_price: string | null;
   is_featured: boolean;
   is_active: boolean;
+  is_demo: boolean;
   tags?: string;
   /** False when no qty > 0 sits in an active store (detail still opens). */
   in_stock?: boolean | null;
+  variants?: Array<{
+    id: number;
+    name: string;
+    sku?: string;
+    price: string;
+    is_active?: boolean;
+    in_stock?: boolean | null;
+    stock_quantity?: number | null;
+  }>;
 };
 
 /** Display knobs every rendered image carries (focal point, scale, hover). */
