@@ -1546,9 +1546,11 @@ button.link { background: none; border: 0; padding: 0; font: inherit; font-weigh
   display: flex;
   gap: 12px;
   overflow-x: auto;
-  padding: 4px 2px 12px;
+  padding: 4px 12px 16px 12px;
   scroll-snap-type: x mandatory;
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .rail-item {
   flex: 0 0 168px;
@@ -1556,7 +1558,39 @@ button.link { background: none; border: 0; padding: 0; font: inherit; font-weigh
   min-width: 0;
 }
 @media (max-width: 640px) {
-  .rail-item { flex-basis: 148px; }
+  .rail-item { flex: 0 0 152px; }
+}
+
+/* Ensure product cards in rails don't shrink and text truncates properly */
+.rail-item > * {
+  min-width: 0;
+}
+.rail .product-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.rail .product-card .product-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.rail .product-card .product-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.rail .product-card .product-brand {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rail .product-card .product-price-row {
+  flex-shrink: 0;
 }
 .cat-chip {
   flex: 0 0 auto;
@@ -1884,8 +1918,7 @@ button.link { background: none; border: 0; padding: 0; font: inherit; font-weigh
 /* mobile filter drawer trigger */
 @media (max-width: 900px) {
   .browse-layout { grid-template-columns: 1fr; }
-  .filter-side { position: static; display: none; }
-  .filter-side.open { display: block; }
+  .filter-side { display: none; }
   .filter-toggle {
     display: inline-flex;
     align-items: center;
@@ -1898,6 +1931,10 @@ button.link { background: none; border: 0; padding: 0; font: inherit; font-weigh
     font-weight: 600;
     cursor: pointer;
   }
+  .sortbar-right { display: flex; align-items: center; gap: 10px; }
+  .sortbar-right > label { display: none; }
+  .sortbar-right > select { display: none; }
+  .sortbar-right > .filter-toggle { display: inline-flex; }
 }
 
 /* ---------- Wishlist (header link, PDP heart) ---------- */
@@ -2049,6 +2086,17 @@ img.img-fx-gray:hover {
 /* ---------- Home page layout ---------- */
 .home-page {
   min-height: calc(100vh - var(--nav-h));
+}
+
+/* Browse All Categories CTA */
+.browse-all-categories {
+  margin: 8px 0 16px;
+  max-width: 320px;
+}
+.browse-all-categories .btn {
+  width: 100%;
+  justify-content: center;
+  gap: 8px;
 }
 
 /* ---------- Hero tile (Apple product-tile + Shopify cinematic) ---------- */

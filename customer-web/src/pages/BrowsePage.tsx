@@ -13,6 +13,7 @@ import {
 import { brandNames, FALLBACK_BRANDS } from "../utils/brands";
 import { CardSkeletonGrid, EmptyState, PageCrumbs, ProductCard } from "../components/ui";
 import { Icon } from "../components/icons";
+import { FilterBottomSheet } from "../components/FilterBottomSheet";
 export function BrowsePage() {
   const { user } = useAuth();
   const route = useHashRoute();
@@ -29,7 +30,7 @@ export function BrowsePage() {
   const [minPrice, setMinPrice] = useState(route.query.get("min_price") ?? "");
   const [maxPrice, setMaxPrice] = useState(route.query.get("max_price") ?? "");
   const [featuredOnly, setFeaturedOnly] = useState(route.query.get("is_featured") === "true");
-  const [sideOpen, setSideOpen] = useState(false);
+  const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
 
   // Adopt the hash on navigation (header category links, shared URLs). Doing
   // this in place — instead of remounting — keeps the page's scroll/focus.
@@ -177,132 +178,140 @@ export function BrowsePage() {
 
   const categoryName = categories.find((c) => c.slug === category)?.name;
 
+  // Build filter content once for both desktop sidebar and mobile bottom sheet
+  const filterContent = (
+    <>
+      <div className="filter-group">
+        <h4><Icon name="grid" size={13} /> Category</h4>
+        <div className="filter-opts">
+          <label className={`filter-opt ${!category ? "on" : ""}`}>
+            <input type="radio" name="f-cat" checked={!category} onChange={() => setCategory("")} />
+            All categories
+          </label>
+          {categories.map((c) => (
+            <label key={c.id} className={`filter-opt ${category === c.slug ? "on" : ""}`}>
+              <input
+                type="radio"
+                name="f-cat"
+                checked={category === c.slug}
+                onChange={() => setCategory(c.slug)}
+              />
+              {c.name}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="filter-group">
+        <h4><Icon name="tag" size={13} /> Brand</h4>
+        <div className="filter-opts">
+          <label className={`filter-opt ${!brand ? "on" : ""}`}>
+            <input type="radio" name="f-brand" checked={!brand} onChange={() => setBrand("")} />
+            All brands
+          </label>
+          {brands.map((b) => (
+            <label key={b} className={`filter-opt ${brand === b ? "on" : ""}`}>
+              <input type="radio" name="f-brand" checked={brand === b} onChange={() => setBrand(b)} />
+              {b}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="filter-group">
+        <h4><Icon name="star" size={13} /> Rating</h4>
+        <div className="filter-opts">
+          {[["", "Any rating"], ["4", "4★ & up"], ["3", "3★ & up"], ["2", "2★ & up"]].map(
+            ([val, label]) => (
+              <label key={val || "any"} className={`filter-opt ${rating === val ? "on" : ""}`}>
+                <input
+                  type="radio"
+                  name="f-rating"
+                  checked={rating === val}
+                  onChange={() => setRating(val)}
+                />
+                {label}
+              </label>
+            ),
+          )}
+        </div>
+      </div>
+
+      <div className="filter-group">
+        <h4><Icon name="box" size={13} /> Availability</h4>
+        <div className="filter-opts">
+          <label className={`filter-opt ${inStockOnly ? "on" : ""}`}>
+            <input
+              type="checkbox"
+              checked={inStockOnly}
+              onChange={(e) => setInStockOnly(e.target.checked)}
+            />
+            In stock only
+          </label>
+        </div>
+      </div>
+
+      <div className="filter-group">
+        <h4><Icon name="percent" size={13} /> Discount</h4>
+        <div className="filter-opts">
+          {[["", "Any discount"], ["10", "10% off or more"], ["25", "25% off or more"], ["50", "50% off or more"]].map(
+            ([val, label]) => (
+              <label key={val || "any"} className={`filter-opt ${discount === val ? "on" : ""}`}>
+                <input
+                  type="radio"
+                  name="f-disc"
+                  checked={discount === val}
+                  onChange={() => setDiscount(val)}
+                />
+                {label}
+              </label>
+            ),
+          )}
+        </div>
+      </div>
+
+      <div className="filter-group">
+        <h4><Icon name="percent" size={13} /> Price</h4>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="Min ₹"
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value.replace(/\D/g, ""))}
+          />
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="Max ₹"
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value.replace(/\D/g, ""))}
+          />
+        </div>
+      </div>
+
+      <div className="filter-group">
+        <div className="filter-opts">
+          <label className={`filter-opt ${featuredOnly ? "on" : ""}`}>
+            <input
+              type="checkbox"
+              checked={featuredOnly}
+              onChange={(e) => setFeaturedOnly(e.target.checked)}
+            />
+            Featured only
+          </label>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="page">
       <PageCrumbs current={categoryName ?? "Browse products"} />
       <div className="browse-layout">
-        <aside className={`filter-side ${sideOpen ? "open" : ""}`} aria-label="Filters">
-          <div className="filter-group">
-            <h4><Icon name="grid" size={13} /> Category</h4>
-            <div className="filter-opts">
-              <label className={`filter-opt ${!category ? "on" : ""}`}>
-                <input type="radio" name="f-cat" checked={!category} onChange={() => setCategory("")} />
-                All categories
-              </label>
-              {categories.map((c) => (
-                <label key={c.id} className={`filter-opt ${category === c.slug ? "on" : ""}`}>
-                  <input
-                    type="radio"
-                    name="f-cat"
-                    checked={category === c.slug}
-                    onChange={() => setCategory(c.slug)}
-                  />
-                  {c.name}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="filter-group">
-            <h4><Icon name="tag" size={13} /> Brand</h4>
-            <div className="filter-opts">
-              <label className={`filter-opt ${!brand ? "on" : ""}`}>
-                <input type="radio" name="f-brand" checked={!brand} onChange={() => setBrand("")} />
-                All brands
-              </label>
-              {brands.map((b) => (
-                <label key={b} className={`filter-opt ${brand === b ? "on" : ""}`}>
-                  <input type="radio" name="f-brand" checked={brand === b} onChange={() => setBrand(b)} />
-                  {b}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="filter-group">
-            <h4><Icon name="star" size={13} /> Rating</h4>
-            <div className="filter-opts">
-              {[["", "Any rating"], ["4", "4★ & up"], ["3", "3★ & up"], ["2", "2★ & up"]].map(
-                ([val, label]) => (
-                  <label key={val || "any"} className={`filter-opt ${rating === val ? "on" : ""}`}>
-                    <input
-                      type="radio"
-                      name="f-rating"
-                      checked={rating === val}
-                      onChange={() => setRating(val)}
-                    />
-                    {label}
-                  </label>
-                ),
-              )}
-            </div>
-          </div>
-
-          <div className="filter-group">
-            <h4><Icon name="box" size={13} /> Availability</h4>
-            <div className="filter-opts">
-              <label className={`filter-opt ${inStockOnly ? "on" : ""}`}>
-                <input
-                  type="checkbox"
-                  checked={inStockOnly}
-                  onChange={(e) => setInStockOnly(e.target.checked)}
-                />
-                In stock only
-              </label>
-            </div>
-          </div>
-
-          <div className="filter-group">
-            <h4><Icon name="percent" size={13} /> Discount</h4>
-            <div className="filter-opts">
-              {[["", "Any discount"], ["10", "10% off or more"], ["25", "25% off or more"], ["50", "50% off or more"]].map(
-                ([val, label]) => (
-                  <label key={val || "any"} className={`filter-opt ${discount === val ? "on" : ""}`}>
-                    <input
-                      type="radio"
-                      name="f-disc"
-                      checked={discount === val}
-                      onChange={() => setDiscount(val)}
-                    />
-                    {label}
-                  </label>
-                ),
-              )}
-            </div>
-          </div>
-
-          <div className="filter-group">
-            <h4><Icon name="percent" size={13} /> Price</h4>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Min ₹"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value.replace(/\D/g, ""))}
-              />
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Max ₹"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value.replace(/\D/g, ""))}
-              />
-            </div>
-          </div>
-
-          <div className="filter-group">
-            <div className="filter-opts">
-              <label className={`filter-opt ${featuredOnly ? "on" : ""}`}>
-                <input
-                  type="checkbox"
-                  checked={featuredOnly}
-                  onChange={(e) => setFeaturedOnly(e.target.checked)}
-                />
-                Featured only
-              </label>
-            </div>
-          </div>
+        {/* Desktop sidebar — hidden on mobile via CSS @media (max-width: 900px) */}
+        <aside className="filter-side" aria-label="Filters">
+          {filterContent}
         </aside>
 
         <div className="browse-main">
@@ -315,7 +324,12 @@ export function BrowsePage() {
               )}
             </span>
             <div className="sortbar-right">
-              <button className="filter-toggle" onClick={() => setSideOpen((o) => !o)} type="button">
+              {/* Mobile filter button — shown on mobile via CSS */}
+              <button
+                className="filter-toggle"
+                onClick={() => setBottomSheetOpen(true)}
+                type="button"
+              >
                 <Icon name="grid" size={14} /> Filters
               </button>
               <label htmlFor="sortsel">Sort By</label>
@@ -365,6 +379,18 @@ export function BrowsePage() {
           )}
         </div>
       </div>
+
+      {/* Mobile Bottom Sheet for Filters */}
+      <FilterBottomSheet
+        isOpen={bottomSheetOpen}
+        onClose={() => setBottomSheetOpen(false)}
+        onApply={() => {
+          // Filters are already applied via URL state; just close
+        }}
+        title="Filter & Sort"
+      >
+        {filterContent}
+      </FilterBottomSheet>
     </div>
   );
 }

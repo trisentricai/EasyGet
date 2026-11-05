@@ -15,24 +15,18 @@ import {
   RecentlyViewedRail,
   RecommendedRail,
 } from "../components/marketplace";
+import { Icon } from "../components/icons";
 
 /**
  * Home page — clean, professional e-commerce layout:
  * - Full-bleed hero tile with giant headline + single pill CTA
- * - Single "Shop by Category" section with proper category cards (image + colorful wash fallback)
+ * - Browse All Categories button
  * - Deals of the Day
  * - 4 product cards per row (PDP-style cards)
  * - Recently Viewed
  */
 export function HomePage() {
   const { data, loading, error } = useStorefront();
-  // Shared cache with the header strip + sidebar: one fetch per visit.
-  // Used only as a fallback when the designer has no CATEGORY_GRID section.
-  const categoriesQuery = useQuery({
-    queryKey: ["categories"],
-    queryFn: listCategories,
-    staleTime: 5 * 60_000,
-  });
 
   if (loading) return <Spinner />;
   if (error || !data) {
@@ -56,105 +50,60 @@ export function HomePage() {
   const rest = sections.filter(
     (s) => s.section_type !== "HERO" && s.section_type !== "BANNER",
   );
-  // Fallback category rail when the designer has no CATEGORY_GRID section:
-  // build it from the store's real category list (not stray section items),
-  // so the home page always shows a complete, shoppable aisle grid.
-  const hasCategorySection = rest.some((s) => s.section_type === "CATEGORY_GRID");
-  const categoryItems: SectionItem[] = hasCategorySection
-    ? []
-    : asArray(categoriesQuery.data).map((c, index) => ({
-        id: -(index + 1),
-        item_type: "CATEGORY" as const,
-        product: null,
-        product_name: null,
-        product_slug: null,
-        product_price: null,
-        category: c.id,
-        category_name: c.name,
-        category_slug: c.slug,
-        caption: "",
-        image: null,
-        link: "",
-        config: {},
-        position: index,
-      }));
   const hasContent = sections.length > 0;
 
   return (
     <div className="page home-page">
-      {/* Left category sidebar + home content — sidebar now on the home screen too */}
-      <div className="browse-layout">
-        <CategorySidebar
-          activeCategory=""
-          activeBrand=""
-          activeDiscount=""
-          onCategoryChange={(slug) => { if (slug) window.location.hash = `#/browse?category=${encodeURIComponent(slug)}`; }}
-          onBrandChange={() => undefined}
-          onDiscountChange={() => undefined}
-        />
-        <div className="browse-main">
-          {/* Hero / banner carousel (admin-configured HERO/BANNER sections) */}
-          {banners.length > 0 ? (
-            <BannerCarousel sections={banners} />
-          ) : (
+      <div className="browse-main">
+        {/* Browse All Categories CTA */}
+        <div className="browse-all-categories">
+          <a className="btn btn-primary btn-block" href={href("categories")}>
+            <Icon name="grid" size={16} /> Browse All Categories
+          </a>
+        </div>
+
+        {/* Hero / banner carousel (admin-configured HERO/BANNER sections) */}
+        {banners.length > 0 ? (
+          <BannerCarousel sections={banners} />
+        ) : (
+          <WelcomeHero
+            storeName={data.store.name}
+            city={data.store.city}
+            description={data.store.description}
+          />
+        )}
+
+        {/* Designed sections (admin-configured) — categories render via
+            CATEGORY_GRID sections with their saved category_style. */}
+        {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
+
+        {/* Curated rails (always available as baseline content). */}
+        {hasContent && (
+          <>
+            <DealsRail />
+            <RecommendedRail />
+            <RecentlyViewedRail />
+            <AllProductsGrid />
+          </>
+        )}
+
+        {/* Fallback welcome content when no sections configured */}
+        {!hasContent && (
+          <>
             <WelcomeHero
               storeName={data.store.name}
               city={data.store.city}
               description={data.store.description}
             />
-          )}
+            <DealsRail />
+            <RecommendedRail />
+            <RecentlyViewedRail />
+            <AllProductsGrid />
+          </>
+        )}
 
-          {/* Fallback category rail (only when no admin CATEGORY_GRID section). */}
-          {categoryItems.length > 0 && (
-            <CategoryGridSection
-              section={
-                {
-                  id: 0,
-                  section_type: "CATEGORY_GRID",
-                  title: "Shop by category",
-                  subtitle: "Everything your home needs, delivered fast",
-                  image: null,
-                  config: { category_style: "cards" },
-                  position: 0,
-                  is_active: true,
-                  items: categoryItems,
-                } as unknown as StoreSection
-              }
-            />
-          )}
-
-          {/* Designed sections (admin-configured) — categories render via
-              CATEGORY_GRID sections with their saved category_style. */}
-          {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
-
-          {/* Curated rails (always available as baseline content). */}
-          {hasContent && (
-            <>
-              <DealsRail />
-              <RecommendedRail />
-              <RecentlyViewedRail />
-              <AllProductsGrid />
-            </>
-          )}
-
-          {/* Fallback welcome content when no sections configured */}
-          {!hasContent && (
-            <>
-              <WelcomeHero
-                storeName={data.store.name}
-                city={data.store.city}
-                description={data.store.description}
-              />
-              <DealsRail />
-              <RecommendedRail />
-              <RecentlyViewedRail />
-              <AllProductsGrid />
-            </>
-          )}
-
-          {/* When sections exist, only admin-configured sections render
-              (see rest.map above) — no hardcoded rails. */}
-        </div>
+        {/* When sections exist, only admin-configured sections render
+            (see rest.map above) — no hardcoded rails. */}
       </div>
     </div>
   );
