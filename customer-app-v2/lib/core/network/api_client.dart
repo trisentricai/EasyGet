@@ -25,7 +25,12 @@ class ApiClient {
         baseUrl: baseUrl ?? AppConfig.apiBase,
         connectTimeout: const Duration(seconds: 90),
         receiveTimeout: const Duration(seconds: 60),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          // Lets the backend tag orders and analytics as mobile-app originated
+          // (admin Orders view shows the source platform).
+          'X-Client-Platform': 'mobile_app',
+        },
       ),
     );
 
