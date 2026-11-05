@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, errText, getProduct, listAllProducts, listStores, type Product } from "../services/api";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { api, errText, getProduct, listAllProducts, listStores, bulkUpdateProducts, exportProductsCsv, importProductsCsv, type Product } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import { Card, EmptyState, Modal, Spinner } from "../components/ui";
+import { motion, AnimatePresence } from "framer-motion";
+import { Icon } from "../components/icons";
+import { BulkDrawer, CsvImportModal } from "../components/BulkDrawer";
 
 type StockItem = {
   id: number;
@@ -52,6 +55,170 @@ export function InventoryPage() {
     queryKey: ["admin", "products"],
     queryFn: () => listAllProducts(),
   });
+
+  // Bulk operations state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDrawerOpen, setBulkDrawerOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<"price" | "stock">("price");
+  const [bulkPriceAction, setBulkPriceAction] = useState<"increase_percent" | "decrease_percent" | "set_flat">("increase_percent");
+  const [bulkValue, setBulkValue] = useState("");
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvImportResult, setCsvImportResult] = useState<{ created: number; updated: number; errors: string[] } | null>(null);
+
+  const reload = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["admin", "inventory"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] }),
+    ]);
+  };
+
+  type BulkBody = {
+    product_ids: number[];
+    action: "increase_percent" | "decrease_percent" | "set_flat" | "set_stock";
+    value: number;
+  };
+
+  const bulkUpdateMutation = useMutation<
+    { updated: number; message: string },
+    unknown,
+    BulkBody,
+    { previousProducts?: Product[]; previousItems?: StockItem[] }
+  >({
+    mutationFn: (body) => bulkUpdateProducts(body),
+    onMutate: async (body) => {
+      // Optimistically adjust the cached rows so the table reacts immediately.
+      await queryClient.cancelQueries({ queryKey: ["admin", "products"] });
+      await queryClient.cancelQueries({ queryKey: ["admin", "inventory"] });
+      const previousProducts = queryClient.getQueryData<Product[]>(["admin", "products"]);
+      const previousItems = queryClient.getQueryData<StockItem[]>(["admin", "inventory"]);
+      const selected = new Set(body.product_ids);
+
+      if (previousProducts) {
+        if (body.action === "set_stock") {
+          const variantIds = new Set<number>();
+          for (const product of previousProducts) {
+            if (!selected.has(product.id)) continue;
+            for (const variant of product.variants ?? []) variantIds.add(variant.id);
+          }
+          if (previousItems) {
+            queryClient.setQueryData<StockItem[]>(
+              ["admin", "inventory"],
+              previousItems.map((item) =>
+                variantIds.has(item.variant.id)
+                  ? { ...item, quantity: Math.max(0, Math.trunc(body.value)) }
+                  : item,
+              ),
+            );
+          }
+        } else {
+          queryClient.setQueryData<Product[]>(
+            ["admin", "products"],
+            previousProducts.map((product) => {
+              if (!selected.has(product.id) || !product.variants) return product;
+              return {
+                ...product,
+                variants: product.variants.map((variant) => {
+                  const current = Number(variant.price) || 0;
+                  let next = current;
+                  if (body.action === "increase_percent") next = current * (1 + body.value / 100);
+                  else if (body.action === "decrease_percent") next = current * (1 - body.value / 100);
+                  else next = body.value;
+                  return { ...variant, price: Math.max(0, next).toFixed(2) };
+                }),
+              };
+            }),
+          );
+        }
+      }
+
+      return { previousProducts, previousItems };
+    },
+    onError: (e, _body, context) => {
+      if (context?.previousProducts) {
+        queryClient.setQueryData(["admin", "products"], context.previousProducts);
+      }
+      if (context?.previousItems) {
+        queryClient.setQueryData(["admin", "inventory"], context.previousItems);
+      }
+      push(errText(e, "Bulk update failed"), "err");
+    },
+    onSuccess: (result) => {
+      push(result.message || "Bulk update applied");
+      setBulkDrawerOpen(false);
+      setSelectedIds(new Set());
+      setBulkValue("");
+    },
+    onSettled: () => {
+      void reload();
+    },
+  });
+
+  const csvImportMutation = useMutation<
+    { created: number; updated: number; errors: string[] },
+    unknown,
+    File
+  >({
+    mutationFn: (file) => importProductsCsv(file),
+    onSuccess: (result) => {
+      setCsvImportResult(result);
+      void reload();
+      if (result.errors.length === 0) {
+        push(`Imported: ${result.created} created, ${result.updated} updated`);
+        setCsvImportOpen(false);
+        setCsvFile(null);
+      } else {
+        push(`${result.errors.length} row(s) failed`, "err");
+      }
+    },
+    onError: (e) => push(errText(e, "Import failed"), "err"),
+  });
+
+  const handleSelectAll = () => {
+    const allSelected =
+      productsWithStock.length > 0 && productsWithStock.every((p) => selectedIds.has(p.id));
+    setSelectedIds(allSelected ? new Set() : new Set(productsWithStock.map((p) => p.id)));
+  };
+
+  const handleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkAction = () => {
+    const numeric = Number(bulkValue);
+    if (selectedIds.size === 0 || !bulkValue || !Number.isFinite(numeric) || numeric < 0) return;
+    const action = bulkAction === "price" ? bulkPriceAction : "set_stock";
+    bulkUpdateMutation.mutate({
+      product_ids: Array.from(selectedIds),
+      action,
+      value: numeric,
+    });
+  };
+
+  const handleCsvExport = async () => {
+    try {
+      const blob = await exportProductsCsv();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "products_export.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      push("CSV exported successfully");
+    } catch (e) {
+      push(errText(e, "Export failed"), "err");
+    }
+  };
+
+  const handleCsvImport = () => {
+    if (!csvFile || csvImportMutation.isPending) return;
+    csvImportMutation.mutate(csvFile);
+  };
 
   // Merge products with their stock items
   const productsWithStock = useMemo(() => {
@@ -112,9 +279,6 @@ export function InventoryPage() {
       push(productsQuery.error?.message ?? "Failed to load products", "err");
   }, [productsQuery.error, push]);
 
-  const reload = () =>
-    queryClient.invalidateQueries({ queryKey: ["admin", "inventory"] });
-
   const loading = itemsQuery.isLoading || productsQuery.isLoading;
 
   return (
@@ -129,7 +293,55 @@ export function InventoryPage() {
         <span className="muted" style={{ marginLeft: 12 }}>
           {productsWithStock.length} product{productsWithStock.length !== 1 ? "s" : ""}
         </span>
+        <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+          <button className="btn btn-sm btn-ghost" onClick={handleCsvExport}>
+            <Icon name="download" size={14} /> Export CSV
+          </button>
+          <button className="btn btn-sm btn-primary" onClick={() => setCsvImportOpen(true)}>
+            <Icon name="upload" size={14} /> Import CSV
+          </button>
+        </div>
       </div>
+
+      {/* Floating action bar for bulk operations */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0, x: "-50%" }}
+            animate={{ y: 0, opacity: 1, x: "-50%" }}
+            exit={{ y: 100, opacity: 0, x: "-50%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="bulk-action-bar"
+            style={{
+              position: "fixed",
+              bottom: 24,
+              left: "50%",
+              zIndex: 100,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "12px 20px",
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              boxShadow: "var(--shadow-lg)",
+              maxWidth: "calc(100vw - 48px)",
+            }}
+          >
+            <span className="muted" style={{ fontSize: 13.5, fontWeight: 500 }}>
+              {selectedIds.size} product{selectedIds.size !== 1 ? "s" : ""} selected
+            </span>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button className="btn btn-primary" onClick={() => setBulkDrawerOpen(true)}>
+                Apply bulk update
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setSelectedIds(new Set())}>
+                Clear
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Card>
         {loading ? (
@@ -141,6 +353,14 @@ export function InventoryPage() {
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 40 }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === productsWithStock.length && productsWithStock.length > 0}
+                      onChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </th>
                   <th>Product</th>
                   <th>Category</th>
                   <th>SKU</th>
@@ -153,6 +373,14 @@ export function InventoryPage() {
               <tbody>
                 {productsWithStock.map((p) => (
                   <tr key={p.id}>
+                    <td style={{ textAlign: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(p.id)}
+                        onChange={() => handleSelect(p.id)}
+                        aria-label={`Select ${p.name}`}
+                      />
+                    </td>
                     <td>
                       <div style={{ fontWeight: 700 }}>
                         {p.name}
@@ -270,6 +498,38 @@ export function InventoryPage() {
       )}
 
       {adding && <AddStockModal product={adding} onClose={() => setAdding(null)} />}
+
+      {/* Bulk Operations Slide-out Drawer */}
+      <BulkDrawer
+        isOpen={bulkDrawerOpen}
+        onClose={() => setBulkDrawerOpen(false)}
+        onApply={handleBulkAction}
+        action={bulkAction}
+        setAction={setBulkAction}
+        priceAction={bulkPriceAction}
+        setPriceAction={setBulkPriceAction}
+        value={bulkValue}
+        setValue={setBulkValue}
+        busy={bulkUpdateMutation.isPending}
+        selectedCount={selectedIds.size}
+      />
+
+      {/* CSV Import Modal */}
+      <CsvImportModal
+        isOpen={csvImportOpen}
+        onClose={() => {
+          setCsvImportOpen(false);
+          if (!csvImportMutation.isPending) {
+            setCsvImportResult(null);
+            setCsvFile(null);
+          }
+        }}
+        onImport={handleCsvImport}
+        file={csvFile}
+        setFile={setCsvFile}
+        busy={csvImportMutation.isPending}
+        result={csvImportResult}
+      />
     </div>
   );
 }

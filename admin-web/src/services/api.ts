@@ -390,6 +390,34 @@ export async function deleteProductImage(id: number) {
   return api<void>(`/products/images/${id}/`, { method: "DELETE" });
 }
 
+export async function bulkUpdateProducts(body: {
+  product_ids: number[];
+  action: "increase_percent" | "decrease_percent" | "set_flat" | "set_stock";
+  value: number;
+}) {
+  return api<{ updated: number; message: string }>("/products/bulk_update/", {
+    method: "POST",
+    body,
+  });
+}
+
+export async function exportProductsCsv(): Promise<Blob> {
+  const response = await fetch(`${BASE}/products/export_csv/`, {
+    headers: { Authorization: `Bearer ${getTokens()?.access}` },
+  });
+  if (!response.ok) throw new Error("Failed to export CSV");
+  return response.blob();
+}
+
+export async function importProductsCsv(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api<{ created: number; updated: number; errors: string[] }>("/products/import_csv/", {
+    method: "POST",
+    form: formData,
+  });
+}
+
 /** Resolve a stored media value (URL, /media/... or bare relative path). */
 export function mediaSrc(value: string | null | undefined): string | null {
   if (!value) return null;
