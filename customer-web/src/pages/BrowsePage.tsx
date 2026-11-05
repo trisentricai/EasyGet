@@ -302,6 +302,32 @@ export function BrowsePage() {
           </label>
         </div>
       </div>
+
+      <div className="filter-group">
+        <h4><Icon name="sort" size={13} /> Sort By</h4>
+        <div className="filter-opts">
+          <label className={`filter-opt ${sort === "" ? "on" : ""}`}>
+            <input type="radio" name="f-sort" checked={sort === ""} onChange={() => setSort("")} />
+            Relevance
+          </label>
+          <label className={`filter-opt ${sort === "price_asc" ? "on" : ""}`}>
+            <input type="radio" name="f-sort" checked={sort === "price_asc"} onChange={() => setSort("price_asc")} />
+            Price — Low to High
+          </label>
+          <label className={`filter-opt ${sort === "price_desc" ? "on" : ""}`}>
+            <input type="radio" name="f-sort" checked={sort === "price_desc"} onChange={() => setSort("price_desc")} />
+            Price — High to Low
+          </label>
+          <label className={`filter-opt ${sort === "newest" ? "on" : ""}`}>
+            <input type="radio" name="f-sort" checked={sort === "newest"} onChange={() => setSort("newest")} />
+            Newest First
+          </label>
+          <label className={`filter-opt ${sort === "rating" ? "on" : ""}`}>
+            <input type="radio" name="f-sort" checked={sort === "rating"} onChange={() => setSort("rating")} />
+            Avg. Customer Review
+          </label>
+        </div>
+      </div>
     </>
   );
 
