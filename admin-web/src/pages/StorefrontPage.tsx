@@ -7,6 +7,7 @@ import {
   errText,
   getSections,
   getStoreSlug,
+  getTheme,
   listAllProducts,
   listCategories,
   listStores,
@@ -100,6 +101,22 @@ export function StorefrontPage() {
       })
       .catch((e) => push(e?.message ?? "Failed to load storefront", "err"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  // The designer controls must reflect what is actually saved, especially the
+  // mobile appearance fields (otherwise the toggle always reads as ON).
+  useEffect(() => {
+    let cancelled = false;
+    getTheme(slug)
+      .then((saved) => {
+        if (!cancelled) setTheme(saved);
+      })
+      .catch(() => {
+        if (!cancelled) setTheme(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   /* -------------------- drag & drop (sections) -------------------- */

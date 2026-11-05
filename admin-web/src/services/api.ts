@@ -412,6 +412,8 @@ export const getStorefront = (slug: string) =>
 
 export const getSections = (slug: string) => api<StoreSection[]>(`/storefront/${slug}/sections/`);
 
+export const getTheme = (slug: string) => api<Theme>(`/storefront/${slug}/theme/`);
+
 export const createSection = (slug: string, body: Record<string, unknown>) =>
   api<StoreSection>(`/storefront/${slug}/sections/`, { method: "POST", body });
 
