@@ -1,4 +1,5 @@
 import 'package:easyget/core/theme/app_theme.dart';
+import 'package:easyget/core/theme/storefront_appearance.dart';
 import 'package:easyget/features/catalog/presentation/widgets/price_block.dart';
 import 'package:easyget/features/catalog/presentation/widgets/product_card.dart';
 import 'package:easyget/features/catalog/presentation/widgets/qty_stepper.dart';
@@ -6,6 +7,7 @@ import 'package:easyget/features/catalog/presentation/widgets/rating_pill.dart';
 import 'package:easyget/features/catalog/presentation/widgets/variant_sheet.dart';
 import 'package:easyget/features/wishlist/data/wishlist_repository.dart';
 import 'package:easyget/models/catalog_models.dart';
+import 'package:easyget/models/storefront_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -152,6 +154,65 @@ void main() {
       expect(find.byKey(const Key('rating-pill')), findsOneWidget);
       // Obsidian glass discount badge on the image.
       expect(find.text('−17%'), findsOneWidget);
+    });
+
+    testWidgets('glassmorphism off removes every blur layer', (tester) async {
+      await tester.pumpWidget(_host(const ProductCard(
+        product: _butter,
+        density: ProductDensity.grid,
+        width: 180,
+      )));
+      expect(find.byType(BackdropFilter), findsWidgets);
+
+      await tester.pumpWidget(_host(const ProductCard(
+        product: _butter,
+        density: ProductDensity.grid,
+        width: 180,
+        enableGlassmorphism: false,
+      )));
+      expect(find.byType(BackdropFilter), findsNothing);
+    });
+
+    testWidgets('admin appearance provider drives the card live',
+        (tester) async {
+      final container = ProviderContainer(overrides: [
+        wishlistRepositoryProvider.overrideWithValue(_FakeWishlistRepo()),
+      ]);
+      addTearDown(container.dispose);
+      container.read(storefrontAppearanceProvider.notifier).apply(
+            const StoreTheme(
+              enableGlassmorphism: false,
+              glassBlurIntensity: 4,
+            ),
+          );
+
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(
+            body: Center(
+              child: ProductCard(
+                product: _butter,
+                density: ProductDensity.grid,
+                width: 180,
+              ),
+            ),
+          ),
+        ),
+      ));
+
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      container.read(storefrontAppearanceProvider.notifier).apply(
+            const StoreTheme(
+              enableGlassmorphism: true,
+              glassBlurIntensity: 4,
+            ),
+          );
+      await tester.pump();
+
+      expect(find.byType(BackdropFilter), findsWidgets);
     });
 
     testWidgets('exposes a semantics label for the product', (tester) async {

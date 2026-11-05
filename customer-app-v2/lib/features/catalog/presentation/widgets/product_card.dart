@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/theme/storefront_appearance.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../models/catalog_models.dart';
 import '../../../product/presentation/product_providers.dart';
@@ -39,6 +40,8 @@ class ProductCard extends ConsumerWidget {
     this.trailing,
     this.onHearted,
     this.onQuickAdd,
+    this.enableGlassmorphism,
+    this.glassBlurIntensity,
   });
 
   static const double imageAspect = 1.25; // 4:5
@@ -69,8 +72,19 @@ class ProductCard extends ConsumerWidget {
   /// stepper. Null keeps the legacy controlled stepper.
   final Future<void> Function()? onQuickAdd;
 
+  /// Explicit admin overrides; null falls back to the live storefront theme
+  /// ([storefrontAppearanceProvider]) so every call site stays in sync.
+  final bool? enableGlassmorphism;
+  final double? glassBlurIntensity;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final appearance = ref.watch(storefrontAppearanceProvider);
+    final glass = enableGlassmorphism ?? appearance.enableGlassmorphism;
+    final blur = (glassBlurIntensity ?? appearance.glassBlurIntensity)
+        .clamp(0.0, 40.0)
+        .toDouble();
+
     // Live cart qty for the "✓ N in cart" badge (0 = not added this
     // session). Server truth; the badge is display-only.
     final variantId =
@@ -80,8 +94,8 @@ class ProductCard extends ConsumerWidget {
         : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ??
             0);
     final child = switch (density) {
-      ProductDensity.rail => _rail(context, inCartQty),
-      ProductDensity.grid => _grid(context, inCartQty),
+      ProductDensity.rail => _rail(context, inCartQty, glass, blur),
+      ProductDensity.grid => _grid(context, inCartQty, glass, blur),
       ProductDensity.line => _line(context),
     };
     return Semantics(
@@ -99,8 +113,13 @@ class ProductCard extends ConsumerWidget {
     }
   }
 
-  Widget _image(BuildContext context,
-      {required double aspect, int inCartQty = 0}) {
+  Widget _image(
+    BuildContext context, {
+    required double aspect,
+    int inCartQty = 0,
+    bool glass = true,
+    double blur = 16,
+  }) {
     final colors = Theme.of(context).freshColors;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
@@ -150,6 +169,8 @@ class ProductCard extends ConsumerWidget {
                         key: Key(
                             'card-discount-${product.slug}'),
                         label: '−${product.discountPercent}%',
+                        enabled: glass,
+                        blur: blur,
                       ),
                   ],
                 ),
@@ -179,6 +200,8 @@ class ProductCard extends ConsumerWidget {
                 child: _GlassPill(
                   key: Key('card-incart-${product.slug}'),
                   label: '✓ $inCartQty in cart',
+                  enabled: glass,
+                  blur: blur,
                 ),
               ),
           ],
@@ -207,83 +230,114 @@ class ProductCard extends ConsumerWidget {
     );
   }
 
-  Widget _grid(BuildContext context, int inCartQty) {
-    final colors = Theme.of(context).freshColors;
+  Widget _grid(
+    BuildContext context,
+    int inCartQty,
+    bool glass,
+    double blur,
+  ) {
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
       onTap: _handleTap,
       child: SizedBox(
         width: width,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadii.card),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpace.md),
-              decoration: BoxDecoration(
-                color: colors.glassSurface,
-                borderRadius: BorderRadius.circular(AppRadii.card),
-                border: Border.all(color: colors.glassBorder, width: 1.5),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _image(context, aspect: 4 / 5, inCartQty: inCartQty),
-                  const SizedBox(height: AppSpace.md),
-                  _nameSlot(context),
-                  _brandSlot(context),
-                  const SizedBox(height: AppSpace.sm),
-                  _priceSlot(),
-                  const SizedBox(height: AppSpace.md),
-                  _quickAddControl(obsidian: true),
-                ],
-              ),
-            ),
+        child: _cardSurface(
+          context,
+          glass: glass,
+          blur: blur,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _image(context,
+                  aspect: 4 / 5,
+                  inCartQty: inCartQty,
+                  glass: glass,
+                  blur: blur),
+              const SizedBox(height: AppSpace.md),
+              _nameSlot(context),
+              _brandSlot(context),
+              const SizedBox(height: AppSpace.sm),
+              _priceSlot(),
+              const SizedBox(height: AppSpace.md),
+              _quickAddControl(obsidian: true),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _rail(BuildContext context, int inCartQty) {
-    final colors = Theme.of(context).freshColors;
+  Widget _rail(
+    BuildContext context,
+    int inCartQty,
+    bool glass,
+    double blur,
+  ) {
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
       onTap: _handleTap,
       child: SizedBox(
         width: width,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadii.card),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpace.md),
-              decoration: BoxDecoration(
-                color: colors.glassSurface,
-                borderRadius: BorderRadius.circular(AppRadii.card),
-                border: Border.all(color: colors.glassBorder, width: 1.5),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _image(context, aspect: 1, inCartQty: inCartQty),
-                  const SizedBox(height: AppSpace.md),
-                  _nameSlot(context),
-                  _brandSlot(context),
-                  const SizedBox(height: AppSpace.sm),
-                  _priceSlot(),
-                  const SizedBox(height: AppSpace.md),
-                  _quickAddControl(),
-                ],
-              ),
-            ),
+        child: _cardSurface(
+          context,
+          glass: glass,
+          blur: blur,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _image(context,
+                  aspect: 1,
+                  inCartQty: inCartQty,
+                  glass: glass,
+                  blur: blur),
+              const SizedBox(height: AppSpace.md),
+              _nameSlot(context),
+              _brandSlot(context),
+              const SizedBox(height: AppSpace.sm),
+              _priceSlot(),
+              const SizedBox(height: AppSpace.md),
+              _quickAddControl(),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  /// Frosted glass when enabled; an opaque champagne card when the Admin
+  /// Panel switches glassmorphism off (no BackdropFilter at all).
+  Widget _cardSurface(
+    BuildContext context, {
+    required bool glass,
+    required double blur,
+    required Widget child,
+  }) {
+    final colors = Theme.of(context).freshColors;
+    final surface = Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: glass ? colors.glassSurface : colors.champagne,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        border: Border.all(
+          color: glass ? colors.glassBorder : colors.champagneDeep,
+          width: 1.5,
+        ),
+      ),
+      child: child,
+    );
+    final filled = glass && blur > 0
+        ? BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+            child: surface,
+          )
+        : surface;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: filled,
     );
   }
 
@@ -593,28 +647,38 @@ class _QuickAddPillState extends State<_QuickAddPill> {
 
 /// Obsidian Glass pill: frosted dark chip for badges over imagery.
 class _GlassPill extends StatelessWidget {
-  const _GlassPill({super.key, required this.label});
+  const _GlassPill({
+    super.key,
+    required this.label,
+    this.enabled = true,
+    this.blur = 12,
+  });
 
   final String label;
+  final bool enabled;
+  final double blur;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).freshColors;
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.sm, vertical: 3),
+      color: enabled ? colors.obsidianGlass : colors.obsidian,
+      child: Text(
+        label,
+        style: AppTypography.tabularSmall(colors.champagneInk, size: 11),
+      ),
+    );
+    final filled = enabled && blur > 0
+        ? BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+            child: pill,
+          )
+        : pill;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.sm, vertical: 3),
-          color: colors.obsidianGlass,
-          child: Text(
-            label,
-            style: AppTypography.tabularSmall(colors.champagneInk,
-                size: 11),
-          ),
-        ),
-      ),
+      child: filled,
     );
   }
 }
