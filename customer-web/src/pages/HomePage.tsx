@@ -47,8 +47,9 @@ export function HomePage() {
   const banners = sections.filter(
     (s) => s.section_type === "HERO" || s.section_type === "BANNER",
   );
+  // Exclude CATEGORY_GRID from home page — use "Browse All Categories" button instead
   const rest = sections.filter(
-    (s) => s.section_type !== "HERO" && s.section_type !== "BANNER",
+    (s) => s.section_type !== "HERO" && s.section_type !== "BANNER" && s.section_type !== "CATEGORY_GRID",
   );
   const hasContent = sections.length > 0;
 
@@ -73,8 +74,7 @@ export function HomePage() {
           />
         )}
 
-        {/* Designed sections (admin-configured) — categories render via
-            CATEGORY_GRID sections with their saved category_style. */}
+        {/* Designed sections (admin-configured) — CATEGORY_GRID excluded, use button above */}
         {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}
 
         {/* Curated rails (always available as baseline content). */}
