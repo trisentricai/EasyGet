@@ -340,6 +340,34 @@ class ThemeTests(StorefrontTestBase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_owner_updates_mobile_appearance_fields(self):
+        response = self.as_user(self.owner).patch(
+            THEME_URL,
+            {
+                "enable_glassmorphism": False,
+                "glass_blur_intensity": 24,
+                "mobile_default_theme": "DARK",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.theme.refresh_from_db()
+        self.assertFalse(self.theme.enable_glassmorphism)
+        self.assertEqual(self.theme.glass_blur_intensity, 24)
+        self.assertEqual(self.theme.mobile_default_theme, "DARK")
+
+        public = self.client.get(THEME_URL)
+        self.assertEqual(public.status_code, 200)
+        self.assertFalse(public.data["enable_glassmorphism"])
+        self.assertEqual(public.data["glass_blur_intensity"], 24)
+        self.assertEqual(public.data["mobile_default_theme"], "DARK")
+
+    def test_glass_blur_intensity_is_bounded(self):
+        response = self.as_user(self.owner).patch(
+            THEME_URL, {"glass_blur_intensity": 99}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 class ProductTenantSecurityTests(StorefrontTestBase):
     """Section items must not expose foreign-tenant products or unpublished

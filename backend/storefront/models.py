@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from products.models import ImageDisplayFields
@@ -15,6 +16,11 @@ class StorefrontTheme(models.Model):
         ROUNDED = "ROUNDED", "Rounded"
         SQUARE = "SQUARE", "Square"
         PILL = "PILL", "Pill"
+
+    class MobileTheme(models.TextChoices):
+        SYSTEM = "SYSTEM", "System"
+        LIGHT = "LIGHT", "Light"
+        DARK = "DARK", "Dark"
 
     store = models.OneToOneField(
         Store, on_delete=models.CASCADE, related_name="storefront_theme"
@@ -34,6 +40,24 @@ class StorefrontTheme(models.Model):
         default=dict,
         blank=True,
         help_text='Visual effects, e.g. {"hero_animation": "fade", "hover_zoom": true}.',
+    )
+    # Mobile app appearance (customer-app-v2 glassmorphism UI). These are
+    # read by the Flutter client from the storefront theme payload so admin
+    # edits ship without an app release.
+    enable_glassmorphism = models.BooleanField(
+        default=True,
+        help_text="Render product cards as frosted glass in the mobile app.",
+    )
+    glass_blur_intensity = models.PositiveSmallIntegerField(
+        default=16,
+        validators=[MinValueValidator(0), MaxValueValidator(40)],
+        help_text="Backdrop blur sigma for glass surfaces (0-40, default 16).",
+    )
+    mobile_default_theme = models.CharField(
+        max_length=10,
+        choices=MobileTheme.choices,
+        default=MobileTheme.SYSTEM,
+        help_text="Default colour mode for the mobile app: System, Light or Dark.",
     )
     updated_at = models.DateTimeField(auto_now=True)
 

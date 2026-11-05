@@ -23,6 +23,9 @@ class StorefrontThemeSerializer(serializers.ModelSerializer):
             "hero_image",
             "button_style",
             "effects",
+            "enable_glassmorphism",
+            "glass_blur_intensity",
+            "mobile_default_theme",
             "updated_at",
         ]
         read_only_fields = ["updated_at"]
