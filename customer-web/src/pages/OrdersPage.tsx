@@ -18,7 +18,7 @@ import { Icon } from "../components/icons";
 import { TotalsBreakdown } from "../components/TotalsBreakdown";
 import { orderTotals } from "../utils/pricing";
 
-const CANCELLABLE = new Set(["PENDING", "CONFIRMED", "PREPARING"]);
+const CANCELLABLE = new Set(["PENDING", "CONFIRMED"]);
 
 export function OrdersPage() {
   const { user } = useAuth();
@@ -109,7 +109,13 @@ export function OrderDetailPage({ id }: { id: string }) {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       toast.push("Order cancelled", "info");
     } catch (e) {
-      toast.push(errText(e, "Could not cancel order"), "err");
+      const msg = errText(e, "");
+      // Backend returns 400 with "Cannot cancel order in X status"
+      if (msg.includes("Cannot cancel order in")) {
+        toast.push(`Cannot cancel order: ${msg.replace("Cannot cancel order in ", "").replace(" status", "")}`, "err");
+      } else {
+        toast.push(msg || "Could not cancel order", "err");
+      }
     } finally {
       setBusy(false);
     }
@@ -207,7 +213,15 @@ export function OrderDetailPage({ id }: { id: string }) {
               >
                 Cancel order
               </button>
-            ) : null}
+            ) : (
+              <button
+                className="btn btn-danger"
+                disabled
+                title="This order can no longer be cancelled."
+              >
+                Cancel order
+              </button>
+            )}
           </div>
         ) : null}
       </div>
