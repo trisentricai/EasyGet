@@ -13,5 +13,6 @@ router.register("products", views.ProductAnalyticsViewSet, basename="product-ana
 
 urlpatterns = [
     path("dashboard/", views.DashboardViewSet.as_view({"get": "summary"}), name="dashboard-summary"),
+    path("dashboard/analytics/", views.DashboardViewSet.as_view({"get": "analytics"}), name="dashboard-analytics"),
     path("", include(router.urls)),
 ]
