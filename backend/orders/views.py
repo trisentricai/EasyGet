@@ -25,6 +25,24 @@ from .serializers import (
 )
 
 
+def order_source(request):
+    """Map the calling client to a stable source tag.
+
+    The Flutter app sends `X-Client-Platform: mobile_app` on every request;
+    its default Dio user-agent (`Dart/...`) is a fallback for older builds
+    that predate the header. Admin-created orders are tagged explicitly.
+    """
+    raw = (request.headers.get("X-Client-Platform") or "").strip().lower()
+    if raw in {"mobile_app", "mobile", "flutter", "android", "ios"}:
+        return Order.Source.MOBILE_APP
+    if raw in {"admin", "admin_web"}:
+        return Order.Source.ADMIN
+    user_agent = request.META.get("HTTP_USER_AGENT", "")
+    if user_agent.startswith("Dart/") or "Flutter" in user_agent:
+        return Order.Source.MOBILE_APP
+    return Order.Source.WEB
+
+
 class OrderViewSet(viewsets.ModelViewSet):
     """Order API.
     GET/POST /api/v1/orders/ — list/create orders
@@ -149,6 +167,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     payment_method=payment_method,
                     coupon_code=coupon.code if coupon else "",
                     coupon_type=coupon.discount_type if coupon else "",
+                    source=order_source(self.request),
                     estimated_delivery_at=timezone.now() + timedelta(days=2),
                     total=(
                         subtotal
@@ -229,6 +248,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 payment_method=payment_method,
                 coupon_code=coupon.code if coupon else "",
                 coupon_type=coupon.discount_type if coupon else "",
+                source=order_source(self.request),
                 estimated_delivery_at=timezone.now() + timedelta(days=2),
                 total=totals["total"],
             )

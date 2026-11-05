@@ -201,6 +201,33 @@ class OrderTenancyTests(TestCase):
         self.client.force_authenticate(user=self.customer)
         res = self.client.get(f"/api/v1/orders/{self.order_a.id}/")
         self.assertEqual(res.status_code, 200)
+
+    def test_create_order_tags_mobile_app_source(self):
+        cart = self._customer_cart()
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/orders/",
+            {"cart_id": str(cart.id), "store": self.store_a.id,
+             "delivery_address": {"line1": "1 Main St"}},
+            format="json",
+            HTTP_X_CLIENT_PLATFORM="mobile_app",
+        )
+        self.assertEqual(res.status_code, 201)
+        order = Order.objects.filter(user=self.customer).latest("created_at")
+        self.assertEqual(order.source, Order.Source.MOBILE_APP)
+
+    def test_create_order_defaults_to_web_source(self):
+        cart = self._customer_cart()
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            "/api/v1/orders/",
+            {"cart_id": str(cart.id), "store": self.store_a.id,
+             "delivery_address": {"line1": "1 Main St"}},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        order = Order.objects.filter(user=self.customer).latest("created_at")
+        self.assertEqual(order.source, Order.Source.WEB)
     def test_order_create_rejects_platform_store(self):
         platform = Store.objects.get(is_platform=True)
         cart = Cart.objects.create(user=self.customer)

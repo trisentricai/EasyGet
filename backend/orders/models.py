@@ -27,6 +27,11 @@ class Order(models.Model):
         UPI = "upi", "UPI"
         CARD = "card", "Card"
 
+    class Source(models.TextChoices):
+        WEB = "web", "Website"
+        MOBILE_APP = "mobile_app", "Mobile app"
+        ADMIN = "admin", "Admin panel"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order_number = models.CharField(max_length=20, unique=True, editable=False)
     user = models.ForeignKey(
@@ -63,6 +68,12 @@ class Order(models.Model):
         blank=True,
         default="",
         help_text="chosen at checkout; blank on legacy orders",
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=Source.choices,
+        default=Source.WEB,
+        help_text="Client platform that placed the order (web, mobile_app, admin).",
     )
     total = models.DecimalField(max_digits=10, decimal_places=2)
     delivery_address = models.JSONField(default=dict)
