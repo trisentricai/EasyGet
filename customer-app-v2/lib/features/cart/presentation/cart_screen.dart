@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
+import '../../../core/widgets/fluid_sheet.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
@@ -44,8 +45,8 @@ class CartScreen extends ConsumerWidget {
       body: _Body(state: state),
       bottomNavigationBar:
           state.loading || state.error != null || state.items.isEmpty
-              ? null
-              : _CheckoutBar(payable: state.payable),
+          ? null
+          : _CheckoutBar(payable: state.payable),
     );
   }
 }
@@ -77,8 +78,7 @@ class _Body extends ConsumerWidget {
     if (state.error != null) {
       return ErrorState(
         body: 'We could not load your cart.',
-        onRetry: () =>
-            ref.read(cartControllerProvider.notifier).refresh(),
+        onRetry: () => ref.read(cartControllerProvider.notifier).refresh(),
       );
     }
     if (state.items.isEmpty) {
@@ -91,8 +91,7 @@ class _Body extends ConsumerWidget {
     }
 
     return RefreshIndicator(
-      onRefresh: () =>
-          ref.read(cartControllerProvider.notifier).refresh(),
+      onRefresh: () => ref.read(cartControllerProvider.notifier).refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
@@ -100,14 +99,22 @@ class _Body extends ConsumerWidget {
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(
-                  AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
+                AppSpace.lg,
+                AppSpace.md,
+                AppSpace.lg,
+                0,
+              ),
               child: DeliveryEtaPill(),
             ),
             _CouponRow(state: state),
             for (final item in state.items)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpace.lg, AppSpace.sm, AppSpace.lg, 0),
+                  AppSpace.lg,
+                  AppSpace.sm,
+                  AppSpace.lg,
+                  0,
+                ),
                 child: _LineCard(item: item),
               ),
             _BillBlock(state: state),
@@ -144,13 +151,16 @@ class _TrustRows extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ticker =
-        ref.watch(cartTickerProvider).value ?? const [];
+    final ticker = ref.watch(cartTickerProvider).value ?? const [];
     if (ticker.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.lg, AppSpace.lg, 0),
+        AppSpace.lg,
+        AppSpace.lg,
+        AppSpace.lg,
+        0,
+      ),
       child: Column(
         children: [
           for (final line in ticker.take(3))
@@ -158,15 +168,15 @@ class _TrustRows extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: Row(
                 children: [
-                  Icon(_iconFor(line),
-                      size: 18, color: scheme.primary),
+                  Icon(_iconFor(line), size: 18, color: scheme.primary),
                   const SizedBox(width: AppSpace.sm),
                   Expanded(
-                    child: Text(line,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.body(
-                            scheme.onSurfaceVariant)),
+                    child: Text(
+                      line,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.body(scheme.onSurfaceVariant),
+                    ),
                   ),
                 ],
               ),
@@ -192,18 +202,23 @@ class _CouponRow extends ConsumerWidget {
       final coupon = state.coupon!;
       return Padding(
         padding: const EdgeInsets.fromLTRB(
-            AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
+          AppSpace.lg,
+          AppSpace.md,
+          AppSpace.lg,
+          0,
+        ),
         child: Container(
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.lg, vertical: AppSpace.sm),
+            horizontal: AppSpace.lg,
+            vertical: AppSpace.sm,
+          ),
           decoration: BoxDecoration(
             color: colors.primaryTint,
             borderRadius: BorderRadius.circular(AppRadii.input),
           ),
           child: Row(
             children: [
-              Icon(Icons.local_offer_outlined,
-                  size: 18, color: scheme.primary),
+              Icon(Icons.local_offer_outlined, size: 18, color: scheme.primary),
               const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Text(
@@ -213,13 +228,11 @@ class _CouponRow extends ConsumerWidget {
               ),
               InkWell(
                 key: const Key('coupon-remove'),
-                onTap: () => ref
-                    .read(cartControllerProvider.notifier)
-                    .removeCoupon(),
+                onTap: () =>
+                    ref.read(cartControllerProvider.notifier).removeCoupon(),
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpace.xs),
-                  child: Icon(Icons.close,
-                      size: 18, color: scheme.primary),
+                  child: Icon(Icons.close, size: 18, color: scheme.primary),
                 ),
               ),
             ],
@@ -230,7 +243,11 @@ class _CouponRow extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
+        AppSpace.lg,
+        AppSpace.md,
+        AppSpace.lg,
+        0,
+      ),
       child: OutlinedButton.icon(
         key: const Key('coupon-open'),
         onPressed: () => _CouponSheet.show(context),
@@ -256,9 +273,11 @@ class _CouponSheet extends ConsumerStatefulWidget {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadii.sheet)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadii.sheet),
+        ),
       ),
       builder: (_) => const _CouponSheet(),
     );
@@ -281,36 +300,34 @@ class _CouponSheetState extends ConsumerState<_CouponSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final colors = Theme.of(context).freshColors;
-    final couponError =
-        ref.watch(cartControllerProvider).couponError;
-    final applying =
-        ref.watch(cartControllerProvider).applyingCoupon;
+    final couponError = ref.watch(cartControllerProvider).couponError;
+    final applying = ref.watch(cartControllerProvider).applyingCoupon;
 
-    return SafeArea(
-      top: false,
+    return FluidSheet(
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg,
+          AppSpace.xs,
+          AppSpace.lg,
+          AppSpace.sm,
+        ),
+        child: Text(
+          'Apply coupon',
+          style: AppTypography.screenTitle(scheme.onSurface),
+        ),
+      ),
       child: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md,
-              AppSpace.lg, AppSpace.lg + MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.lg,
+            AppSpace.sm,
+            AppSpace.lg,
+            AppSpace.lg + MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.faint,
-                    borderRadius:
-                        BorderRadius.circular(AppRadii.pill),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpace.lg),
-              Text('Apply coupon',
-                  style: AppTypography.screenTitle(scheme.onSurface)),
-              const SizedBox(height: AppSpace.sm),
               SizedBox(
                 height: 52,
                 child: TextField(
@@ -322,10 +339,10 @@ class _CouponSheetState extends ConsumerState<_CouponSheet> {
                   decoration: InputDecoration(
                     hintText: 'Coupon code',
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: AppSpace.lg),
+                      horizontal: AppSpace.lg,
+                    ),
                     border: OutlineInputBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppRadii.input),
+                      borderRadius: BorderRadius.circular(AppRadii.input),
                       borderSide: BorderSide(color: colors.faint),
                     ),
                   ),
@@ -333,9 +350,7 @@ class _CouponSheetState extends ConsumerState<_CouponSheet> {
               ),
               if (couponError != null) ...[
                 const SizedBox(height: AppSpace.xs),
-                Text(couponError,
-                    style:
-                        AppTypography.caption(scheme.error)),
+                Text(couponError, style: AppTypography.caption(scheme.error)),
               ],
               const SizedBox(height: AppSpace.md),
               SizedBox(
@@ -346,16 +361,14 @@ class _CouponSheetState extends ConsumerState<_CouponSheet> {
                   style: FilledButton.styleFrom(
                     backgroundColor: scheme.primary,
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppRadii.button),
+                      borderRadius: BorderRadius.circular(AppRadii.button),
                     ),
                   ),
                   child: applying
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Text('Apply'),
                 ),
@@ -368,9 +381,7 @@ class _CouponSheetState extends ConsumerState<_CouponSheet> {
   }
 
   Future<void> _apply() async {
-    await ref
-        .read(cartControllerProvider.notifier)
-        .applyCoupon(_code.text);
+    await ref.read(cartControllerProvider.notifier).applyCoupon(_code.text);
     if (!mounted) return;
     if (ref.read(cartControllerProvider).couponError == null) {
       Navigator.of(context).pop();
@@ -420,9 +431,7 @@ class _LineCard extends ConsumerWidget {
               if (next <= 0) {
                 _remove(ref, context);
               } else {
-                ref
-                    .read(cartControllerProvider.notifier)
-                    .setQty(item.id, next);
+                ref.read(cartControllerProvider.notifier).setQty(item.id, next);
               }
             },
           ),
@@ -469,10 +478,10 @@ class _LineCard extends ConsumerWidget {
           )
           .closed
           .then((reason) {
-        if (reason != SnackBarClosedReason.action) {
-          ref.read(cartControllerProvider.notifier).refresh();
-        }
-      }),
+            if (reason != SnackBarClosedReason.action) {
+              ref.read(cartControllerProvider.notifier).refresh();
+            }
+          }),
     );
   }
 }
@@ -490,7 +499,11 @@ class _BillBlock extends StatelessWidget {
     final colors = Theme.of(context).freshColors;
     return Container(
       margin: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.lg, AppSpace.lg, 0),
+        AppSpace.lg,
+        AppSpace.lg,
+        AppSpace.lg,
+        0,
+      ),
       padding: const EdgeInsets.all(AppSpace.lg),
       decoration: BoxDecoration(
         color: scheme.surface,
@@ -499,37 +512,58 @@ class _BillBlock extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _row(context, 'Subtotal', '₹${_rupees(state.subtotal)}',
-              scheme.onSurface),
+          _row(
+            context,
+            'Subtotal',
+            '₹${_rupees(state.subtotal)}',
+            scheme.onSurface,
+          ),
           if (state.coupon != null) ...[
             const SizedBox(height: AppSpace.xs),
-            _row(context, 'Coupon ${state.coupon!.code}',
-                '−₹${_rupees(state.discount)}', colors.success,
-                strong: true),
+            _row(
+              context,
+              'Coupon ${state.coupon!.code}',
+              '−₹${_rupees(state.discount)}',
+              colors.success,
+              strong: true,
+            ),
           ],
           const SizedBox(height: AppSpace.xs),
-          _row(context, 'Delivery', 'At checkout',
-              scheme.onSurfaceVariant),
+          _row(context, 'Delivery', 'At checkout', scheme.onSurfaceVariant),
           const Divider(height: AppSpace.lg),
-          _row(context, 'Total', '₹${_rupees(state.payable)}',
-              scheme.onSurface,
-              strong: true, size: 16),
+          _row(
+            context,
+            'Total',
+            '₹${_rupees(state.payable)}',
+            scheme.onSurface,
+            strong: true,
+            size: 16,
+          ),
         ],
       ),
     );
   }
 
-  Widget _row(BuildContext context, String label, String value, Color color,
-      {bool strong = false, double size = 14}) {
+  Widget _row(
+    BuildContext context,
+    String label,
+    String value,
+    Color color, {
+    bool strong = false,
+    double size = 14,
+  }) {
     final style = strong
         ? AppTypography.tabularPrice(color, size: size)
         : AppTypography.tabularNumber(color, size: size);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: AppTypography.body(
-                Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: AppTypography.body(
+            Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
         Text(value, style: style),
       ],
     );
@@ -547,11 +581,14 @@ class _CheckoutBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface,
-        border: Border(
-            top: BorderSide(color: scheme.outlineVariant)),
+        border: Border(top: BorderSide(color: scheme.outlineVariant)),
       ),
       padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm),
+        AppSpace.lg,
+        AppSpace.sm,
+        AppSpace.lg,
+        AppSpace.sm,
+      ),
       child: SafeArea(
         top: false,
         child: SizedBox(
@@ -563,8 +600,7 @@ class _CheckoutBar extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: scheme.primary,
               shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(AppRadii.button),
+                borderRadius: BorderRadius.circular(AppRadii.button),
               ),
             ),
             child: Text(
@@ -578,7 +614,6 @@ class _CheckoutBar extends StatelessWidget {
   }
 }
 
-String _rupees(double value) =>
-    value == value.roundToDouble()
-        ? value.toInt().toString()
-        : value.toStringAsFixed(2);
+String _rupees(double value) => value == value.roundToDouble()
+    ? value.toInt().toString()
+    : value.toStringAsFixed(2);

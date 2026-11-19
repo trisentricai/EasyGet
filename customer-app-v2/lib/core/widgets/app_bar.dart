@@ -1,11 +1,15 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
+import '../theme/tokens.dart';
 import 'nav.dart';
 
 /// Navigation chrome shared by every tab + inner page (DESIGN §11.5):
-/// surface fill, no elevation, hairline scrolled-under border, Headline title.
-/// The back affordance is a framework [BackButton] (so the test `pageBack`
-/// and assistive tech find it) with [popOrHome] as the default action.
+/// frosted translucent fill, no elevation, hairline scrolled-under border,
+/// Headline title. The back affordance is a framework [BackButton] (so the
+/// test `pageBack` and assistive tech find it) with [popOrHome] as the
+/// default action.
 class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
   const EasyGetAppBar({
     super.key,
@@ -38,14 +42,12 @@ class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).freshColors;
     return AppBar(
       automaticallyImplyLeading: false,
       titleSpacing: showBack ? 0 : 16,
       leading: showBack
-          ? BackButton(
-              onPressed:
-                  onBack ?? () => popOrHome(context),
-            )
+          ? BackButton(onPressed: onBack ?? () => popOrHome(context))
           : null,
       title: addressRow ?? (title == null ? null : Text(title!)),
       actions: [
@@ -57,10 +59,19 @@ class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
         ...actions,
       ],
       bottom: bottom,
-      backgroundColor: scheme.surfaceContainerLowest,
+      // The blur lives in flexibleSpace (behind the toolbar); the bar itself
+      // is transparent so content scrolls visibly beneath the frosted chrome.
+      flexibleSpace: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: ColoredBox(
+          color: scheme.surfaceContainerLowest.withValues(alpha: 0.78),
+        ),
+      ),
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 1,
+      shape: Border(bottom: BorderSide(color: colors.glassBorder, width: 1)),
     );
   }
 }

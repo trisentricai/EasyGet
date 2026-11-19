@@ -7,6 +7,7 @@ import { EmptyState, Price, ProductCard, Section, Spinner } from "../components/
 import { SafeImage } from "../components/safe-image";
 import { CategoryTiles, normalizeTileStyle } from "../components/category-tiles";
 import { CategorySidebar } from "./CategorySidebar";
+import { HomeHighlights } from "../components/home-highlights";
 import { fxClass, fxStyle } from "../utils/imageFx";
 import {
   AllProductsGrid,
@@ -73,6 +74,8 @@ export function HomePage() {
             description={data.store.description}
           />
         )}
+
+        <HomeHighlights />
 
         {/* Designed sections (admin-configured) — CATEGORY_GRID excluded, use button above */}
         {rest.map((s) => <SectionRenderer key={s.id} section={s} />)}

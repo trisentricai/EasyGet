@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/tokens.dart';
+import '../../../../core/widgets/fluid_sheet.dart';
 
 /// A selectable buyable variant for [VariantSheet].
 class VariantOption {
@@ -43,12 +44,14 @@ class VariantSheet extends StatefulWidget {
     return showModalBottomSheet<VariantOption>(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppRadii.sheet),
         ),
       ),
-      builder: (_) => VariantSheet(options: options, initialIndex: initialIndex),
+      builder: (_) =>
+          VariantSheet(options: options, initialIndex: initialIndex),
     );
   }
 
@@ -62,40 +65,37 @@ class _VariantSheetState extends State<VariantSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final colors = Theme.of(context).freshColors;
     final cheapest = widget.options
         .map((o) => o.price)
         .reduce((a, b) => a < b ? a : b);
     final selected = widget.options[_selected];
 
-    return SafeArea(
-      top: false,
+    return FluidSheet(
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg,
+          AppSpace.xs,
+          AppSpace.lg,
+          AppSpace.sm,
+        ),
+        child: Text(
+          'Choose a size',
+          style: AppTypography.screenTitle(scheme.onSurface),
+        ),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: AppSpace.md),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colors.faint,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.sm),
-            child: Text('Choose a size',
-                style: AppTypography.screenTitle(scheme.onSurface)),
-          ),
           for (var i = 0; i < widget.options.length; i++)
             _row(context, i, widget.options[i], cheapest),
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.lg),
+              AppSpace.lg,
+              AppSpace.md,
+              AppSpace.lg,
+              AppSpace.lg,
+            ),
             child: SizedBox(
               height: 54,
               child: FilledButton(
@@ -160,15 +160,19 @@ class _VariantSheetState extends State<VariantSheet> {
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: option.thumbUrl == null
-                      ? Icon(Icons.inventory_2_outlined,
-                          size: 20, color: colors.faint)
+                      ? Icon(
+                          Icons.inventory_2_outlined,
+                          size: 20,
+                          color: colors.faint,
+                        )
                       : CachedNetworkImage(
                           imageUrl: option.thumbUrl!,
                           fit: BoxFit.cover,
                           errorWidget: (_, _, _) => Icon(
-                              Icons.image_not_supported_outlined,
-                              size: 20,
-                              color: colors.faint),
+                            Icons.image_not_supported_outlined,
+                            size: 20,
+                            color: colors.faint,
+                          ),
                         ),
                 ),
                 const SizedBox(width: AppSpace.md),
@@ -177,20 +181,29 @@ class _VariantSheetState extends State<VariantSheet> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(option.name,
-                          style: AppTypography.bodyMedium(scheme.onSurface)),
+                      Text(
+                        option.name,
+                        style: AppTypography.bodyMedium(scheme.onSurface),
+                      ),
                       const SizedBox(height: 2),
-                      Text('₹${_rupees(option.price)}',
-                          style: AppTypography.tabularNumber(
-                              scheme.onSurfaceVariant,
-                              size: 12)),
+                      Text(
+                        '₹${_rupees(option.price)}',
+                        style: AppTypography.tabularNumber(
+                          scheme.onSurfaceVariant,
+                          size: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 if (delta > 0)
-                  Text('+₹${_rupees(delta)}',
-                      style: AppTypography.tabularSmall(
-                          scheme.onSurfaceVariant, size: 12)),
+                  Text(
+                    '+₹${_rupees(delta)}',
+                    style: AppTypography.tabularSmall(
+                      scheme.onSurfaceVariant,
+                      size: 12,
+                    ),
+                  ),
                 const SizedBox(width: AppSpace.sm),
                 Icon(
                   isSelected
@@ -209,5 +222,6 @@ class _VariantSheetState extends State<VariantSheet> {
   }
 }
 
-String _rupees(double value) =>
-    value == value.roundToDouble() ? value.toInt().toString() : value.toStringAsFixed(2);
+String _rupees(double value) => value == value.roundToDouble()
+    ? value.toInt().toString()
+    : value.toStringAsFixed(2);

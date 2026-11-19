@@ -90,6 +90,9 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 1,
         shadowColor: scheme.outline.withValues(alpha: 0.3),
+        shape: Border(
+          bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.5)),
+        ),
         titleTextStyle: AppTypography.screenTitle(scheme.onSurface),
       ),
       cardTheme: CardThemeData(
@@ -105,8 +108,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -153,9 +158,7 @@ class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         side: BorderSide(color: scheme.outlineVariant),
         labelStyle: AppTypography.label(scheme.onSurface),
         selectedColor: scheme.primaryContainer,
@@ -163,9 +166,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         backgroundColor: scheme.surface,
         contentTextStyle: AppTypography.body(scheme.onSurface),
         actionTextColor: scheme.primary,
@@ -200,6 +201,13 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surfaceContainerLowest,
         indicatorColor: scheme.primaryContainer,
+        indicatorShape: const StadiumBorder(),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) {
+            return scheme.primaryContainer.withValues(alpha: 0.7);
+          }
+          return null;
+        }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return AppTypography.label(scheme.primary, size: 12);
@@ -208,7 +216,7 @@ class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: AppColors.primary, size: 22);
+            return IconThemeData(color: scheme.primary, size: 22);
           }
           return IconThemeData(color: scheme.onSurfaceVariant, size: 22);
         }),

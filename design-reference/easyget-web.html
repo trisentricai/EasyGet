@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>EasyGet — The everyday, right now</title>
+<style>
+/* ============================================================
+   EASYGET · WEB CONCEPT
+   Apple-style materials + fluid motion, on EasyGet's warm palette.
+   Tokens live here. No hardcoded values in components below.
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --paper: #FAF8F5;
+  --surface: #FFFFFF;
+  --sunken: #F1EAE0;
+  --ink: #1B1A17;
+  --muted: #655D52;
+  --faint: #A79C8F;
+  --line: #E7DFD3;
+  --line-strong: #D5C9B8;
+
+  --brand: #0C3B2E;
+  --brand-tint: #DDF0E4;
+  --cta: #0E7A4D;
+  --cta-dark: #0A5C3B;
+  --marigold: #E79B12;
+  --marigold-wash: #FCEFD4;
+  --success: #15803D;
+  --danger: #B91C1C;
+
+  --glass: rgb(255 255 255 / .72);
+  --glass-strong: rgb(255 255 255 / .9);
+  --scrim: rgb(27 26 23 / .42);
+
+  --shadow-1: 0 1px 2px rgb(27 26 23 / .05);
+  --shadow-2: 0 12px 34px rgb(27 26 23 / .10), 0 2px 8px rgb(27 26 23 / .04);
+  --shadow-3: 0 28px 80px rgb(27 26 23 / .18), 0 8px 24px rgb(27 26 23 / .08);
+  --ring: 0 0 0 4px rgb(14 122 77 / .24);
+
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 38px;
+  --r-pill: 980px;
+
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --dur-micro: 120ms;
+  --dur-base: 380ms;
+  --dur-slow: 560ms;
+
+  --container: 1120px;
+  --gutter: 24px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #12110F;
+    --surface: #1B1A17;
+    --sunken: #26241F;
+    --ink: #F4EFE7;
+    --muted: #A79C8F;
+    --faint: #6F675C;
+    --line: #2B2823;
+    --line-strong: #3E3A33;
+    --brand-tint: #14342A;
+    --cta: #3AA76D;
+    --cta-dark: #2C8757;
+    --marigold: #FFB020;
+    --marigold-wash: #3A2C10;
+    --success: #4ADE80;
+    --glass: rgb(27 26 23 / .76);
+    --glass-strong: rgb(27 26 23 / .92);
+    --scrim: rgb(0 0 0 / .62);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / .3);
+    --shadow-2: 0 12px 34px rgb(0 0 0 / .4), 0 2px 8px rgb(0 0 0 / .24);
+    --shadow-3: 0 28px 80px rgb(0 0 0 / .55), 0 8px 24px rgb(0 0 0 / .3);
+    --ring: 0 0 0 4px rgb(58 167 109 / .3);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root { --glass: var(--surface); --glass-strong: var(--surface); }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+[hidden] { display: none !important; }
+button, input, select { font: inherit; }
+button { color: inherit; cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: none; box-shadow: var(--ring); }
+
+.skip-link {
+  position: fixed; top: 10px; left: 10px; z-index: 100;
+  padding: 12px 18px; border-radius: var(--r-pill);
+  background: var(--brand); color: #fff; transform: translateY(-160%);
+}
+.skip-link:focus { transform: translateY(0); }
+
+/* ---------- chrome: translucent, content scrolls under ---------- */
+.site-header {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--glass);
+  backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+}
+.site-header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -14px; height: 14px;
+  background: linear-gradient(to bottom, var(--glass), transparent);
+  pointer-events: none;
+}
+.header-inner {
+  display: flex; align-items: center; gap: 28px;
+  width: 100%; max-width: var(--container); height: 72px;
+  margin: 0 auto; padding: 0 var(--gutter);
+}
+.brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 0; border: 0; background: transparent;
+  font-weight: 700; letter-spacing: -.02em;
+}
+.brand-mark {
+  display: grid; width: 34px; height: 34px; place-items: center;
+  border-radius: 11px; background: var(--brand); color: #fff;
+  font: 700 14px/1 var(--font-display); letter-spacing: -.02em;
+}
+.brand-word { font: 700 22px/1 var(--font-display); letter-spacing: -.035em; }
+.nav-primary { display: flex; align-items: center; gap: 4px; margin-right: auto; }
+.nav-link {
+  min-height: 44px; padding: 0 15px; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--muted); font-size: 15px; font-weight: 600;
+  transition: background var(--dur-micro) ease-out, color var(--dur-micro) ease-out;
+}
+.nav-link:hover { background: var(--sunken); color: var(--ink); }
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.search-shell { position: relative; width: 264px; }
+.search-field {
+  display: flex; align-items: center; gap: 8px; min-height: 44px;
+  padding: 0 15px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: var(--sunken); transition: box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+}
+.search-field:focus-within { border-color: var(--cta); box-shadow: var(--ring); }
+.search-field svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.search-field input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 15px; }
+.search-field input::placeholder { color: var(--faint); }
+.suggestions {
+  position: absolute; top: calc(100% + 10px); right: 0; left: 0; z-index: 30;
+  padding: 8px; border: 1px solid var(--line); border-radius: 20px;
+  background: var(--glass-strong); backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: var(--shadow-2);
+}
+.suggestion {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 54px;
+  padding: 6px 8px; border: 0; border-radius: 14px; background: transparent; text-align: left;
+}
+.suggestion:hover, .suggestion:focus-visible { background: var(--sunken); }
+.suggestion-art { width: 38px; height: 38px; border-radius: 11px; background: var(--brand-tint); flex: none; }
+.suggestion span:last-child { display: grid; min-width: 0; }
+.suggestion strong, .suggestion small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggestion strong { font-size: 14px; }
+.suggestion small { color: var(--muted); font-size: 12px; }
+.icon-button {
+  position: relative; display: grid; width: 44px; height: 44px; place-items: center;
+  border: 1px solid var(--line); border-radius: 50%; background: var(--surface);
+  transition: transform var(--dur-micro) ease-out, background var(--dur-micro) ease-out;
+}
+.icon-button:active { transform: scale(.94); background: var(--sunken); }
+.icon-button svg { width: 20px; height: 20px; }
+.badge {
+  position: absolute; top: -3px; right: -3px; display: grid; min-width: 20px; height: 20px;
+  padding: 0 5px; place-items: center; border: 2px solid var(--paper); border-radius: var(--r-pill);
+  background: var(--cta); color: #fff; font-size: 11px; font-weight: 800;
+}
+
+/* ---------- buttons: feedback starts on pointer-down ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 50px; padding: 0 24px; border-radius: var(--r-pill);
+  font-size: 15px; font-weight: 700; text-decoration: none;
+  transition: transform var(--dur-base) var(--ease-out), background var(--dur-micro) ease-out,
+              box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-micro) ease-out;
+}
+.btn:active { transform: scale(.97); transition-duration: var(--dur-micro); }
+.btn-primary { border: 1px solid var(--cta); background: var(--cta); color: #fff; }
+.btn-primary:hover { background: var(--cta-dark); border-color: var(--cta-dark); box-shadow: var(--shadow-2); }
+.btn-secondary { border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); }
+.btn-secondary:hover { background: var(--sunken); }
+.btn-quiet { min-height: 44px; padding: 0 14px; border: 0; background: transparent; color: var(--cta); }
+.btn-quiet:hover { background: var(--brand-tint); }
+.btn-block { width: 100%; }
+
+/* ---------- hero ---------- */
+.hero { width: 100%; max-width: var(--container); margin: 0 auto; padding: 84px var(--gutter) 48px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(0, .96fr); align-items: center; gap: 64px; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0 0 20px;
+  color: var(--cta); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+}
+.hero h1 {
+  max-width: 640px; margin: 0; font-family: var(--font-display);
+  font-size: clamp(3.25rem, 6.4vw, 5.5rem); font-weight: 700;
+  letter-spacing: -.04em; line-height: 1.01;
+}
+.hero h1 em { color: var(--cta); font-style: normal; }
+.hero-copy { max-width: 540px; margin: 26px 0 0; color: var(--muted); font-size: 1.25rem; line-height: 1.55; letter-spacing: -.005em; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+.hero-stage {
+  position: relative; display: grid; min-height: 560px; place-items: center; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--r-xl);
+  background: radial-gradient(120% 120% at 20% 10%, var(--surface), var(--sunken));
+  box-shadow: var(--shadow-1);
+}
+.hero-orbit {
+  position: absolute; width: 450px; height: 450px; border: 1px solid var(--line); border-radius: 50%;
+}
+.hero-orbit::after { content: ""; position: absolute; inset: 56px; border: 1px solid var(--line); border-radius: 50%; }
+.hero-art { position: relative; z-index: 1; width: min(86%, 380px); }
+.hero-art svg { display: block; width: 100%; height: auto; }
+.eta-card {
+  position: absolute; bottom: 28px; left: 28px; display: flex; align-items: center; gap: 12px;
+  min-width: 224px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 20px;
+  background: var(--glass-strong); backdrop-filter: blur(18px) saturate(180%); box-shadow: var(--shadow-2);
+}
+.pulse-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 5px var(--brand-tint); flex: none; }
+.eta-card strong, .eta-card small { display: block; }
+.eta-card strong { font-size: 15px; }
+.eta-card small { color: var(--muted); font-size: 12px; }
+
+/* ---------- trust ---------- */
+.trust-row {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+  width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 var(--gutter) 96px;
+}
+.trust-item {
+  display: flex; align-items: flex-start; gap: 13px; padding: 20px;
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface);
+}
+.trust-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: var(--brand-tint); color: var(--cta); flex: none; }
+.trust-icon svg { width: 20px; height: 20px; }
+.trust-item strong, .trust-item span { display: block; }
+.trust-item strong { font-size: 15px; letter-spacing: -.01em; }
+.trust-item span { margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+/* ---------- catalog ---------- */
+.catalog { padding: 88px var(--gutter) 100px; border-top: 1px solid var(--line); background: var(--surface); }
+.catalog-inner { width: 100%; max-width: var(--container); margin: 0 auto; }
+.section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
+.section-head h2, .steps h2, .club-banner h2 {
+  margin: 0; font-family: var(--font-display); font-weight: 700; letter-spacing: -.035em; line-height: 1.08;
+}
+.section-head h2 { font-size: clamp(2.25rem, 4vw, 3.25rem); }
+.section-head p { margin: 10px 0 0; color: var(--muted); font-size: 1rem; }
+.result-count { color: var(--muted); font-size: 14px; white-space: nowrap; }
+.chips { display: flex; gap: 8px; margin-bottom: 26px; overflow-x: auto; scrollbar-width: none; }
+.chips::-webkit-scrollbar, .category-scroller::-webkit-scrollbar { display: none; }
+.chip {
+  min-height: 44px; padding: 0 20px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: var(--paper); font-size: 14px; font-weight: 700; white-space: nowrap;
+  transition: transform var(--dur-micro) ease-out, background var(--dur-micro) ease-out, color var(--dur-micro) ease-out;
+}
+.chip:active { transform: scale(.96); }
+.chip:hover { border-color: var(--line-strong); }
+.chip.is-active { border-color: var(--brand); background: var(--brand); color: #fff; }
+.product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.product-card {
+  min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg);
+  background: var(--paper); transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+}
+.product-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-2); }
+.product-card .art {
+  display: grid; min-height: 184px; place-items: center; overflow: hidden;
+  border-bottom: 1px solid var(--line); background: linear-gradient(150deg, var(--sunken), var(--paper));
+}
+.product-card .art svg { width: 100%; max-width: 150px; height: auto; }
+.product-body { padding: 18px; }
+.product-topline { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--cta); font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.product-topline span:last-child { color: var(--muted); }
+.product-card h3 { margin: 10px 0 6px; font-size: 17px; letter-spacing: -.02em; line-height: 1.3; }
+.product-card p { min-height: 40px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.product-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 18px; }
+.product-bottom strong, .product-bottom small { display: block; }
+.product-bottom strong { font-size: 17px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.product-bottom small { margin-top: 2px; color: var(--muted); font-size: 11px; }
+.add-button {
+  min-width: 70px; min-height: 44px; padding: 0 16px; border: 1px solid var(--cta);
+  border-radius: var(--r-pill); background: var(--cta); color: #fff; font-size: 14px; font-weight: 800;
+  transition: transform var(--dur-micro) ease-out, background var(--dur-micro) ease-out;
+}
+.add-button:active { transform: scale(.94); }
+.add-button:hover { background: var(--cta-dark); border-color: var(--cta-dark); }
+.empty-state { padding: 64px 24px; border: 1px dashed var(--line-strong); border-radius: var(--r-lg); background: var(--paper); text-align: center; }
+.empty-state strong, .empty-state span { display: block; }
+.empty-state strong { font-size: 20px; }
+.empty-state span { margin-top: 6px; color: var(--muted); }
+
+/* ---------- steps + club ---------- */
+.steps { width: 100%; max-width: var(--container); margin: 0 auto; padding: 100px var(--gutter); }
+.steps h2 { max-width: 720px; margin-bottom: 36px; font-size: clamp(2.25rem, 4vw, 3.25rem); }
+.step-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.step-card { padding: 28px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.step-number { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; background: var(--brand-tint); color: var(--cta); font-weight: 800; }
+.step-card h3 { margin: 22px 0 8px; font-size: 20px; letter-spacing: -.02em; }
+.step-card p { margin: 0; color: var(--muted); }
+.club-wrap { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 var(--gutter) 100px; }
+.club-banner {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 32px;
+  padding: 46px; overflow: hidden; border-radius: var(--r-xl); background: var(--brand); color: #fff;
+}
+.club-banner h2 { font-size: clamp(2rem, 4vw, 3rem); }
+.club-banner p { max-width: 580px; margin: 14px 0 0; color: rgb(255 255 255 / .74); }
+.club-banner .btn { border-color: #fff; background: #fff; color: var(--brand); white-space: nowrap; }
+.club-banner .btn:hover { background: var(--brand-tint); border-color: var(--brand-tint); }
+.order-status { max-width: var(--container); margin: -62px auto 80px; padding: 0 var(--gutter); }
+.order-status p { margin: 0; padding: 14px 20px; border: 1px solid var(--success); border-radius: var(--r-pill); background: var(--brand-tint); color: var(--cta); font-size: 14px; font-weight: 700; }
+.site-footer { border-top: 1px solid var(--line); background: var(--surface); }
+.footer-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  width: 100%; max-width: var(--container); margin: 0 auto; padding: 32px var(--gutter);
+  color: var(--muted); font-size: 13px;
+}
+
+/* ---------- dialogs: materials + symmetric motion ---------- */
+dialog { padding: 0; border: 0; background: transparent; color: var(--ink); }
+dialog::backdrop { background: var(--scrim); backdrop-filter: blur(6px); }
+.sheet-dialog { position: fixed; inset: 0 0 0 auto; width: min(100%, 470px); height: 100%; max-width: none; max-height: none; margin: 0; }
+.modal-dialog { position: fixed; inset: 0; width: min(calc(100% - 32px), 560px); height: fit-content; max-width: none; max-height: calc(100% - 32px); margin: auto; }
+.dialog-panel { height: 100%; overflow-y: auto; padding: 28px; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(180%); box-shadow: var(--shadow-3); overscroll-behavior: contain; }
+.modal-dialog .dialog-panel { height: auto; max-height: calc(100dvh - 32px); border: 1px solid var(--line); border-radius: 28px; }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.dialog-head h2 { margin: 0; font: 700 30px/1.1 var(--font-display); letter-spacing: -.035em; }
+.cart-items { display: grid; gap: 12px; margin: 24px 0; }
+.cart-row { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+.cart-thumb { display: grid; width: 58px; height: 58px; place-items: center; border-radius: 14px; background: var(--sunken); }
+.cart-thumb svg { width: 46px; height: 46px; }
+.cart-info { min-width: 0; }
+.cart-info strong, .cart-info small { display: block; }
+.cart-info strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.cart-info small { color: var(--muted); font-size: 12px; }
+.qty-control { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.qty-button { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--paper); font-size: 18px; font-weight: 700; transition: transform var(--dur-micro) ease-out, background var(--dur-micro) ease-out; }
+.qty-button:active { transform: scale(.9); background: var(--sunken); }
+.qty-value { min-width: 20px; text-align: center; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cart-price { display: grid; justify-items: end; gap: 6px; }
+.cart-price strong { font-size: 14px; font-variant-numeric: tabular-nums; }
+.remove-button { min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 12px; text-decoration: underline; }
+.cart-empty { padding: 48px 20px; border: 1px dashed var(--line-strong); border-radius: 20px; text-align: center; }
+.cart-empty strong, .cart-empty span { display: block; }
+.cart-empty strong { font-size: 18px; }
+.cart-empty span { margin-top: 6px; color: var(--muted); font-size: 13px; }
+.summary-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.summary-row strong { font-size: 19px; font-variant-numeric: tabular-nums; }
+.dialog-footer { display: grid; gap: 10px; margin-top: 18px; }
+.field { display: grid; gap: 7px; margin-bottom: 14px; }
+.field label { font-size: 13px; font-weight: 800; }
+.field input, .field select { min-height: 48px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); }
+.field input:focus, .field select:focus { border-color: var(--cta); outline: none; box-shadow: var(--ring); }
+.plan-grid { display: grid; gap: 10px; margin: 24px 0; }
+.plan-option { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 76px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); text-align: left; transition: transform var(--dur-micro) ease-out, border-color var(--dur-micro) ease-out, background var(--dur-micro) ease-out; }
+.plan-option:active { transform: scale(.985); }
+.plan-option:hover { border-color: var(--line-strong); }
+.plan-option.is-selected { border-color: var(--cta); background: var(--brand-tint); }
+.plan-option strong, .plan-option small { display: block; }
+.plan-option small { color: var(--muted); }
+.plan-check { color: var(--cta); font-weight: 800; opacity: 0; }
+.plan-option.is-selected .plan-check { opacity: 1; }
+.toast {
+  position: fixed; right: 24px; bottom: 24px; z-index: 80; display: flex; align-items: center; gap: 12px;
+  min-width: 290px; max-width: calc(100% - 48px); padding: 14px 16px; border: 1px solid var(--line);
+  border-radius: 18px; background: var(--brand); color: #fff; box-shadow: var(--shadow-3);
+}
+.toast-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--marigold); flex: none; }
+.toast span { flex: 1; font-size: 14px; font-weight: 700; }
+.toast button { min-width: 44px; min-height: 44px; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 20px; }
+
+/* ---------- art colors, shared by every surface ---------- */
+.art-espresso { --a: #6B4432; --b: #F0E4D2; --c: #E79B12; }
+.art-flat { --a: #F0E4D2; --b: #6B4432; --c: #0E7A4D; }
+.art-tonic { --a: #CFE8F4; --b: #79BFA5; --c: #A9CF65; }
+.art-croissant { --a: #D8A33F; --b: #F0E4D2; --c: #6B4432; }
+.art-yogurt { --a: #EDF2F7; --b: #C65070; --c: #79BFA5; }
+.art-smoothie { --a: #F4B740; --b: #548Fcf; --c: #A9CF65; }
+.art-soda { --a: #548Fcf; --b: #CFE8F4; --c: #A9CF65; }
+.fill-a { fill: var(--a); } .fill-b { fill: var(--b); } .fill-c { fill: var(--c); }
+.stroke-art { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1024px) {
+  .nav-primary { display: none; }
+  .brand { margin-right: auto; }
+  .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hero-grid { gap: 40px; }
+  .hero-stage { min-height: 480px; }
+}
+@media (max-width: 768px) {
+  .header-inner { height: auto; flex-wrap: wrap; padding: 12px var(--gutter); }
+  .header-actions { width: 100%; }
+  .search-shell { flex: 1; width: auto; }
+  .hero { padding-top: 54px; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .hero-stage { min-height: 420px; }
+  .trust-row { grid-template-columns: minmax(0, 1fr); padding-bottom: 72px; }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step-grid { grid-template-columns: minmax(0, 1fr); }
+  .club-banner { grid-template-columns: minmax(0, 1fr); padding: 32px; }
+  .order-status { margin-top: 20px; }
+}
+@media (max-width: 480px) {
+  :root { --gutter: 18px; }
+  .hero h1 { font-size: 46px; }
+  .hero-copy { font-size: 17px; }
+  .hero-stage { min-height: 360px; border-radius: 28px; }
+  .hero-orbit { width: 330px; height: 330px; }
+  .eta-card { right: 18px; bottom: 18px; left: 18px; min-width: 0; }
+  .product-grid { grid-template-columns: minmax(0, 1fr); }
+  .section-head { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .sheet-dialog, .modal-dialog { width: 100%; }
+  .dialog-panel { padding: 20px; }
+  .toast { right: 12px; bottom: 12px; left: 12px; min-width: 0; max-width: none; }
+  .footer-inner { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="header-inner">
+    <button class="brand" type="button" data-action="home" aria-label="EasyGet home">
+      <span class="brand-mark" aria-hidden="true">EG</span>
+      <span class="brand-word">EasyGet</span>
+    </button>
+    <nav class="nav-primary" aria-label="Primary">
+      <button class="nav-link" type="button" data-action="shop">Shop</button>
+      <button class="nav-link" type="button" data-action="how">How it works</button>
+      <button class="nav-link" type="button" data-action="open-plus">EasyGet Plus</button>
+    </nav>
+    <div class="header-actions">
+      <div class="search-shell">
+        <div class="search-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input id="webSearch" type="search" role="combobox" aria-expanded="false" aria-controls="webSuggestions" data-search-input placeholder="Search milk, bread, coffee…" autocomplete="off">
+        </div>
+        <div class="suggestions" id="webSuggestions" data-suggestions hidden></div>
+      </div>
+      <button id="cartButton" class="icon-button" type="button" data-action="open-cart" aria-label="Open bag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path></svg>
+        <span class="badge" data-cart-count hidden>0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" aria-labelledby="heroTitle">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">Quick commerce, considered</p>
+        <h1 id="heroTitle">The everyday, <em>right now.</em></h1>
+        <p class="hero-copy">Fresh food, kitchen staples and the little things you forgot — picked from nearby stores and delivered while the moment still matters.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" type="button" data-action="shop">Start an order</button>
+          <button class="btn btn-secondary" type="button" data-action="how">How it works</button>
+        </div>
+      </div>
+      <div class="hero-stage" aria-label="EasyGet grocery selection illustration">
+        <div class="hero-orbit" aria-hidden="true"></div>
+        <div class="hero-art art-espresso" aria-hidden="true">
+          <svg viewBox="0 0 320 320" role="presentation">
+            <ellipse cx="160" cy="286" rx="118" ry="14" fill="var(--line)" opacity=".7"/>
+            <path d="M116 154c-27-24-26-66 2-86 8 22 22 38 40 48z" fill="#79BFA5"/>
+            <path d="M198 150c24-28 20-66-8-84-10 24-22 40-38 50z" fill="#A9CF65"/>
+            <path d="M160 156c-4-38 8-68 28-86 10 30 6 60-10 82z" fill="#0E7A4D"/>
+            <path d="M104 132h112l-12 138c-1 10-9 17-19 17h-50c-10 0-18-7-19-17z" fill="var(--brand)" transform="translate(0 -6)"/>
+            <path d="M104 132h112l-3 34H107z" fill="#1B5543" transform="translate(0 -6)"/>
+            <path d="M132 128c0-20 12-34 28-34s28 14 28 34" fill="none" stroke="var(--brand)" stroke-width="11" stroke-linecap="round"/>
+            <text x="160" y="232" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="38" font-weight="700" letter-spacing="-2" fill="#fff">EG</text>
+            <circle cx="248" cy="92" r="30" fill="#FCEFD4" opacity=".9"/>
+            <path d="M240 92l6 7 12-15" fill="none" stroke="#E79B12" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="eta-card">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          <span><strong>Live demo route</strong><small>Selected items · 12 min window</small></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="trust-row" aria-label="Service highlights">
+    <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+      <span><strong>Short windows</strong><span>Pick a slot that fits the moment.</span></span>
+    </div>
+    <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h10l2 5-3 2v11H8V10L5 8l2-5Z"></path><path d="M8 10h8"></path></svg></span>
+      <span><strong>Picked with care</strong><span>Chilled and shelf-stable items travel separately.</span></span>
+    </div>
+    <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h11v10H4z"></path><path d="M15 10h3l2 3v4h-5"></path><circle cx="8" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg></span>
+      <span><strong>Nearby stores</strong><span>Real shops around the corner, not a distant warehouse.</span></span>
+    </div>
+  </div>
+
+  <section class="catalog" id="shop" aria-labelledby="shopTitle">
+    <div class="catalog-inner">
+      <div class="section-head">
+        <div><h2 id="shopTitle">Today’s selection</h2><p>A short, useful list of things worth having close by.</p></div>
+        <span class="result-count" data-result-count>8 items</span>
+      </div>
+      <div class="chips" aria-label="Filter by category">
+        <button class="chip is-active" type="button" data-category="All" aria-pressed="true">All</button>
+        <button class="chip" type="button" data-category="Coffee" aria-pressed="false">Coffee</button>
+        <button class="chip" type="button" data-category="Bakery" aria-pressed="false">Bakery</button>
+        <button class="chip" type="button" data-category="Fresh" aria-pressed="false">Fresh</button>
+        <button class="chip" type="button" data-category="Drinks" aria-pressed="false">Drinks</button>
+      </div>
+      <div class="product-grid" data-product-grid></div>
+      <div class="empty-state" data-empty hidden><strong>Nothing on this shelf yet</strong><span>Try another category or search term.</span></div>
+    </div>
+  </section>
+
+  <section class="steps" id="how" aria-labelledby="howTitle">
+    <h2 id="howTitle">A shorter path from want to have.</h2>
+    <div class="step-grid">
+      <article class="step-card"><span class="step-number">1</span><h3>Choose your moments</h3><p>Browse a tight, useful menu instead of an endless aisle.</p></article>
+      <article class="step-card"><span class="step-number">2</span><h3>We prepare with care</h3><p>Nearby stores pick, chill and pack in the order you added them.</p></article>
+      <article class="step-card"><span class="step-number">3</span><h3>Meet it at the door</h3><p>Follow the demo order status from your bag or account view.</p></article>
+    </div>
+  </section>
+
+  <div class="order-status" data-order-status hidden><p></p></div>
+
+  <section class="club-wrap" aria-labelledby="clubTitle">
+    <div class="club-banner">
+      <div><h2 id="clubTitle">EasyGet Plus</h2><p>Keep the morning staples on repeat. Choose a rhythm, pause whenever, and make the essentials feel effortless.</p></div>
+      <button class="btn btn-primary" type="button" data-action="open-plus">Explore membership</button>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner"><span>EasyGet is a concept prototype — a design study in calm, fluid quick commerce.</span><span>Web experience · Apple-style design study</span></div>
+</footer>
+
+<dialog id="cartDialog" class="sheet-dialog" aria-labelledby="cartTitle">
+  <div class="dialog-panel">
+    <div class="dialog-head"><h2 id="cartTitle">Your bag</h2><button class="icon-button" type="button" data-action="close-dialog" aria-label="Close bag">×</button></div>
+    <div class="cart-items" data-cart-items></div>
+    <div class="summary-row"><span>Subtotal</span><strong data-cart-subtotal>₹0</strong></div>
+    <div class="summary-row"><span>Delivery</span><span>Calculated at checkout</span></div>
+    <div class="dialog-footer">
+      <button id="checkoutBtn" class="btn btn-primary btn-block" type="button" data-action="checkout" data-checkout>Continue to checkout</button>
+      <button class="btn btn-secondary btn-block" type="button" data-action="close-dialog">Keep browsing</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="checkoutDialog" class="modal-dialog" aria-labelledby="checkoutTitle">
+  <div class="dialog-panel">
+    <div class="dialog-head"><h2 id="checkoutTitle">Checkout</h2><button class="icon-button" type="button" data-action="close-dialog" aria-label="Close checkout">×</button></div>
+    <form data-checkout-form>
+      <div class="field"><label for="deliveryName">Name</label><input id="deliveryName" name="name" type="text" placeholder="Your name" required data-autofocus></div>
+      <div class="field"><label for="deliveryAddress">Delivery address</label><input id="deliveryAddress" name="address" type="text" placeholder="Flat, street, landmark" required></div>
+      <div class="field"><label for="deliverySlot">Delivery window</label><select id="deliverySlot" name="slot"><option>As soon as possible</option><option>This morning</option><option>This evening</option></select></div>
+      <div class="summary-row"><span data-order-count>0 items</span><strong data-order-total>₹0</strong></div>
+      <div class="dialog-footer"><button class="btn btn-primary btn-block" type="submit">Place demo order</button><button class="btn btn-secondary btn-block" type="button" data-action="close-dialog">Back to bag</button></div>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="plusDialog" class="modal-dialog" aria-labelledby="plusDialogTitle">
+  <div class="dialog-panel">
+    <div class="dialog-head"><h2 id="plusDialogTitle">Choose your rhythm</h2><button class="icon-button" type="button" data-action="close-dialog" aria-label="Close membership dialog">×</button></div>
+    <div class="plan-grid" aria-label="Membership plans">
+      <button class="plan-option is-selected" type="button" data-plan="Weekly"><span><strong>Weekly essentials</strong><small>Two curated refills each week</small></span><span class="plan-check" aria-hidden="true">✓</span></button>
+      <button class="plan-option" type="button" data-plan="Daily"><span><strong>Daily coffee</strong><small>One morning staple, every day</small></span><span class="plan-check" aria-hidden="true">✓</span></button>
+      <button class="plan-option" type="button" data-plan="Monthly"><span><strong>Monthly pantry</strong><small>A slower cadence for home staples</small></span><span class="plan-check" aria-hidden="true">✓</span></button>
+    </div>
+    <div class="dialog-footer"><button class="btn btn-primary btn-block" type="button" data-action="join-plan">Save plan for this demo</button><button class="btn btn-secondary btn-block" type="button" data-action="close-dialog">Not now</button></div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+  <span class="toast-dot" aria-hidden="true"></span><span id="toastText">Saved</span><button type="button" data-action="dismiss-toast" aria-label="Dismiss message">×</button>
+</div>
+
+<script>
+const products = [
+  { id: "sunrise-espresso", name: "Sunrise Espresso", description: "Double-shot, chilled, clean finish.", price: 180, category: "Coffee", tag: "Bestseller", eta: "12 min", size: "250 ml", art: "espresso", initial: "SE", tags: "coffee espresso chilled morning" },
+  { id: "oat-flat", name: "Oat Flat White", description: "Silky oat milk with a soft roast.", price: 210, category: "Coffee", tag: "Smooth", eta: "14 min", size: "200 ml", art: "flat", initial: "OW", tags: "coffee oat milk latte breakfast" },
+  { id: "cold-tonic", name: "Cold Brew Tonic", description: "Bright, sparkling, gently bitter.", price: 240, category: "Drinks", tag: "Refreshing", eta: "12 min", size: "300 ml", art: "tonic", initial: "BT", tags: "coffee tonic sparkling cold" },
+  { id: "almond-croissant", name: "Almond Croissant", description: "Flaky layers, almond cream, toasted top.", price: 160, category: "Bakery", tag: "Baked today", eta: "12 min", size: "1 piece", art: "croissant", initial: "AC", tags: "bakery pastry almond breakfast" },
+  { id: "butter-croissant", name: "Butter Croissant", description: "Classic, golden, and deeply buttery.", price: 140, category: "Bakery", tag: "Classic", eta: "12 min", size: "1 piece", art: "croissant", initial: "BC", tags: "bakery pastry butter classic" },
+  { id: "yogurt-bowl", name: "Berry Yogurt Bowl", description: "Thick yogurt with seasonal berries.", price: 220, category: "Fresh", tag: "Fresh", eta: "15 min", size: "240 g", art: "yogurt", initial: "BY", tags: "fresh yogurt fruit breakfast healthy" },
+  { id: "banana-smoothie", name: "Banana Smoothie", description: "Naturally sweet, cold, and filling.", price: 230, category: "Fresh", tag: "No sugar added", eta: "15 min", size: "300 ml", art: "smoothie", initial: "BS", tags: "fresh smoothie banana date healthy" },
+  { id: "yuzu-soda", name: "Sparkling Yuzu", description: "Citrus sparkle with a dry finish.", price: 150, category: "Drinks", tag: "Light", eta: "12 min", size: "250 ml", art: "soda", initial: "YS", tags: "drinks soda citrus sparkling" }
+];
+
+const state = { products: products.slice(), cart: {}, query: "", category: "All", order: null, plan: "Weekly" };
+const money = value => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+const returnFocus = new WeakMap();
+let toastTimer = 0;
+
+/* inline product artwork — one illustration system, reused everywhere */
+function artwork(product) {
+  const open = '<svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">';
+  const close = "</svg>";
+  switch (product.art) {
+    case "espresso": return `${open}<ellipse class="fill-b" cx="60" cy="98" rx="34" ry="7"/><path class="fill-a" d="M31 41h50v28c0 16-11 25-25 25S31 85 31 69z"/><path class="fill-b" d="M81 49h7c11 0 11 17 0 17h-7z"/><path class="stroke-art" d="M47 32c5-6-5-10 0-16M62 32c5-6-5-10 0-16M77 32c5-6-5-10 0-16"/>${close}`;
+    case "flat": return `${open}<ellipse class="fill-b" cx="60" cy="100" rx="33" ry="7"/><path class="fill-b" d="M30 46h52v23c0 16-12 26-26 26S30 85 30 69z"/><path class="fill-c" d="M56 47c11 6 20 14 20 23 0 9-9 16-20 20 8-9 10-16 5-22-4-5-5-12 0-21z"/><path class="fill-a" d="M82 52h6c9 0 9 15 0 15h-6z"/>${close}`;
+    case "tonic": return `${open}<path class="fill-a" d="M51 20h18v10l8 10v55c0 7-5 12-12 12H55c-7 0-12-5-12-12V40l8-10z"/><path class="fill-b" d="M49 51h22v34H49z"/><circle class="fill-c" cx="57" cy="62" r="3"/><circle class="fill-c" cx="65" cy="71" r="4"/><circle class="fill-c" cx="55" cy="79" r="2.5"/><path class="stroke-art" d="M53 20h14"/>${close}`;
+    case "croissant": return `${open}<path class="fill-a" d="M20 72c6-27 27-42 51-37 18 4 28 18 30 38-12 8-24 10-40 5-14 6-28 4-41-6z"/><path class="fill-b" d="M42 45c-3 12-3 25 2 37M62 38c-2 14-1 29 4 42M83 43c0 12 2 22 8 31"/><path class="fill-c" d="M26 72c14 7 29 8 45 4 14 4 23 3 29-3-6 16-23 24-40 21-17-3-29-11-34-22z"/>${close}`;
+    case "yogurt": return `${open}<ellipse class="fill-a" cx="60" cy="88" rx="38" ry="11"/><path class="fill-a" d="M24 57h72c-3 22-17 34-36 34S27 79 24 57z"/><ellipse class="fill-b" cx="60" cy="57" rx="36" ry="10"/><circle class="fill-c" cx="49" cy="54" r="5"/><circle class="fill-c" cx="65" cy="50" r="4"/><circle class="fill-c" cx="73" cy="59" r="6"/><path class="stroke-art" d="M38 39c5-8 12-8 17-1M58 34c6-7 14-5 18 3"/>${close}`;
+    case "smoothie": return `${open}<path class="fill-a" d="M42 32h36l-6 62H48z"/><path class="fill-b" d="M45 59h30l-3 35H48z"/><circle class="fill-c" cx="61" cy="49" r="5"/><path class="stroke-art" d="M61 31V16M61 18c8-8 17-5 18 3-9 2-14 0-18-3z"/>${close}`;
+    default: return `${open}<rect class="fill-a" x="42" y="24" width="36" height="76" rx="12"/><path class="fill-b" d="M42 45h36v30H42z"/><path class="fill-c" d="M52 31h16v8H52z"/><path class="stroke-art" d="M55 24V16h10v8M50 80h20"/>${close}`;
+  }
+}
+
+function visibleProducts() {
+  const query = state.query.trim().toLowerCase();
+  return state.products.filter(product => {
+    const inCategory = state.category === "All" || product.category === state.category;
+    const haystack = `${product.name} ${product.description} ${product.tags} ${product.category}`.toLowerCase();
+    return inCategory && (!query || haystack.includes(query));
+  });
+}
+
+function productArt(product) { return `<div class="art art-${product.art}">${artwork(product)}</div>`; }
+
+function productCard(product) {
+  return `<article class="product-card">
+    ${productArt(product)}
+    <div class="product-body">
+      <div class="product-topline"><span>${product.tag}</span><span>${product.eta}</span></div>
+      <h3>${product.name}</h3><p>${product.description}</p>
+      <div class="product-bottom">
+        <div><strong>${money(product.price)}</strong><small>${product.size}</small></div>
+        <button class="add-button" type="button" data-action="add" data-id="${product.id}" aria-label="Add ${product.name} to bag">Add</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+function suggestionCard(product) {
+  return `<button class="suggestion" type="button" data-suggestion="${product.id}">
+    <span class="suggestion-art art-${product.art}" aria-hidden="true">${artwork(product)}</span>
+    <span><strong>${product.name}</strong><small>${money(product.price)} · ${product.category}</small></span>
+  </button>`;
+}
+
+function cartItems() {
+  return Object.keys(state.cart).map(id => ({ product: state.products.find(p => p.id === id), qty: state.cart[id] })).filter(item => item.product && item.qty > 0);
+}
+function cartCount() { return Object.values(state.cart).reduce((total, qty) => total + qty, 0); }
+function subtotal() { return cartItems().reduce((total, item) => total + item.product.price * item.qty, 0); }
+
+function cartRow(item) {
+  const product = item.product;
+  return `<div class="cart-row">
+    <div class="cart-thumb art-${product.art}">${artwork(product)}</div>
+    <div class="cart-info">
+      <strong>${product.name}</strong><small>${product.size} · ${product.eta}</small>
+      <div class="qty-control">
+        <button class="qty-button" type="button" data-qty="-1" data-id="${product.id}" aria-label="Decrease ${product.name} quantity">−</button>
+        <span class="qty-value">${item.qty}</span>
+        <button class="qty-button" type="button" data-qty="1" data-id="${product.id}" aria-label="Increase ${product.name} quantity">+</button>
+      </div>
+    </div>
+    <div class="cart-price"><strong>${money(product.price * item.qty)}</strong><button class="remove-button" type="button" data-remove="${product.id}" aria-label="Remove ${product.name}">Remove</button></div>
+  </div>`;
+}
+
+function renderProducts() {
+  const items = visibleProducts();
+  $$("[data-product-grid]").forEach(node => { node.innerHTML = items.map(productCard).join(""); });
+  $$("[data-empty]").forEach(node => { node.hidden = items.length !== 0; });
+  $$("[data-result-count]").forEach(node => { node.textContent = `${items.length} ${items.length === 1 ? "item" : "items"}`; });
+}
+
+function renderSuggestions() {
+  const query = state.query.trim().toLowerCase();
+  const items = query ? state.products.filter(p => `${p.name} ${p.tags}`.toLowerCase().includes(query)).slice(0, 4) : [];
+  $$("[data-suggestions]").forEach(node => { node.innerHTML = items.map(suggestionCard).join(""); node.hidden = items.length === 0; });
+  $$("[data-search-input]").forEach(input => { input.setAttribute("aria-expanded", String(items.length > 0)); });
+}
+
+function renderCategories() {
+  $$("[data-category]").forEach(chip => {
+    const active = chip.dataset.category === state.category;
+    chip.classList.toggle("is-active", active);
+    chip.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function renderOrderSummary() {
+  const count = cartCount();
+  $$("[data-order-count]").forEach(node => { node.textContent = `${count} ${count === 1 ? "item" : "items"}`; });
+  $$("[data-order-total]").forEach(node => { node.textContent = money(subtotal()); });
+}
+
+function renderCart() {
+  const count = cartCount(), items = cartItems();
+  $$("[data-cart-count]").forEach(node => { node.textContent = String(count); node.hidden = count === 0; });
+  $$("[data-cart-items]").forEach(node => {
+    node.innerHTML = items.length ? items.map(cartRow).join("")
+      : `<div class="cart-empty"><strong>Your bag is empty</strong><span>Add something from today’s selection.</span></div>`;
+  });
+  $$("[data-cart-subtotal]").forEach(node => { node.textContent = money(subtotal()); });
+  $$("[data-checkout]").forEach(button => { button.disabled = items.length === 0; });
+  renderOrderSummary();
+}
+
+function renderOrderStatus() {
+  $$("[data-order-status]").forEach(node => {
+    node.hidden = !state.order;
+    if (state.order) {
+      const text = $("p", node);
+      if (text) text.textContent = `Demo order ${state.order.id} placed · ${money(state.order.total)} · ${state.order.count} ${state.order.count === 1 ? "item" : "items"}`;
+    }
+  });
+}
+
+function renderPlan() {
+  $$("[data-plan]").forEach(option => {
+    const active = option.dataset.plan === state.plan;
+    option.classList.toggle("is-selected", active);
+    option.setAttribute("aria-pressed", String(active));
+  });
+}
+function renderAll() { renderCategories(); renderProducts(); renderSuggestions(); renderCart(); renderOrderStatus(); renderPlan(); }
+
+/* ---------- dialog motion: open from the trigger, close along the same path ---------- */
+function isVisible(element) { return Boolean(element && document.contains(element) && (element.offsetWidth || element.offsetHeight || element.getClientRects().length)); }
+function restoreFocus(dialog) {
+  const trigger = returnFocus.get(dialog);
+  returnFocus.delete(dialog);
+  if (isVisible(trigger)) trigger.focus();
+}
+function dialogMotion(dialog, opening) {
+  const panel = $(".dialog-panel", dialog);
+  if (!panel || reducedMotion.matches) return Promise.resolve();
+  const sheet = dialog.classList.contains("sheet-dialog");
+  const axis = sheet ? "translateX" : "translateY";
+  const start = sheet ? "translateX(28px) scale(.99)" : "translateY(18px) scale(.97)";
+  const frames = opening ? [{ opacity: 0, transform: start }, { opacity: 1, transform: "none" }]
+                         : [{ opacity: 1, transform: "none" }, { opacity: 0, transform: start }];
+  return panel.animate(frames, {
+    duration: opening ? 420 : 260,
+    easing: "cubic-bezier(.16, 1, .3, 1)",
+    fill: opening ? "none" : "forwards"
+  }).finished.catch(() => {});
+}
+function openDialog(dialog, trigger) {
+  if (!dialog) return;
+  const open = $("dialog[open]");
+  if (open && open !== dialog) closeDialog(open);
+  returnFocus.set(dialog, trigger || document.activeElement);
+  if (!dialog.open) dialog.open ? null : dialog.showModal();
+  dialogMotion(dialog, true);
+  const target = $("[data-autofocus]", dialog) || $("button, input, select, textarea", dialog);
+  if (isVisible(target)) target.focus({ preventScroll: true });
+}
+function closeDialog(dialog) {
+  if (!dialog) return;
+  dialogMotion(dialog, false).then(() => {
+    if (dialog.open) dialog.close();
+    else dialog.removeAttribute("open");
+    restoreFocus(dialog);
+  });
+}
+
+function showToast(message) {
+  const toast = $("#toast"), text = $("#toastText");
+  if (!toast || !text) return;
+  text.textContent = message;
+  toast.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => { toast.hidden = true; }, 3200);
+}
+function haptic(ms = 8) { if (navigator.vibrate) navigator.vibrate(ms); }
+
+function addToCart(id) {
+  const product = state.products.find(item => item.id === id);
+  if (!product) return;
+  state.cart[id] = (state.cart[id] || 0) + 1;
+  haptic();
+  renderCart();
+  showToast(`${product.name} added to bag`);
+}
+function changeQty(id, delta) {
+  const next = (state.cart[id] || 0) + Number(delta);
+  if (next <= 0) delete state.cart[id]; else state.cart[id] = next;
+  haptic();
+  renderCart();
+}
+function removeFromCart(id) {
+  delete state.cart[id];
+  renderCart();
+  showToast("Item removed from bag");
+}
+function focusSection(id) {
+  const section = document.getElementById(id);
+  if (section) section.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
+}
+
+function handleAction(action, target) {
+  switch (action) {
+    case "home": window.scrollTo({ top: 0, behavior: reducedMotion.matches ? "auto" : "smooth" }); break;
+    case "shop": focusSection("shop"); break;
+    case "how": focusSection("how"); break;
+    case "open-cart": renderCart(); openDialog($("#cartDialog"), target); break;
+    case "open-plus": openDialog($("#plusDialog"), target); break;
+    case "checkout": renderOrderSummary(); openDialog($("#checkoutDialog"), $("#cartButton") || target); break;
+    case "close-dialog": closeDialog(target.closest("dialog")); break;
+    case "join-plan": showToast(`${state.plan} plan saved for this demo`); closeDialog(target.closest("dialog")); break;
+    case "dismiss-toast": $("#toast").hidden = true; break;
+  }
+}
+
+document.addEventListener("click", event => {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const suggestion = target.closest("[data-suggestion]");
+  if (suggestion) {
+    const product = state.products.find(item => item.id === suggestion.dataset.suggestion);
+    if (product) {
+      state.query = product.name;
+      $$("[data-search-input]").forEach(input => { input.value = product.name; });
+      renderSuggestions(); renderProducts();
+    }
+    return;
+  }
+  const category = target.closest("[data-category]");
+  if (category) { state.category = category.dataset.category; haptic(); renderCategories(); renderProducts(); return; }
+  const add = target.closest('[data-action="add"]');
+  if (add) { addToCart(add.dataset.id); return; }
+  const qty = target.closest("[data-qty]");
+  if (qty) { changeQty(qty.dataset.id, qty.dataset.qty); return; }
+  const remove = target.closest("[data-remove]");
+  if (remove) { removeFromCart(remove.dataset.remove); return; }
+  const plan = target.closest("[data-plan]");
+  if (plan) { state.plan = plan.dataset.plan; haptic(); renderPlan(); return; }
+  const action = target.closest("[data-action]");
+  if (action) handleAction(action.dataset.action, action);
+});
+
+document.addEventListener("input", event => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || !input.matches("[data-search-input]")) return;
+  state.query = input.value;
+  $$("[data-search-input]").forEach(other => { if (other !== input) other.value = input.value; });
+  renderSuggestions(); renderProducts();
+});
+
+document.addEventListener("keydown", event => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || !input.matches("[data-search-input]")) return;
+  if (event.key === "Enter") { event.preventDefault(); input.blur(); }
+  if (event.key === "Escape") { input.value = ""; state.query = ""; renderSuggestions(); renderProducts(); }
+});
+
+document.addEventListener("submit", event => {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement) || !form.matches("[data-checkout-form]")) return;
+  event.preventDefault();
+  if (!form.reportValidity()) return;
+  state.order = { id: `EG-${Math.floor(1000 + Math.random() * 9000)}`, total: subtotal(), count: cartCount() };
+  state.cart = {};
+  haptic(20);
+  renderCart(); renderOrderStatus();
+  showToast(`Demo order ${state.order.id} placed`);
+  closeDialog(form.closest("dialog"));
+});
+
+document.addEventListener("close", event => {
+  if (event.target instanceof HTMLDialogElement) restoreFocus(event.target);
+}, true);
+$$("dialog").forEach(dialog => {
+  dialog.addEventListener("click", event => { if (event.target === dialog) closeDialog(dialog); });
+});
+
+renderAll();
+</script>
+</body>
+</html>

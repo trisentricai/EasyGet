@@ -15,6 +15,7 @@ import {
 } from "./services/api";
 import { Icon } from "./components/icons";
 import { CartPreview } from "./components/CartPreview";
+import { HeaderSearch } from "./components/header-search";
 import { Spinner, usePopOnChange } from "./components/ui";
 import { Ticker } from "./components/ticker";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -252,24 +253,13 @@ function Shell() {
           </span>
         </a>
 
-        <form
-          className="searchform"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const input = (e.currentTarget.elements.namedItem("q") as HTMLInputElement) ?? null;
-            if (input?.value.trim()) navigate(`search?q=${encodeURIComponent(input.value.trim())}`);
-          }}
-        >
-          <span className="search-ico"><Icon name="search" size={18} /></span>
-          <input
-            ref={searchRef}
-            name="q"
-            placeholder="Search products, brands"
-            aria-label="Search products"
-          />
-          <kbd className="search-kbd" aria-hidden="true">/</kbd>
-          <button type="submit">Search</button>
-        </form>
+        <nav className="nav-primary" aria-label="Main">
+          <a className={activeRoute === "home" ? "on" : ""} href={href("home")} aria-current={activeRoute === "home" ? "page" : undefined}>Home</a>
+          <a className={activeRoute === "browse" || activeRoute === "categories" ? "on" : ""} href={href("browse")} aria-current={activeRoute === "browse" ? "page" : undefined}>Shop</a>
+          <a className={activeRoute === "orders" || activeRoute === "order" ? "on" : ""} href={href("orders")} aria-current={activeRoute === "orders" ? "page" : undefined}>Orders</a>
+        </nav>
+
+        <HeaderSearch inputRef={searchRef} />
 
         <div className="nav-actions">
           <a

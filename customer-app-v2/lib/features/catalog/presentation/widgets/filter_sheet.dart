@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/tokens.dart';
+import '../../../../core/widgets/fluid_sheet.dart';
 
 /// One switch row on the [FilterSheet].
 class FilterToggle {
@@ -56,77 +57,83 @@ class _FilterSheetState extends State<FilterSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final colors = Theme.of(context).freshColors;
 
-    return SafeArea(
-      top: false,
+    return FluidSheet(
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg,
+          AppSpace.xs,
+          AppSpace.lg,
+          AppSpace.sm,
+        ),
+        child: Text(
+          'Filters',
+          style: AppTypography.screenTitle(scheme.onSurface),
+        ),
+      ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: AppSpace.md),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colors.faint,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.sm),
-            child: Text('Filters',
-                style: AppTypography.screenTitle(scheme.onSurface)),
-          ),
-          for (final filter in widget.filters)
-            SwitchListTile(
-              value: _state[filter.id] ?? false,
-              onChanged: (value) =>
-                  setState(() => _state[filter.id] = value),
-              title: Text(filter.label,
-                  style: AppTypography.bodyMedium(scheme.onSurface)),
-              activeThumbColor: scheme.primary,
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.lg),
-            child: Row(
-              children: [
-                TextButton(
-                  key: const Key('filter-clear'),
-                  onPressed: _clear,
-                  child: Text('Clear',
-                      style: AppTypography.label(scheme.onSurfaceVariant)),
+            for (final filter in widget.filters)
+              SwitchListTile(
+                value: _state[filter.id] ?? false,
+                onChanged: (value) => setState(() => _state[filter.id] = value),
+                title: Text(
+                  filter.label,
+                  style: AppTypography.bodyMedium(scheme.onSurface),
                 ),
-                const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: SizedBox(
-                    height: 54,
-                    child: FilledButton(
-                      key: const Key('filter-apply'),
-                      onPressed: () {
-                        widget.onApply?.call(_enabled);
-                        Navigator.of(context).maybePop();
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: scheme.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.button),
-                        ),
-                      ),
-                      child: Text('Show ${widget.resultCount}',
-                          style:
-                              AppTypography.label(scheme.onPrimary, size: 16)),
+                activeThumbColor: scheme.primary,
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.lg,
+                AppSpace.md,
+                AppSpace.lg,
+                AppSpace.lg,
+              ),
+              child: Row(
+                children: [
+                  TextButton(
+                    key: const Key('filter-clear'),
+                    onPressed: _clear,
+                    child: Text(
+                      'Clear',
+                      style: AppTypography.label(scheme.onSurfaceVariant),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(
+                    child: SizedBox(
+                      height: 54,
+                      child: FilledButton(
+                        key: const Key('filter-apply'),
+                        onPressed: () {
+                          widget.onApply?.call(_enabled);
+                          Navigator.of(context).maybePop();
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: scheme.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppRadii.button,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Show ${widget.resultCount}',
+                          style: AppTypography.label(
+                            scheme.onPrimary,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
           ],
         ),
       ),

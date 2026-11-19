@@ -13,6 +13,9 @@ import "./theme/index.css";
 import "./styles.css";
 import "./showcase.css";
 import "./polish.css";
+// Approved Apple-style redesign layer. Last so it can retone the shipped
+// marketplace chrome while merchant inline variables still win.
+import "./apple.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

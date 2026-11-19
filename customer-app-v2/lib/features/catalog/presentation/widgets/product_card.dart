@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -87,12 +88,10 @@ class ProductCard extends ConsumerWidget {
 
     // Live cart qty for the "✓ N in cart" badge (0 = not added this
     // session). Server truth; the badge is display-only.
-    final variantId =
-        ref.watch(cardAdditionsProvider)[product.slug];
+    final variantId = ref.watch(cardAdditionsProvider)[product.slug];
     final inCartQty = variantId == null
         ? 0
-        : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ??
-            0);
+        : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ?? 0);
     final child = switch (density) {
       ProductDensity.rail => _rail(context, inCartQty, glass, blur),
       ProductDensity.grid => _grid(context, inCartQty, glass, blur),
@@ -147,8 +146,7 @@ class ProductCard extends ConsumerWidget {
                       ),
                     ),
             ),
-            if (product.ratingCount > 0 ||
-                product.discountPercent > 0)
+            if (product.ratingCount > 0 || product.discountPercent > 0)
               Positioned(
                 top: AppSpace.sm,
                 left: AppSpace.sm,
@@ -161,13 +159,11 @@ class ProductCard extends ConsumerWidget {
                         count: product.ratingCount,
                         compact: true,
                       ),
-                    if (product.ratingCount > 0 &&
-                        product.discountPercent > 0)
+                    if (product.ratingCount > 0 && product.discountPercent > 0)
                       const SizedBox(width: 6),
                     if (product.discountPercent > 0)
                       _GlassPill(
-                        key: Key(
-                            'card-discount-${product.slug}'),
+                        key: Key('card-discount-${product.slug}'),
                         label: '−${product.discountPercent}%',
                         enabled: glass,
                         blur: blur,
@@ -177,8 +173,7 @@ class ProductCard extends ConsumerWidget {
               ),
             // Hearts on browsable cards (rail/grid). Line cards (cart) and
             // slug-less items never show one.
-            if (density != ProductDensity.line &&
-                product.slug.isNotEmpty)
+            if (density != ProductDensity.line && product.slug.isNotEmpty)
               Positioned(
                 top: AppSpace.sm,
                 right: AppSpace.sm,
@@ -211,11 +206,11 @@ class ProductCard extends ConsumerWidget {
   }
 
   Widget _addControl() => QtyStepper(
-        quantity: quantity,
-        maxQty: maxQty,
-        compact: true,
-        onChanged: onChanged ?? (_) {},
-      );
+    quantity: quantity,
+    maxQty: maxQty,
+    compact: true,
+    onChanged: onChanged ?? (_) {},
+  );
 
   /// Single-shot Add pill for the quick-add pipeline (grid/rail only; the
   /// line density keeps its controlled stepper via [trailing]).
@@ -230,12 +225,7 @@ class ProductCard extends ConsumerWidget {
     );
   }
 
-  Widget _grid(
-    BuildContext context,
-    int inCartQty,
-    bool glass,
-    double blur,
-  ) {
+  Widget _grid(BuildContext context, int inCartQty, bool glass, double blur) {
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
@@ -250,11 +240,13 @@ class ProductCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _image(context,
-                  aspect: 4 / 5,
-                  inCartQty: inCartQty,
-                  glass: glass,
-                  blur: blur),
+              _image(
+                context,
+                aspect: 4 / 5,
+                inCartQty: inCartQty,
+                glass: glass,
+                blur: blur,
+              ),
               const SizedBox(height: AppSpace.md),
               _nameSlot(context),
               _brandSlot(context),
@@ -269,12 +261,7 @@ class ProductCard extends ConsumerWidget {
     );
   }
 
-  Widget _rail(
-    BuildContext context,
-    int inCartQty,
-    bool glass,
-    double blur,
-  ) {
+  Widget _rail(BuildContext context, int inCartQty, bool glass, double blur) {
     return GestureDetector(
       key: const Key('product-card'),
       behavior: HitTestBehavior.opaque,
@@ -289,11 +276,13 @@ class ProductCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _image(context,
-                  aspect: 1,
-                  inCartQty: inCartQty,
-                  glass: glass,
-                  blur: blur),
+              _image(
+                context,
+                aspect: 1,
+                inCartQty: inCartQty,
+                glass: glass,
+                blur: blur,
+              ),
               const SizedBox(height: AppSpace.md),
               _nameSlot(context),
               _brandSlot(context),
@@ -381,7 +370,10 @@ class ProductCard extends ConsumerWidget {
                 _subtitle(context, scheme),
                 const SizedBox(height: AppSpace.xs),
                 PriceBlock(
-                    price: product.basePrice, mrp: product.mrp, priceSize: 14),
+                  price: product.basePrice,
+                  mrp: product.mrp,
+                  priceSize: 14,
+                ),
               ],
             ),
           ),
@@ -397,10 +389,7 @@ class ProductCard extends ConsumerWidget {
   Widget _nameSlot(BuildContext context) {
     return SizedBox(
       height: nameSlotHeight,
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: _name(context),
-      ),
+      child: Align(alignment: Alignment.topLeft, child: _name(context)),
     );
   }
 
@@ -445,8 +434,10 @@ class ProductCard extends ConsumerWidget {
       product.name,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      style: AppTypography.productName(scheme.onSurface,
-          size: density == ProductDensity.line ? 15 : 14),
+      style: AppTypography.productName(
+        scheme.onSurface,
+        size: density == ProductDensity.line ? 15 : 14,
+      ),
     );
   }
 
@@ -465,8 +456,9 @@ class ProductCard extends ConsumerWidget {
   }
 }
 
-String _rupees(double value) =>
-    value == value.roundToDouble() ? value.toInt().toString() : value.toStringAsFixed(2);
+String _rupees(double value) => value == value.roundToDouble()
+    ? value.toInt().toString()
+    : value.toStringAsFixed(2);
 
 /// Card add zone: an Add pill until the product's variant is known this
 /// session, then an explicit added bar ("✓ N added" + Add-more) bound to the
@@ -486,21 +478,17 @@ class _CardAddControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final variantId =
-        ref.watch(cardAdditionsProvider)[product.slug];
+    final variantId = ref.watch(cardAdditionsProvider)[product.slug];
     final qty = variantId == null
         ? 0
-        : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ??
-            0);
+        : (ref.watch(pdpCartControllerProvider).qtyByVariant[variantId] ?? 0);
     if (variantId != null && qty > 0) {
       return _AddedBar(
         quantity: qty,
-        onDecrement: () => ref
-            .read(pdpCartControllerProvider.notifier)
-            .decrement(variantId),
-        onIncrement: () => ref
-            .read(pdpCartControllerProvider.notifier)
-            .increment(variantId),
+        onDecrement: () =>
+            ref.read(pdpCartControllerProvider.notifier).decrement(variantId),
+        onIncrement: () =>
+            ref.read(pdpCartControllerProvider.notifier).increment(variantId),
       );
     }
     return _QuickAddPill(onAdd: onQuickAdd, obsidian: obsidian);
@@ -533,7 +521,7 @@ class _AddedBar extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           color: colors.primaryTint,
-          borderRadius: BorderRadius.circular(AppRadii.button),
+          borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
         child: Row(
           children: [
@@ -548,8 +536,7 @@ class _AddedBar extends StatelessWidget {
               iconSize: 18,
               visualDensity: VisualDensity.compact,
               color: scheme.primary,
-              constraints:
-                  const BoxConstraints.tightFor(width: 40, height: 40),
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
               padding: EdgeInsets.zero,
             ),
             Expanded(
@@ -558,8 +545,7 @@ class _AddedBar extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: AppTypography.tabularNumber(scheme.onSurface,
-                    size: 14),
+                style: AppTypography.tabularNumber(scheme.onSurface, size: 14),
               ),
             ),
             IconButton(
@@ -573,8 +559,7 @@ class _AddedBar extends StatelessWidget {
               iconSize: 18,
               visualDensity: VisualDensity.compact,
               color: scheme.primary,
-              constraints:
-                  const BoxConstraints.tightFor(width: 40, height: 40),
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
               padding: EdgeInsets.zero,
             ),
           ],
@@ -602,6 +587,9 @@ class _QuickAddPillState extends State<_QuickAddPill> {
 
   Future<void> _tap() async {
     if (_busy) return;
+    // Fire-and-forget haptics: awaiting the platform channel stalls widget
+    // tests and would also delay the real add call on slower devices.
+    unawaited(HapticFeedback.lightImpact());
     setState(() => _busy = true);
     try {
       await widget.onAdd();
@@ -615,8 +603,7 @@ class _QuickAddPillState extends State<_QuickAddPill> {
     final scheme = Theme.of(context).colorScheme;
     final colors = Theme.of(context).freshColors;
     final fill = widget.obsidian ? colors.obsidian : null;
-    final ink =
-        widget.obsidian ? colors.champagneInk : scheme.primary;
+    final ink = widget.obsidian ? colors.champagneInk : scheme.primary;
     return SizedBox(
       height: 40,
       child: OutlinedButton(
@@ -626,10 +613,11 @@ class _QuickAddPillState extends State<_QuickAddPill> {
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
           backgroundColor: fill,
           side: BorderSide(
-              color: widget.obsidian ? colors.obsidian : scheme.primary),
+            color: widget.obsidian ? colors.obsidian : scheme.primary,
+          ),
           foregroundColor: ink,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.button),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
           textStyle: AppTypography.label(ink),
         ),
@@ -639,7 +627,31 @@ class _QuickAddPillState extends State<_QuickAddPill> {
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Text('Add'),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Circular plus badge — the card's "Add" affordance.
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: widget.obsidian
+                          ? colors.champagneInk
+                          : scheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.add,
+                      size: 14,
+                      color: widget.obsidian
+                          ? colors.obsidian
+                          : scheme.onPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.xs),
+                  const Text('Add'),
+                ],
+              ),
       ),
     );
   }
@@ -662,8 +674,7 @@ class _GlassPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).freshColors;
     final pill = Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpace.sm, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 3),
       color: enabled ? colors.obsidianGlass : colors.obsidian,
       child: Text(
         label,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/tokens.dart';
+import '../../../../core/widgets/fluid_sheet.dart';
 import '../../../../models/catalog_models.dart';
 
 /// The browse filter value object. Nulls mean "no constraint".
@@ -73,7 +74,9 @@ class BrowseFilterSheet extends StatefulWidget {
 class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
   late String? _brand = widget.initial.brand;
   late int _priceBand = _bandIndexOf(
-      widget.initial.minPrice, widget.initial.maxPrice);
+    widget.initial.minPrice,
+    widget.initial.maxPrice,
+  );
   late double? _minDiscount = widget.initial.minDiscount;
   late bool _featured = widget.initial.featured == true;
 
@@ -85,12 +88,12 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
   }
 
   BrowseFilters get _value => BrowseFilters(
-        brand: _brand,
-        minPrice: _priceBand < 0 ? null : _priceBands[_priceBand].min,
-        maxPrice: _priceBand < 0 ? null : _priceBands[_priceBand].max,
-        minDiscount: _minDiscount,
-        featured: _featured ? true : null,
-      );
+    brand: _brand,
+    minPrice: _priceBand < 0 ? null : _priceBands[_priceBand].min,
+    maxPrice: _priceBand < 0 ? null : _priceBands[_priceBand].max,
+    minDiscount: _minDiscount,
+    featured: _featured ? true : null,
+  );
 
   void _clear() {
     setState(() {
@@ -108,18 +111,17 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
     final colors = Theme.of(context).freshColors;
 
     Widget section(String title, Widget body) => Padding(
-          padding: const EdgeInsets.only(top: AppSpace.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title,
-                  style: AppTypography.label(scheme.onSurfaceVariant)),
-              const SizedBox(height: AppSpace.sm),
-              body,
-            ],
-          ),
-        );
+      padding: const EdgeInsets.only(top: AppSpace.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(title, style: AppTypography.label(scheme.onSurfaceVariant)),
+          const SizedBox(height: AppSpace.sm),
+          body,
+        ],
+      ),
+    );
 
     Widget chip({
       required String label,
@@ -131,7 +133,9 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
         child: AnimatedContainer(
           duration: AppMotion.micro,
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.lg, vertical: AppSpace.sm),
+            horizontal: AppSpace.lg,
+            vertical: AppSpace.sm,
+          ),
           decoration: BoxDecoration(
             color: selected ? colors.primaryTint : colors.sunken,
             borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -149,33 +153,31 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
       );
     }
 
-    return SafeArea(
-      top: false,
+    return FluidSheet(
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg,
+          AppSpace.xs,
+          AppSpace.lg,
+          0,
+        ),
+        child: Text(
+          'Filters',
+          style: AppTypography.screenTitle(scheme.onSurface),
+        ),
+      ),
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.lg),
+            AppSpace.lg,
+            AppSpace.sm,
+            AppSpace.lg,
+            AppSpace.lg,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.faint,
-                    borderRadius:
-                        BorderRadius.circular(AppRadii.pill),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpace.lg),
-                child: Text('Filters',
-                    style:
-                        AppTypography.screenTitle(scheme.onSurface)),
-              ),
               section(
                 'Brand',
                 Wrap(
@@ -191,8 +193,10 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
                       chip(
                         label: brand.name,
                         selected: _brand == brand.slug,
-                        onTap: () => setState(() => _brand =
-                            _brand == brand.slug ? null : brand.slug),
+                        onTap: () => setState(
+                          () =>
+                              _brand = _brand == brand.slug ? null : brand.slug,
+                        ),
                       ),
                   ],
                 ),
@@ -207,8 +211,9 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
                       chip(
                         label: _priceBands[i].label,
                         selected: _priceBand == i,
-                        onTap: () => setState(() =>
-                            _priceBand = _priceBand == i ? -1 : i),
+                        onTap: () => setState(
+                          () => _priceBand = _priceBand == i ? -1 : i,
+                        ),
                       ),
                   ],
                 ),
@@ -223,8 +228,11 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
                       chip(
                         label: band.$1,
                         selected: _minDiscount == band.$2,
-                        onTap: () => setState(() => _minDiscount =
-                            _minDiscount == band.$2 ? null : band.$2),
+                        onTap: () => setState(
+                          () => _minDiscount = _minDiscount == band.$2
+                              ? null
+                              : band.$2,
+                        ),
                       ),
                   ],
                 ),
@@ -233,26 +241,26 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
                 'More',
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text('Featured only',
-                      style: AppTypography.bodyMedium(
-                          scheme.onSurface)),
+                  title: Text(
+                    'Featured only',
+                    style: AppTypography.bodyMedium(scheme.onSurface),
+                  ),
                   value: _featured,
                   activeThumbColor: scheme.primary,
-                  onChanged: (value) =>
-                      setState(() => _featured = value),
+                  onChanged: (value) => setState(() => _featured = value),
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.only(top: AppSpace.md),
+                padding: const EdgeInsets.only(top: AppSpace.md),
                 child: Row(
                   children: [
                     TextButton(
                       key: const Key('filter-clear'),
                       onPressed: _clear,
-                      child: Text('Clear all',
-                          style: AppTypography.label(
-                              scheme.onSurfaceVariant)),
+                      child: Text(
+                        'Clear all',
+                        style: AppTypography.label(scheme.onSurfaceVariant),
+                      ),
                     ),
                     const SizedBox(width: AppSpace.md),
                     Expanded(
@@ -268,14 +276,17 @@ class _BrowseFilterSheetState extends State<BrowseFilterSheet> {
                             backgroundColor: scheme.primary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(
-                                  AppRadii.button),
+                                AppRadii.button,
+                              ),
                             ),
                           ),
                           child: Text(
-                              'Show ${widget.resultCount}',
-                              style: AppTypography.label(
-                                  scheme.onPrimary,
-                                  size: 16)),
+                            'Show ${widget.resultCount}',
+                            style: AppTypography.label(
+                              scheme.onPrimary,
+                              size: 16,
+                            ),
+                          ),
                         ),
                       ),
                     ),

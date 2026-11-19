@@ -1,9 +1,12 @@
 import { memo, useEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCart } from "../context/CartContext";
 import { useNetwork } from "../context/NetworkContext";
 import { useToast } from "../context/ToastContext";
-import { href } from "../hooks/useHashRoute";
+import { href, navigate } from "../hooks/useHashRoute";
 import {
   addToWishlist,
+  getProduct,
   getTokens,
   resolveImageUrl,
   removeFromWishlist,
@@ -156,16 +159,77 @@ function ProductCardComponent({
 
   const out = product.in_stock === false;
   const discount = product.discount_percent ?? 0;
+  const queryClient = useQueryClient();
+  const { add } = useCart();
+  const toast = useToast();
+  const [adding, setAdding] = useState(false);
+
+  /**
+   * One-tap bag affordance from the approved concept. The first *buyable*
+   * variant is resolved through the live product API; variants that need a
+   * choice still go to the real PDP instead of guessing. Guest and signed-in
+   * adds both flow through CartContext, so server pricing stays authoritative.
+   */
+  const quickAdd = async (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (adding || out) return;
+    setAdding(true);
+    try {
+      const detail = await queryClient.fetchQuery({
+        queryKey: ["product", product.slug],
+        queryFn: () => getProduct(product.slug),
+        staleTime: 5 * 60_000,
+      });
+      const buyable = detail.variants.filter(
+        (variant) =>
+          variant.is_active && variant.in_stock !== false && variant.stock_quantity !== 0,
+      );
+      const choices = buyable.length
+        ? buyable
+        : detail.variants.filter((variant) => variant.is_active);
+      if (!choices.length) {
+        toast.push("Currently unavailable", "err");
+        return;
+      }
+      if (choices.length > 1) {
+        navigate(`product/${product.slug}`);
+        return;
+      }
+      const variant = choices[0];
+      await add(variant.id, 1, {
+        name: product.name,
+        sku: variant.sku,
+        price: variant.price,
+        productName: product.name,
+        productSlug: product.slug,
+        image: resolveImageUrl(product.primary_image),
+        tenantId: null,
+        sellerName: "EASYGET",
+        inStock: variant.in_stock ?? product.in_stock ?? null,
+        stockQuantity: variant.stock_quantity ?? null,
+      });
+      toast.push("Added to bag");
+    } catch {
+      toast.push("Could not add to bag", "err");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
-    <a
+    <article
       className={`product-card product-card--${size} ${fadeClass}`.trim()}
-      href={href(`product/${product.slug}`)}
       onMouseEnter={() => {
         if (slides.length > 1) setActive((i) => (i + 1) % slides.length);
       }}
       onMouseLeave={() => setActive(0)}
     >
+      <a
+        className="product-card-link"
+        href={href(`product/${product.slug}`)}
+        aria-label={`View ${product.name}`}
+      >
       <div className="product-thumb-wrap">
         <div
           className={`product-thumb ${fxClass(product.primary_image_display)} ${slide && !imageFailed ? "" : "is-placeholder"}`.trim()}
@@ -194,7 +258,6 @@ function ProductCardComponent({
         ) : product.is_featured ? (
           <span className="product-chip chip chip-featured">★ Featured</span>
         ) : null}
-        <WishButton slug={product.slug} className="wish-card" />
       </div>
       <div className="product-body">
         <div className="product-brand">{product.category?.name || product.brand || ""}</div>
@@ -208,7 +271,20 @@ function ProductCardComponent({
           <Price price={product.base_price} mrp={product.mrp} discount={discount} size="md" />
         </div>
       </div>
-    </a>
+      </a>
+
+      <WishButton slug={product.slug} className="wish-card" />
+      <button
+        type="button"
+        className="add-btn"
+        aria-label={out ? `${product.name} is out of stock` : `Add ${product.name} to bag`}
+        aria-busy={adding}
+        disabled={out || adding}
+        onClick={quickAdd}
+      >
+        <Icon name={adding ? "loader" : out ? "x" : "plus"} size={18} />
+      </button>
+    </article>
   );
 }
 

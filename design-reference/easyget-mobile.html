@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>EasyGet — Mobile app concept</title>
+<style>
+/* ============================================================
+   EASYGET · MOBILE APP CONCEPT
+   Apple-style fluid interface: pointer-down feedback, 1:1 drag,
+   velocity handoff, momentum projection, interruptible springs,
+   translucent chrome, size-specific tracking, reduced motion.
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --canvas: #FAF6EF;
+  --surface: #FFFFFF;
+  --sunken: #F1EAE0;
+  --ink: #1B1712;
+  --muted: #655D52;
+  --faint: #A79C8F;
+  --border: #E7DFD3;
+  --border-strong: #D5C9B8;
+
+  --brand: #0C3B2E;
+  --primary: #0E7A4D;
+  --primary-dark: #0A5C3B;
+  --primary-tint: #DDF0E4;
+  --marigold: #E79B12;
+  --marigold-wash: #FCEFD4;
+  --success: #15803D;
+  --warning: #B45309;
+  --danger: #B91C1C;
+
+  --glass: rgb(255 255 255 / .78);
+  --scrim: rgb(27 26 23 / .4);
+
+  --shadow-sm: 0 1px 2px rgb(27 23 18 / .06), 0 6px 18px rgb(27 23 18 / .05);
+  --shadow-md: 0 10px 32px rgb(27 23 18 / .12), 0 2px 8px rgb(27 23 18 / .06);
+  --shadow-lg: 0 26px 70px rgb(27 23 18 / .2), 0 8px 24px rgb(27 23 18 / .1);
+  --ring: 0 0 0 4px rgb(14 122 77 / .26);
+
+  --r-card: 18px;
+  --r-image: 14px;
+  --r-button: 16px;
+  --r-sheet: 26px;
+  --r-pill: 999px;
+
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --app-pad: 18px;
+  --nav-height: 78px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #12110F;
+    --surface: #1B1A17;
+    --sunken: #26241F;
+    --ink: #F4EFE7;
+    --muted: #A79C8F;
+    --faint: #6F675C;
+    --border: #2B2823;
+    --border-strong: #3E3A33;
+    --primary: #3AA76D;
+    --primary-dark: #2C8757;
+    --primary-tint: #14342A;
+    --marigold: #FFB020;
+    --marigold-wash: #3A2C10;
+    --success: #4ADE80;
+    --warning: #FBBF24;
+    --danger: #F87171;
+    --glass: rgb(27 26 23 / .8);
+    --scrim: rgb(0 0 0 / .62);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / .3);
+    --shadow-md: 0 10px 32px rgb(0 0 0 / .42);
+    --shadow-lg: 0 26px 70px rgb(0 0 0 / .56);
+    --ring: 0 0 0 4px rgb(58 167 109 / .3);
+  }
+}
+@media (prefers-reduced-transparency: reduce) { :root { --glass: var(--surface); } }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: grid; place-items: center; overflow: hidden;
+  background: var(--sunken); color: var(--ink);
+  font: 400 1.0625rem/1.45 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+button, input { font: inherit; }
+button {
+  min-height: 44px; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: inherit; cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 100ms ease-out, background 120ms ease-out, opacity 120ms ease-out;
+}
+button:active { transform: scale(.96); }
+button:focus-visible, input:focus-visible { outline: none; box-shadow: var(--ring); }
+h1, h2, h3, p { margin: 0; }
+
+/* ---------- device shell ---------- */
+.device {
+  position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%; height: 100vh; height: 100dvh; overflow: hidden;
+  background: var(--canvas);
+}
+.app-header {
+  position: relative; z-index: 2;
+  padding: max(14px, env(safe-area-inset-top)) var(--app-pad) 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--glass);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+.brand-row { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center;
+  border-radius: 14px; background: var(--brand); color: #fff;
+  font: 700 17px/1 var(--font-display); letter-spacing: -.04em;
+}
+.brand-copy { min-width: 0; flex: 1; }
+.eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.brand-title { margin-top: 2px; font: 700 25px/1.1 var(--font-display); letter-spacing: -.04em; }
+.plan-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 13px;
+  border: 1px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 650;
+}
+.plan-chip svg { width: 14px; height: 14px; }
+.location-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 11px; color: var(--muted); font-size: 13px; }
+.location-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eta-pill {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  padding: 5px 10px; border-radius: var(--r-pill); background: var(--marigold-wash);
+  color: #7A4E05; font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+@media (prefers-color-scheme: dark) { .eta-pill { color: var(--marigold); } }
+
+.app-main {
+  min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; padding: 16px var(--app-pad) 24px; scrollbar-width: none;
+}
+.app-main::-webkit-scrollbar { display: none; }
+.view { display: grid; gap: 20px; align-content: start; }
+
+/* ---------- home hero ---------- */
+.hero-card {
+  position: relative; overflow: hidden; padding: 22px;
+  border: 1px solid var(--border); border-radius: var(--r-card); background: var(--primary-tint);
+}
+.hero-card::after {
+  content: ""; position: absolute; top: -42px; right: -34px; width: 150px; height: 150px;
+  border: 26px solid var(--surface); border-radius: 50%; opacity: .42;
+}
+.hero-kicker { color: var(--primary); font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.hero-card h2 {
+  position: relative; z-index: 1; max-width: 260px; margin-top: 9px;
+  font: 700 29px/1.06 var(--font-display); letter-spacing: -.035em; text-wrap: balance;
+}
+.hero-card p { position: relative; z-index: 1; max-width: 250px; margin-top: 10px; color: var(--muted); font-size: 13.5px; }
+
+.section-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+.section-head h3 { font: 700 20px/1.2 var(--font-display); letter-spacing: -.03em; }
+.section-head p { color: var(--muted); font-size: 12px; }
+.text-button { min-height: 38px; padding: 0 4px; border-radius: 8px; color: var(--primary); font-size: 13px; font-weight: 700; }
+
+.category-scroller { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 4px; scroll-snap-type: x proximity; scrollbar-width: none; }
+.category-scroller::-webkit-scrollbar { display: none; }
+.category-chip {
+  flex: 0 0 auto; min-height: 40px; padding: 0 15px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 650; scroll-snap-align: start;
+}
+.category-chip[aria-pressed="true"] { border-color: var(--brand); background: var(--brand); color: #fff; }
+
+/* ---------- product cards ---------- */
+.product-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.product-card { position: relative; min-width: 0; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+.product-main {
+  display: grid; width: 100%; min-height: 192px; padding: 10px 10px 54px;
+  border-radius: var(--r-card); text-align: left;
+}
+.product-art {
+  display: grid; width: 100%; aspect-ratio: 1.18 / 1; place-items: center;
+  overflow: hidden; border-radius: var(--r-image); background: var(--sunken);
+}
+.product-art svg { width: 100%; height: 100%; }
+.product-copy { display: grid; gap: 3px; margin-top: 10px; }
+.product-name { font-size: 14px; font-weight: 700; letter-spacing: -.015em; line-height: 1.25; }
+.product-note {
+  display: -webkit-box; overflow: hidden; color: var(--muted); font-size: 11.5px; line-height: 1.35;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.product-price { margin-top: 3px; font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.add-button {
+  position: absolute; right: 9px; bottom: 9px; display: grid; width: 44px; height: 44px; place-items: center;
+  border-radius: 50%; background: var(--primary); color: #fff; box-shadow: var(--shadow-sm);
+}
+.add-button:hover { background: var(--primary-dark); }
+.add-button svg { width: 18px; height: 18px; }
+
+/* ---------- search / lists ---------- */
+.search-field { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 15px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--sunken); }
+.search-field:focus-within { border-color: var(--primary); box-shadow: var(--ring); }
+.search-field svg { flex: 0 0 20px; width: 20px; height: 20px; color: var(--muted); }
+.search-field input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 15px; }
+.search-field input::placeholder { color: var(--faint); }
+.suggestion-list { display: grid; gap: 4px; margin-top: 10px; padding: 6px; border: 1px solid var(--border); border-radius: var(--r-image); background: var(--surface); box-shadow: var(--shadow-sm); }
+.suggestion-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 44px; padding: 0 10px; border-radius: 11px; text-align: left; }
+.suggestion-item:hover { background: var(--sunken); }
+.suggestion-item span:last-child { color: var(--muted); font-size: 12px; }
+.suggestion-empty { padding: 10px; color: var(--muted); font-size: 13px; }
+.result-list, .cart-list { display: grid; gap: 10px; }
+.result-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 44px; align-items: center; gap: 12px; padding: 9px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+.result-row .product-art { aspect-ratio: 1; border-radius: var(--r-image); }
+.result-copy { display: grid; gap: 2px; min-width: 0; }
+.result-copy strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.result-copy span { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- cart ---------- */
+.cart-row { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 9px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+.cart-row .product-art { aspect-ratio: 1; border-radius: var(--r-image); }
+.cart-copy { display: grid; gap: 3px; min-width: 0; }
+.cart-copy strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.cart-copy span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.quantity-row { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--primary-tint); }
+.qty-button { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: var(--surface); color: var(--primary); font-size: 18px; line-height: 1; }
+.qty-value { min-width: 22px; text-align: center; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.summary-card { display: grid; gap: 12px; padding: 17px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+.summary-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
+.summary-line strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.summary-total { padding-top: 12px; border-top: 1px solid var(--border); color: var(--ink); font-size: 16px; font-weight: 700; }
+.primary-button, .secondary-button {
+  display: inline-flex; width: 100%; min-height: 54px; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 18px; font-size: 15px; font-weight: 700;
+}
+.primary-button { background: var(--primary); color: #fff; box-shadow: var(--shadow-sm); }
+.primary-button:hover { background: var(--primary-dark); }
+.primary-button:disabled { background: var(--border-strong); color: var(--muted); box-shadow: none; cursor: not-allowed; }
+.secondary-button { border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); }
+
+/* ---------- account ---------- */
+.account-hero { display: grid; gap: 8px; padding: 21px; border-radius: var(--r-card); background: var(--brand); color: #fff; }
+.account-hero .eyebrow { color: #fff; opacity: .7; }
+.account-hero h2 { font: 700 26px/1.1 var(--font-display); letter-spacing: -.035em; }
+.account-hero p { color: #fff; font-size: 13px; opacity: .78; }
+.account-card { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+.account-card h3 { font: 700 17px/1.2 var(--font-display); letter-spacing: -.03em; }
+.account-card p { color: var(--muted); font-size: 13px; }
+.status-dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--success); vertical-align: 1px; }
+
+/* ---------- bottom nav ---------- */
+.bottom-nav {
+  position: relative; z-index: 2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  min-height: var(--nav-height); padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--glass); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+.nav-item { position: relative; display: grid; place-items: center; gap: 3px; min-height: 52px; padding: 5px 2px; border-radius: 14px; color: var(--muted); font-size: 10px; font-weight: 650; }
+.nav-item svg { width: 22px; height: 22px; }
+.nav-item.is-active { background: var(--primary-tint); color: var(--primary); }
+.nav-badge {
+  position: absolute; top: 2px; right: 10px; display: grid; min-width: 18px; height: 18px; padding: 0 5px;
+  place-items: center; border-radius: var(--r-pill); background: var(--marigold); color: #1B1712; font-size: 10px; font-weight: 800;
+}
+
+/* ---------- sheets: physical, draggable, interruptible ---------- */
+.app-sheet {
+  position: absolute; inset: auto 0 0 0; width: 100%; max-width: none; max-height: 88%;
+  margin: 0; padding: 0; overflow: visible; border: 0; border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background: var(--glass); color: var(--ink); box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(26px) saturate(180%); -webkit-backdrop-filter: blur(26px) saturate(180%);
+  overscroll-behavior: contain;
+}
+.app-sheet::backdrop { background: var(--scrim); backdrop-filter: blur(4px); }
+.dialog-card { display: grid; gap: 16px; max-height: 88dvh; overflow-y: auto; padding: 8px 20px 22px; border-radius: var(--r-sheet) var(--r-sheet) 0 0; }
+.dialog-handle { width: 38px; height: 5px; margin: 0 auto; border-radius: var(--r-pill); background: var(--border-strong); cursor: grab; touch-action: none; }
+.dialog-handle:active { cursor: grabbing; }
+.dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; touch-action: none; }
+.dialog-head h2 { font: 700 24px/1.1 var(--font-display); letter-spacing: -.035em; }
+.icon-button { display: grid; flex: 0 0 44px; width: 44px; height: 44px; place-items: center; border: 1px solid var(--border); background: var(--surface); }
+.icon-button svg { width: 17px; height: 17px; }
+.dialog-product { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 15px; align-items: start; }
+.dialog-product .product-art { aspect-ratio: 1; border-radius: var(--r-card); }
+.dialog-product-copy { display: grid; gap: 7px; }
+.dialog-product-copy h3 { font: 700 20px/1.15 var(--font-display); letter-spacing: -.035em; }
+.dialog-product-copy p { color: var(--muted); font-size: 13px; }
+.dialog-product-copy strong { margin-top: 3px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.checkout-lines { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--border); border-radius: var(--r-image); background: var(--sunken); font-size: 13px; }
+.checkout-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.checkout-line strong { font-variant-numeric: tabular-nums; }
+.radio-row { display: flex; align-items: center; gap: 11px; min-height: 52px; padding: 0 14px; border: 1px solid var(--border); border-radius: var(--r-image); background: var(--surface); font-size: 14px; font-weight: 600; }
+.radio-row input { width: 18px; height: 18px; accent-color: var(--primary); }
+.plan-option { display: grid; gap: 4px; width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-image); background: var(--surface); text-align: left; }
+.plan-option strong { font-size: 15px; }
+.plan-option span { color: var(--muted); font-size: 12.5px; }
+.plan-option[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-tint); }
+.dialog-actions { display: grid; gap: 10px; }
+.empty-state { display: grid; justify-items: start; gap: 8px; padding: 24px 18px; border: 1px dashed var(--border-strong); border-radius: var(--r-card); background: var(--surface); }
+.empty-state h3 { font: 700 18px/1.2 var(--font-display); letter-spacing: -.03em; }
+.empty-state p { color: var(--muted); font-size: 13px; }
+.toast {
+  position: absolute; left: 50%; bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom)); z-index: 20;
+  width: min(calc(100% - 36px), 380px); padding: 13px 16px; transform: translateX(-50%);
+  border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: 14px;
+  background: var(--surface); box-shadow: var(--shadow-md); font-size: 13px; font-weight: 650;
+}
+.toast[data-tone="success"] { border-left-color: var(--success); }
+.toast[data-tone="warn"] { border-left-color: var(--warning); }
+
+/* ---------- art palette ---------- */
+.art-espresso { --a: #6B4432; --b: #F0E4D2; --c: #E79B12; }
+.art-flat { --a: #F0E4D2; --b: #6B4432; --c: #0E7A4D; }
+.art-tonic { --a: #CFE8F4; --b: #79BFA5; --c: #A9CF65; }
+.art-croissant { --a: #D8A33F; --b: #F0E4D2; --c: #6B4432; }
+.art-yogurt { --a: #EDF2F7; --b: #C65070; --c: #79BFA5; }
+.art-smoothie { --a: #F4B740; --b: #548Fcf; --c: #A9CF65; }
+.art-soda { --a: #548Fcf; --b: #CFE8F4; --c: #A9CF65; }
+.fill-a { fill: var(--a); } .fill-b { fill: var(--b); } .fill-c { fill: var(--c); }
+.stroke-art { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- responsive device ---------- */
+@media (max-width: 374px) { :root { --app-pad: 14px; } .product-main { min-height: 184px; } .hero-card h2 { font-size: 26px; } }
+@media (min-width: 768px) {
+  .device { width: 420px; height: min(860px, calc(100dvh - 48px)); border: 1px solid var(--border-strong); border-radius: 42px; box-shadow: var(--shadow-lg); }
+  .toast { bottom: 24px; }
+}
+@media (min-width: 1024px) { .device { width: 440px; height: min(880px, calc(100dvh - 56px)); } }
+@media (min-width: 1440px) { .device { width: 460px; height: 900px; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="device">
+  <header class="app-header">
+    <div class="brand-row">
+      <div class="brand-mark" aria-hidden="true">EG</div>
+      <div class="brand-copy"><p class="eyebrow">Good evening</p><h1 class="brand-title">EasyGet</h1></div>
+      <button class="plan-chip" id="headerPlanButton" type="button" data-action="open-plan" aria-haspopup="dialog">
+        <span id="planLabel">Weekly</span>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="location-row">
+      <span>Home · Saved address</span>
+      <span class="eta-pill"><svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 6v4l3 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>12 min</span>
+    </div>
+  </header>
+
+  <main class="app-main" id="appContent">
+    <section class="view" id="viewHome" data-view-panel="home" aria-label="Home">
+      <div class="hero-card">
+        <p class="hero-kicker">Quick commerce, considered</p>
+        <h2>Little essentials, right when you need them.</h2>
+        <p>Fresh food, bakery and cold drinks from nearby stores — chosen for the everyday, not the endless scroll.</p>
+      </div>
+      <div>
+        <div class="section-head"><h3>Shop by aisle</h3><button class="text-button" type="button" data-nav="browse">See all →</button></div>
+        <div class="category-scroller" id="categoryList" aria-label="Product categories"></div>
+      </div>
+      <div>
+        <div class="section-head"><h3 id="shopHeading">Fresh picks</h3><p>Tap a card for details</p></div>
+        <div class="product-grid" id="productList"></div>
+      </div>
+    </section>
+
+    <section class="view" id="viewBrowse" data-view-panel="browse" aria-label="Browse" hidden>
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input id="browseSearchInput" type="search" placeholder="Search atta, milk, soap…" aria-label="Search products" autocomplete="off">
+      </div>
+      <div>
+        <div class="section-head"><h3>Categories</h3><p>Choose a lane</p></div>
+        <div class="category-scroller" id="browseCategoryList" aria-label="Product categories"></div>
+      </div>
+      <div>
+        <div class="section-head"><h3 id="browseHeading">All products</h3><p id="browseCount">8 items</p></div>
+        <div class="product-grid" id="browseList"></div>
+      </div>
+    </section>
+
+    <section class="view" id="viewSearch" data-view-panel="search" aria-label="Search" hidden>
+      <form class="search-field" id="searchForm">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input id="searchInput" type="search" placeholder="Search coffee, bakery, fresh…" autocomplete="off" aria-label="Search products">
+      </form>
+      <div class="suggestion-list" id="suggestionList" hidden></div>
+      <div>
+        <div class="section-head"><h3>Results</h3><p id="resultHint">Showing everything</p></div>
+        <div class="result-list" id="searchResults"></div>
+      </div>
+    </section>
+
+    <section class="view" id="viewCart" data-view-panel="cart" aria-label="Cart" hidden>
+      <div>
+        <div class="section-head"><h3>Your basket</h3><p id="cartCountText">Nothing yet</p></div>
+        <div class="cart-list" id="cartItems"></div>
+      </div>
+      <div class="summary-card" id="cartSummary" hidden>
+        <div class="summary-line"><span>Items</span><strong id="cartItemsLabel">0</strong></div>
+        <div class="summary-line"><span>Delivery</span><strong>Included</strong></div>
+        <div class="summary-line summary-total"><span>Subtotal</span><strong id="cartSubtotal">₹0</strong></div>
+        <button class="primary-button" id="checkoutButton" type="button" data-action="checkout">Continue to checkout</button>
+      </div>
+    </section>
+
+    <section class="view" id="viewAccount" data-view-panel="account" aria-label="Account" hidden>
+      <div class="account-hero">
+        <p class="eyebrow">EasyGet Plus</p>
+        <h2>Make the everyday easier.</h2>
+        <p>One plan for the things you reach for again and again.</p>
+      </div>
+      <div class="account-card">
+        <p class="eyebrow">Current plan</p>
+        <h3 id="accountPlan">Weekly</h3>
+        <p>Change your rhythm whenever your week changes.</p>
+        <button class="secondary-button" type="button" data-action="open-plan">Change plan</button>
+      </div>
+      <div class="account-card">
+        <p class="eyebrow">Order status</p>
+        <h3 id="accountOrderTitle">No active demo order</h3>
+        <p id="accountOrderBody">Your next order will appear here.</p>
+      </div>
+      <div class="account-card">
+        <p class="eyebrow">About this prototype</p>
+        <h3>EasyGet is a concept</h3>
+        <p>A self-contained interaction study. Checkout creates a local demo order only.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Primary">
+    <button class="nav-item is-active" type="button" data-nav="home" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.5 20v-6h5v6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Home</span>
+    </button>
+    <button class="nav-item" type="button" data-nav="browse">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Browse</span>
+    </button>
+    <button class="nav-item" type="button" data-nav="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Search</span>
+    </button>
+    <button class="nav-item" type="button" data-nav="cart">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8V6a3 3 0 016 0v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Cart</span><span class="nav-badge" id="cartBadge" hidden>0</span>
+    </button>
+    <button class="nav-item" type="button" data-nav="account">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c.8-4 3.4-6 7-6s6.2 2 7 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Account</span>
+    </button>
+  </nav>
+
+  <dialog id="productDialog" class="app-sheet" aria-labelledby="productDialogTitle">
+    <div class="dialog-card">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <div class="dialog-head"><h2 id="productDialogTitle">Product details</h2><button class="icon-button" type="button" data-action="close-dialog" data-dialog="product" aria-label="Close product details"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+      <div id="productDialogBody"></div>
+    </div>
+  </dialog>
+
+  <dialog id="checkoutDialog" class="app-sheet" aria-labelledby="checkoutDialogTitle">
+    <div class="dialog-card">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <div class="dialog-head"><h2 id="checkoutDialogTitle">Checkout</h2><button class="icon-button" type="button" data-action="close-dialog" data-dialog="checkout" aria-label="Close checkout"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+      <div id="checkoutSummary" class="checkout-lines"></div>
+      <label class="radio-row"><input type="radio" name="dropoff" value="Leave at door" checked><span>Leave at door</span></label>
+      <label class="radio-row"><input type="radio" name="dropoff" value="Hand to me"><span>Hand to me</span></label>
+      <form class="dialog-actions" id="checkoutForm">
+        <button class="primary-button" type="submit">Place demo order</button>
+        <button class="secondary-button" type="button" data-action="close-dialog" data-dialog="checkout">Keep browsing</button>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="planDialog" class="app-sheet" aria-labelledby="planDialogTitle">
+    <div class="dialog-card">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <div class="dialog-head"><h2 id="planDialogTitle">Choose your rhythm</h2><button class="icon-button" type="button" data-action="close-dialog" data-dialog="plan" aria-label="Close plan choices"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+      <button class="plan-option" type="button" data-plan="Weekly"><strong>Weekly</strong><span>A steady cadence for a weekly restock.</span></button>
+      <button class="plan-option" type="button" data-plan="Daily"><strong>Daily</strong><span>For coffee and breakfast, every day.</span></button>
+      <button class="plan-option" type="button" data-plan="Monthly"><strong>Monthly</strong><span>A slower rhythm for pantry staples.</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="orderDialog" class="app-sheet" aria-labelledby="orderDialogTitle">
+    <div class="dialog-card">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <div class="dialog-head"><h2 id="orderDialogTitle">Order received</h2><button class="icon-button" type="button" data-action="close-dialog" data-dialog="order" aria-label="Close order status"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+      <div id="orderDialogBody"></div>
+      <button class="primary-button" type="button" data-action="close-dialog" data-dialog="order">Done</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script>
+(() => {
+  const products = [
+    { id: "sunrise-espresso", name: "Sunrise Espresso", category: "Coffee", price: 180, note: "Espresso, milk, a little citrus.", detail: "A bright cup with espresso, steamed milk and orange peel. Built for the first hour of the day.", art: "espresso" },
+    { id: "oat-flat", name: "Oat Flat", category: "Coffee", price: 210, note: "Smooth espresso, oat milk.", detail: "Espresso softened with oat milk, poured short and silky. Familiar, without being heavy.", art: "flat" },
+    { id: "cold-tonic", name: "Cold Tonic", category: "Drinks", price: 240, note: "Cucumber, lime, sparkling.", detail: "Sparkling tonic with cucumber and lime. Clean, crisp and made for a pause.", art: "tonic" },
+    { id: "almond-croissant", name: "Almond Croissant", category: "Bakery", price: 160, note: "Twice-baked, almond finish.", detail: "A twice-baked croissant with a delicate almond finish. Best with coffee.", art: "croissant" },
+    { id: "butter-croissant", name: "Butter Croissant", category: "Bakery", price: 140, note: "Laminated, light, quietly rich.", detail: "A classic laminated croissant with a light crumb and a quiet butter finish.", art: "croissant" },
+    { id: "yogurt-bowl", name: "Berry Yogurt Bowl", category: "Fresh", price: 220, note: "Berry, mint, toasted oats.", detail: "Thick yogurt with berries, mint and toasted oats. Fresh without feeling like a chore.", art: "yogurt" },
+    { id: "banana-smoothie", name: "Banana Smoothie", category: "Fresh", price: 230, note: "Banana, blueberry, oat.", detail: "Banana and blueberry blended with oat for a smooth, filling sip.", art: "smoothie" },
+    { id: "yuzu-soda", name: "Yuzu Soda", category: "Drinks", price: 150, note: "Yuzu, soda, a pinch of salt.", detail: "Yuzu over soda with a pinch of salt. Sharp, bright and lightly savoury.", art: "soda" }
+  ];
+
+  const plans = ["Weekly", "Daily", "Monthly"];
+  const views = ["home", "browse", "search", "cart", "account"];
+  const storageKey = "easyget-mobile-v1";
+  const initialState = { cart: {}, query: "", category: "All", view: "home", plan: "Weekly", order: null, dropoff: "Leave at door" };
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const one = (selector, root = document) => root.querySelector(selector);
+  const all = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+  const setText = (node, value) => { if (node) node.textContent = value; };
+  const setHidden = (node, value) => { if (node) node.hidden = value; };
+  const formatINR = value => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+  const haptic = (ms = 8) => { if (navigator.vibrate) navigator.vibrate(ms); };
+
+  function readState() {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return { ...initialState };
+      const saved = JSON.parse(raw);
+      return {
+        ...initialState,
+        cart: saved.cart && typeof saved.cart === "object" && !Array.isArray(saved.cart) ? saved.cart : {},
+        query: typeof saved.query === "string" ? saved.query : "",
+        category: typeof saved.category === "string" ? saved.category : "All",
+        view: views.includes(saved.view) ? saved.view : "home",
+        plan: plans.includes(saved.plan) ? saved.plan : "Weekly",
+        order: saved.order && typeof saved.order === "object" ? saved.order : null,
+        dropoff: saved.dropoff === "Hand to me" ? "Hand to me" : "Leave at door"
+      };
+    } catch { return { ...initialState }; }
+  }
+  const state = readState();
+  function persist() {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        cart: state.cart, query: state.query, category: state.category,
+        view: state.view, plan: state.plan, order: state.order, dropoff: state.dropoff
+      }));
+    } catch { /* storage unavailable — prototype still works in memory */ }
+  }
+
+  const refs = {
+    views: all("[data-view-panel]"), navButtons: all("[data-nav]"),
+    categoryLists: [one("#categoryList"), one("#browseCategoryList")],
+    productList: one("#productList"), browseList: one("#browseList"), browseSearchInput: one("#browseSearchInput"),
+    shopHeading: one("#shopHeading"), browseHeading: one("#browseHeading"), browseCount: one("#browseCount"),
+    searchForm: one("#searchForm"), searchInput: one("#searchInput"), suggestionList: one("#suggestionList"), searchResults: one("#searchResults"), resultHint: one("#resultHint"),
+    cartItems: one("#cartItems"), cartSummary: one("#cartSummary"), cartCountText: one("#cartCountText"), cartItemsLabel: one("#cartItemsLabel"), cartSubtotal: one("#cartSubtotal"), checkoutButton: one("#checkoutButton"),
+    checkoutSummary: one("#checkoutSummary"), checkoutForm: one("#checkoutForm"), cartBadge: one("#cartBadge"),
+    planLabel: one("#planLabel"), headerPlanButton: one("#headerPlanButton"), accountPlan: one("#accountPlan"), accountOrderTitle: one("#accountOrderTitle"), accountOrderBody: one("#accountOrderBody"),
+    productDialog: one("#productDialog"), productDialogTitle: one("#productDialogTitle"), productDialogBody: one("#productDialogBody"),
+    checkoutDialog: one("#checkoutDialog"), planDialog: one("#planDialog"), orderDialog: one("#orderDialog"), orderDialogBody: one("#orderDialogBody"),
+    toast: one("#toast")
+  };
+  const dialogs = { product: refs.productDialog, checkout: refs.checkoutDialog, plan: refs.planDialog, order: refs.orderDialog };
+  const returnFocus = new WeakMap();
+
+  /* ---------- artwork ---------- */
+  function artwork(product) {
+    const open = '<svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">';
+    const close = "</svg>";
+    switch (product.art) {
+      case "espresso": return `${open}<ellipse class="fill-b" cx="60" cy="98" rx="34" ry="7"/><path class="fill-a" d="M31 41h50v28c0 16-11 25-25 25S31 85 31 69z"/><path class="fill-b" d="M81 49h7c11 0 11 17 0 17h-7z"/><path class="stroke-art" d="M47 32c5-6-5-10 0-16M62 32c5-6-5-10 0-16M77 32c5-6-5-10 0-16"/>${close}`;
+      case "flat": return `${open}<ellipse class="fill-b" cx="60" cy="100" rx="33" ry="7"/><path class="fill-b" d="M30 46h52v23c0 16-12 26-26 26S30 85 30 69z"/><path class="fill-c" d="M56 47c11 6 20 14 20 23 0 9-9 16-20 20 8-9 10-16 5-22-4-5-5-12 0-21z"/><path class="fill-a" d="M82 52h6c9 0 9 15 0 15h-6z"/>${close}`;
+      case "tonic": return `${open}<path class="fill-a" d="M51 20h18v10l8 10v55c0 7-5 12-12 12H55c-7 0-12-5-12-12V40l8-10z"/><path class="fill-b" d="M49 51h22v34H49z"/><circle class="fill-c" cx="57" cy="62" r="3"/><circle class="fill-c" cx="65" cy="71" r="4"/><circle class="fill-c" cx="55" cy="79" r="2.5"/><path class="stroke-art" d="M53 20h14"/>${close}`;
+      case "croissant": return `${open}<path class="fill-a" d="M20 72c6-27 27-42 51-37 18 4 28 18 30 38-12 8-24 10-40 5-14 6-28 4-41-6z"/><path class="fill-b" d="M42 45c-3 12-3 25 2 37M62 38c-2 14-1 29 4 42M83 43c0 12 2 22 8 31"/><path class="fill-c" d="M26 72c14 7 29 8 45 4 14 4 23 3 29-3-6 16-23 24-40 21-17-3-29-11-34-22z"/>${close}`;
+      case "yogurt": return `${open}<ellipse class="fill-a" cx="60" cy="88" rx="38" ry="11"/><path class="fill-a" d="M24 57h72c-3 22-17 34-36 34S27 79 24 57z"/><ellipse class="fill-b" cx="60" cy="57" rx="36" ry="10"/><circle class="fill-c" cx="49" cy="54" r="5"/><circle class="fill-c" cx="65" cy="50" r="4"/><circle class="fill-c" cx="73" cy="59" r="6"/><path class="stroke-art" d="M38 39c5-8 12-8 17-1M58 34c6-7 14-5 18 3"/>${close}`;
+      case "smoothie": return `${open}<path class="fill-a" d="M42 32h36l-6 62H48z"/><path class="fill-b" d="M45 59h30l-3 35H48z"/><circle class="fill-c" cx="61" cy="49" r="5"/><path class="stroke-art" d="M61 31V16M61 18c8-8 17-5 18 3-9 2-14 0-18-3z"/>${close}`;
+      default: return `${open}<rect class="fill-a" x="42" y="24" width="36" height="76" rx="12"/><path class="fill-b" d="M42 45h36v30H42z"/><path class="fill-c" d="M52 31h16v8H52z"/><path class="stroke-art" d="M55 24V16h10v8M50 80h20"/>${close}`;
+    }
+  }
+
+  function productById(id) { return products.find(product => product.id === id) || null; }
+  function getCartEntries() {
+    return Object.keys(state.cart).map(id => ({ product: productById(id), qty: state.cart[id] }))
+      .filter(entry => entry.product && Number.isFinite(entry.qty) && entry.qty > 0);
+  }
+  const cartCount = (entries = getCartEntries()) => entries.reduce((sum, entry) => sum + entry.qty, 0);
+  const cartSubtotal = (entries = getCartEntries()) => entries.reduce((sum, entry) => sum + entry.product.price * entry.qty, 0);
+
+  function productCard(product, compact = false) {
+    return `<article class="product-card">
+      <button class="product-main" type="button" data-action="details" data-id="${product.id}" aria-label="View details for ${product.name}">
+        <span class="product-art art-${product.art}">${artwork(product)}</span>
+        <span class="product-copy"><span class="product-name">${product.name}</span><span class="product-note">${product.note}</span><span class="product-price">${formatINR(product.price)}</span></span>
+      </button>
+      <button class="add-button" type="button" data-action="add" data-id="${product.id}" aria-label="Add ${product.name} to cart">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </article>`;
+  }
+  function resultRow(product) {
+    return `<article class="result-row">
+      <span class="product-art art-${product.art}">${artwork(product)}</span>
+      <span class="result-copy"><strong>${product.name}</strong><span>${product.category} · ${product.note}</span></span>
+      <button class="add-button" type="button" data-action="add" data-id="${product.id}" aria-label="Add ${product.name} to cart">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </article>`;
+  }
+  function cartRow(entry) {
+    return `<article class="cart-row">
+      <span class="product-art art-${entry.product.art}">${artwork(entry.product)}</span>
+      <span class="cart-copy"><strong>${entry.product.name}</strong><span>${formatINR(entry.product.price)} each</span></span>
+      <span class="quantity-row" aria-label="Quantity for ${entry.product.name}">
+        <button class="qty-button" type="button" data-action="decrease" data-id="${entry.product.id}" aria-label="Decrease ${entry.product.name} quantity">−</button>
+        <span class="qty-value">${entry.qty}</span>
+        <button class="qty-button" type="button" data-action="increase" data-id="${entry.product.id}" aria-label="Increase ${entry.product.name} quantity">+</button>
+      </span>
+    </article>`;
+  }
+
+  function matchesQuery(product, query) {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    return `${product.name} ${product.category} ${product.note}`.toLowerCase().includes(needle);
+  }
+  function categoryFor(product) { return state.category === "All" || product.category === state.category; }
+  function filteredProducts() { return products.filter(product => categoryFor(product) && matchesQuery(product, state.query)); }
+
+  function renderCategories() {
+    const categories = ["All", ...Array.from(new Set(products.map(product => product.category)))];
+    refs.categoryLists.forEach(list => {
+      if (!list) return;
+      if (!list.children.length) list.innerHTML = categories.map(category => `<button class="category-chip" type="button" data-category="${category}" aria-pressed="false">${category}</button>`).join("");
+      all("[data-category]", list).forEach(button => button.setAttribute("aria-pressed", String(button.dataset.category === state.category)));
+    });
+  }
+  function renderHome() {
+    if (!refs.productList) return;
+    const items = products.filter(categoryFor);
+    setText(refs.shopHeading, state.category === "All" ? "Fresh picks" : state.category);
+    refs.productList.innerHTML = items.length ? items.map(product => productCard(product)).join("")
+      : `<div class="empty-state"><h3>Nothing in this lane yet</h3><p>Try another category.</p><button class="text-button" type="button" data-action="reset-category">Show all</button></div>`;
+  }
+  function renderBrowse() {
+    if (!refs.browseList) return;
+    const items = filteredProducts();
+    setText(refs.browseHeading, state.category === "All" ? "All products" : state.category);
+    setText(refs.browseCount, `${items.length} ${items.length === 1 ? "item" : "items"}`);
+    refs.browseList.innerHTML = items.length ? items.map(product => productCard(product)).join("")
+      : `<div class="empty-state"><h3>No products here</h3><p>Clear the filters to see everything.</p><button class="text-button" type="button" data-action="reset-category">Show all</button></div>`;
+  }
+  function renderSearch() {
+    const query = state.query.trim();
+    setText(refs.resultHint, query ? `Matches for “${query}”` : "Showing everything");
+    if (!refs.suggestionList) return;
+    if (!query) { refs.suggestionList.hidden = true; refs.suggestionList.innerHTML = ""; }
+    else {
+      const matches = products.filter(product => matchesQuery(product, query)).slice(0, 4);
+      refs.suggestionList.hidden = false;
+      refs.suggestionList.innerHTML = matches.length
+        ? matches.map(product => `<button class="suggestion-item" type="button" data-action="details" data-id="${product.id}"><span>${product.name}</span><span>${product.category}</span></button>`).join("")
+        : '<p class="suggestion-empty">No matches yet. Try coffee, bakery, fresh or drinks.</p>';
+    }
+    if (!refs.searchResults) return;
+    const results = products.filter(product => matchesQuery(product, query));
+    refs.searchResults.innerHTML = results.length ? results.map(resultRow).join("")
+      : `<div class="empty-state"><h3>No matches yet</h3><p>Clear the field to see everything.</p><button class="text-button" type="button" data-action="clear-search">Clear search</button></div>`;
+  }
+  function renderCart() {
+    const entries = getCartEntries(), count = cartCount(entries), total = cartSubtotal(entries);
+    setText(refs.cartCountText, count ? `${count} item${count === 1 ? "" : "s"}` : "Nothing yet");
+    setText(refs.cartItemsLabel, String(count));
+    setText(refs.cartSubtotal, formatINR(total));
+    if (refs.cartBadge) { refs.cartBadge.hidden = count === 0; setText(refs.cartBadge, String(count)); }
+    if (refs.checkoutButton) refs.checkoutButton.disabled = count === 0;
+    setHidden(refs.cartSummary, count === 0);
+    if (!refs.cartItems) return;
+    refs.cartItems.innerHTML = entries.length ? entries.map(cartRow).join("")
+      : `<div class="empty-state"><h3>Your basket is quiet</h3><p>Add something from the shop to begin.</p><button class="text-button" type="button" data-action="go-home">Browse products</button></div>`;
+  }
+  function renderPlan() {
+    setText(refs.planLabel, state.plan);
+    setText(refs.accountPlan, state.plan);
+    if (refs.headerPlanButton) refs.headerPlanButton.setAttribute("aria-label", `Plan: ${state.plan}. Change plan`);
+    all("[data-plan]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.plan === state.plan)));
+  }
+  function renderOrder() {
+    if (!state.order) {
+      setText(refs.accountOrderTitle, "No active demo order");
+      setText(refs.accountOrderBody, "Your next order will appear here.");
+      return;
+    }
+    setText(refs.accountOrderTitle, state.order.id);
+    setText(refs.accountOrderBody, `${state.order.itemCount} item${state.order.itemCount === 1 ? "" : "s"} · ${formatINR(state.order.total)} · placed just now.`);
+  }
+  function renderViews() {
+    refs.views.forEach(view => { view.hidden = view.dataset.viewPanel !== state.view; });
+    refs.navButtons.forEach(button => {
+      const active = button.dataset.nav === state.view;
+      button.classList.toggle("is-active", active);
+      if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
+    });
+  }
+  function renderApp() { renderViews(); renderCategories(); renderHome(); renderBrowse(); renderSearch(); renderCart(); renderPlan(); renderOrder(); }
+
+  /* ---------- interruptible spring, starting from the current on-screen value ---------- */
+  const springs = new WeakMap();
+  function cancelSpring(element) {
+    const token = springs.get(element);
+    if (token) { token.cancelled = true; springs.delete(element); }
+  }
+  function springTo(element, from, to, velocity, done, bouncy = false) {
+    cancelSpring(element);
+    if (reduced.matches) {
+      element.style.transform = `translate3d(0, ${to}px, 0)`;
+      if (done) done();
+      return;
+    }
+    const token = { cancelled: false };
+    springs.set(element, token);
+    const stiffness = 320, damping = bouncy ? 26 : 36;
+    let x = from, v = velocity, last = performance.now();
+    function step(now) {
+      if (token.cancelled) return;
+      const elapsed = Math.min((now - last) / 1000, 1 / 30);
+      last = now;
+      const substeps = Math.max(1, Math.ceil(elapsed / (1 / 60)));
+      const h = elapsed / substeps;
+      for (let i = 0; i < substeps; i++) {
+        const acceleration = -stiffness * (x - to) - damping * v;
+        v += acceleration * h;
+        x += v * h;
+      }
+      element.style.transform = `translate3d(0, ${x.toFixed(2)}px, 0)`;
+      if (Math.abs(x - to) < 0.5 && Math.abs(v) < 8) {
+        element.style.transform = `translate3d(0, ${to}px, 0)`;
+        springs.delete(element);
+        if (done) done();
+        return;
+      }
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function project(velocity, decelerationRate = 0.998) {
+    return (velocity / 1000) * decelerationRate / (1 - decelerationRate);
+  }
+  function rubberband(overshoot, dimension = 600, constant = 0.55) {
+    return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+  }
+
+  /* ---------- sheets: 1:1 tracking, velocity handoff, symmetric exit ---------- */
+  function attachSheetDrag(dialog) {
+    const sheet = dialog;
+    let dragging = false, startY = 0, currentY = 0, pointerId = null, samples = [];
+    const grab = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return false;
+      if (target.closest("button, input, label")) return false;
+      return Boolean(target.closest(".dialog-handle, .dialog-head"));
+    };
+    const onDown = event => {
+      if (!dialog.open || !grab(event) || event.button > 0) return;
+      dragging = true;
+      pointerId = event.pointerId;
+      startY = event.clientY;
+      currentY = 0;
+      samples = [{ y: event.clientY, t: performance.now() }];
+      cancelSpring(sheet);
+      sheet.setPointerCapture(pointerId);
+      sheet.style.willChange = "transform";
+    };
+    const onMove = event => {
+      if (!dragging || event.pointerId !== pointerId) return;
+      let delta = event.clientY - startY;
+      const height = sheet.offsetHeight || 400;
+      if (delta < 0) delta = rubberband(delta, height);
+      else if (delta > height) delta = height + rubberband(delta - height, height);
+      currentY = delta;
+      sheet.style.transform = `translate3d(0, ${delta}px, 0)`;
+      const now = performance.now();
+      samples.push({ y: event.clientY, t: now });
+      while (samples.length > 2 && now - samples[0].t > 120) samples.shift();
+    };
+    const onUp = event => {
+      if (!dragging || event.pointerId !== pointerId) return;
+      dragging = false;
+      if (sheet.hasPointerCapture(pointerId)) sheet.releasePointerCapture(pointerId);
+      const first = samples[0], last = samples[samples.length - 1];
+      const elapsed = Math.max(last.t - first.t, 1);
+      const velocity = ((last.y - first.y) / elapsed) * 1000;
+      const projected = currentY + project(velocity);
+      const shouldClose = projected > 130 || (velocity > 900 && currentY > 20) || currentY > (sheet.offsetHeight || 400) * 0.5;
+      sheet.style.willChange = "";
+      if (shouldClose) {
+        springTo(sheet, currentY, sheet.offsetHeight || 600, velocity, () => dismissSheet(dialog), velocity > 200);
+      } else {
+        springTo(sheet, currentY, 0, velocity, null, false);
+      }
+    };
+    sheet.addEventListener("pointerdown", onDown);
+    sheet.addEventListener("pointermove", onMove);
+    sheet.addEventListener("pointerup", onUp);
+    sheet.addEventListener("pointercancel", onUp);
+  }
+
+  function dismissSheet(dialog) {
+    if (!dialog) return;
+    if (dialog.open) dialog.close();
+    sheetTransform(dialog, 0);
+    const trigger = returnFocus.get(dialog);
+    returnFocus.delete(dialog);
+    if (trigger && document.contains(trigger)) trigger.focus();
+  }
+  function sheetTransform(dialog, y) { if (dialog) dialog.style.transform = `translate3d(0, ${y}px, 0)`; }
+
+  function openDialog(dialog, trigger) {
+    if (!dialog) return;
+    const open = one("dialog[open]");
+    if (open && open !== dialog) dismissSheet(open);
+    returnFocus.set(dialog, trigger || document.activeElement);
+    if (!dialog.open) dialog.showModal();
+    sheetTransform(dialog, reduced.matches ? 0 : dialog.offsetHeight);
+    springTo(dialog, reduced.matches ? 0 : dialog.offsetHeight, 0, 0, null, false);
+    const target = one("button:not(.icon-button)", dialog);
+    if (target) target.focus({ preventScroll: true });
+  }
+
+  function showToast(message, tone = "info") {
+    if (!refs.toast) return;
+    refs.toast.textContent = message;
+    refs.toast.dataset.tone = tone;
+    refs.toast.hidden = false;
+    window.clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(() => { refs.toast.hidden = true; }, 2800);
+  }
+
+  function setView(view, focusSearch = false) {
+    if (!views.includes(view)) return;
+    state.view = view;
+    haptic();
+    persist();
+    renderApp();
+    one("#appContent").scrollTop = 0;
+    if (focusSearch && refs.searchInput) refs.searchInput.focus();
+  }
+  function addToCart(id) {
+    const product = productById(id);
+    if (!product) return;
+    state.cart[id] = (state.cart[id] || 0) + 1;
+    haptic();
+    persist();
+    renderCart();
+    showToast(`${product.name} added to cart.`, "success");
+  }
+  function changeQuantity(id, delta) {
+    const product = productById(id);
+    if (!product) return;
+    const next = (state.cart[id] || 0) + delta;
+    if (next <= 0) delete state.cart[id]; else state.cart[id] = next;
+    haptic();
+    persist();
+    renderCart();
+    if (next <= 0) showToast(`${product.name} removed from cart.`, "warn");
+  }
+  function openProductDialog(product, trigger) {
+    if (!product) return;
+    setText(refs.productDialogTitle, product.name);
+    if (refs.productDialogBody) {
+      refs.productDialogBody.innerHTML = `<div class="dialog-product">
+        <span class="product-art art-${product.art}">${artwork(product)}</span>
+        <div class="dialog-product-copy"><h3>${product.name}</h3><p>${product.detail}</p><strong>${formatINR(product.price)}</strong></div>
+      </div><button class="primary-button" type="button" data-action="dialog-add" data-id="${product.id}">Add to cart</button>`;
+    }
+    openDialog(refs.productDialog, trigger);
+  }
+  function openCheckoutDialog(trigger) {
+    const entries = getCartEntries();
+    if (!entries.length) { showToast("Your basket is empty.", "warn"); return; }
+    if (refs.checkoutSummary) {
+      refs.checkoutSummary.innerHTML = `<div class="checkout-line"><span>Items</span><strong>${cartCount(entries)}</strong></div>
+        <div class="checkout-line"><span>Subtotal</span><strong>${formatINR(cartSubtotal(entries))}</strong></div>
+        <div class="checkout-line"><span>Payment</span><strong>Demo only</strong></div>`;
+    }
+    all('input[name="dropoff"]').forEach(input => { input.checked = input.value === state.dropoff; });
+    openDialog(refs.checkoutDialog, trigger);
+  }
+  function openPlanDialog(trigger) { renderPlan(); openDialog(refs.planDialog, trigger); }
+  function openOrderDialog(trigger) {
+    if (!refs.orderDialogBody || !state.order) return;
+    refs.orderDialogBody.innerHTML = `<div class="checkout-lines">
+      <div class="checkout-line"><span>Order</span><strong>${state.order.id}</strong></div>
+      <div class="checkout-line"><span>Items</span><strong>${state.order.itemCount}</strong></div>
+      <div class="checkout-line"><span>Total</span><strong>${formatINR(state.order.total)}</strong></div>
+    </div><p>This demo order is saved locally on this device.</p>`;
+    openDialog(refs.orderDialog, trigger);
+  }
+  function selectPlan(plan) {
+    if (!plans.includes(plan)) return;
+    state.plan = plan;
+    haptic();
+    persist();
+    renderPlan();
+    dismissSheet(refs.planDialog);
+    showToast(`${plan} plan saved.`, "success");
+  }
+  function placeOrder() {
+    const entries = getCartEntries();
+    if (!entries.length) { showToast("Your basket is empty.", "warn"); return; }
+    state.order = { id: `EG-${String(Date.now()).slice(-5)}`, itemCount: cartCount(entries), total: cartSubtotal(entries) };
+    state.cart = {};
+    haptic(20);
+    persist();
+    renderApp();
+    dismissSheet(refs.checkoutDialog);
+    openOrderDialog(refs.checkoutButton);
+    showToast("Demo order placed.", "success");
+  }
+
+  document.addEventListener("click", event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const actionNode = target.closest("[data-action]");
+    if (actionNode) {
+      const action = actionNode.dataset.action;
+      const product = actionNode.dataset.id ? productById(actionNode.dataset.id) : null;
+      if (action === "add" && product) addToCart(product.id);
+      else if (action === "details" && product) openProductDialog(product, actionNode);
+      else if (action === "dialog-add" && product) { addToCart(product.id); dismissSheet(refs.productDialog); }
+      else if (action === "increase" && actionNode.dataset.id) changeQuantity(actionNode.dataset.id, 1);
+      else if (action === "decrease" && actionNode.dataset.id) changeQuantity(actionNode.dataset.id, -1);
+      else if (action === "go-home") setView("home");
+      else if (action === "reset-category") { state.category = "All"; persist(); renderCategories(); renderHome(); renderBrowse(); }
+      else if (action === "clear-search") { state.query = ""; if (refs.searchInput) refs.searchInput.value = ""; persist(); renderSearch(); }
+      else if (action === "checkout") openCheckoutDialog(actionNode);
+      else if (action === "open-plan") openPlanDialog(actionNode);
+      else if (action === "close-dialog") dismissSheet(dialogs[actionNode.dataset.dialog]);
+      return;
+    }
+    const navNode = target.closest("[data-nav]");
+    if (navNode) { setView(navNode.dataset.nav, navNode.dataset.nav === "search"); return; }
+    const categoryNode = target.closest("[data-category]");
+    if (categoryNode) { state.category = categoryNode.dataset.category; haptic(); persist(); renderCategories(); renderHome(); renderBrowse(); return; }
+    const planNode = target.closest("[data-plan]");
+    if (planNode) { selectPlan(planNode.dataset.plan); return; }
+    const dialogNode = target.closest("dialog");
+    if (dialogNode && target === dialogNode) dismissSheet(dialogNode);
+  });
+
+  function wireSearch(input) {
+    if (!input) return;
+    input.addEventListener("input", () => {
+      state.query = input.value;
+      if (input === refs.searchInput && refs.browseSearchInput) refs.browseSearchInput.value = input.value;
+      if (input === refs.browseSearchInput && refs.searchInput) refs.searchInput.value = input.value;
+      persist();
+      renderBrowse();
+      renderSearch();
+    });
+  }
+  wireSearch(refs.searchInput);
+  wireSearch(refs.browseSearchInput);
+
+  if (refs.searchForm) refs.searchForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const firstMatch = products.find(product => matchesQuery(product, state.query));
+    if (firstMatch) openProductDialog(firstMatch, refs.searchForm);
+    else showToast("No matches yet. Try another search.", "warn");
+  });
+  if (refs.checkoutDialog) refs.checkoutDialog.addEventListener("change", event => {
+    if (event.target instanceof HTMLInputElement && event.target.name === "dropoff") {
+      state.dropoff = event.target.value;
+      persist();
+    }
+  });
+  if (refs.checkoutForm) refs.checkoutForm.addEventListener("submit", event => { event.preventDefault(); placeOrder(); });
+
+  Object.values(dialogs).forEach(attachSheetDrag);
+  all("dialog").forEach(dialog => {
+    dialog.addEventListener("close", () => {
+      const trigger = returnFocus.get(dialog);
+      returnFocus.delete(dialog);
+      sheetTransform(dialog, 0);
+      if (trigger && document.contains(trigger)) trigger.focus();
+    });
+  });
+  if (refs.searchInput) refs.searchInput.value = state.query;
+  if (refs.browseSearchInput) refs.browseSearchInput.value = state.query;
+  renderApp();
+})();
+</script>
+</body>
+</html>

@@ -26,7 +26,8 @@ const _sortLabels = {
 
 /// Active-filter badge for the toolbar button ("Filter" vs "Filter · 2").
 String _filterLabel(BrowseFilter filter) {
-  final count = (filter.brand != null ? 1 : 0) +
+  final count =
+      (filter.brand != null ? 1 : 0) +
       (filter.minPrice != null || filter.maxPrice != null ? 1 : 0) +
       (filter.minDiscount != null ? 1 : 0) +
       (filter.featured == true ? 1 : 0);
@@ -79,9 +80,11 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadii.sheet)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadii.sheet),
+        ),
       ),
       builder: (_) => BrowseFilterSheet(
         initial: BrowseFilters(
@@ -110,9 +113,11 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     final selected = ref.read(browseFilterProvider).sortId;
     await showModalBottomSheet<void>(
       context: context,
+      enableDrag: false,
       shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadii.sheet)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadii.sheet),
+        ),
       ),
       builder: (_) => SortSheet(
         options: const [
@@ -123,25 +128,24 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
           SortOption(id: 'rating', label: 'Top rated'),
         ],
         selectedId: selected,
-        onSelect: (id) =>
-            ref.read(browseFilterProvider.notifier).setSort(id),
+        onSelect: (id) => ref.read(browseFilterProvider.notifier).setSort(id),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final rawCategory =
-        GoRouterState.of(context).uri.queryParameters['category'];
-    final routeCategory =
-        (rawCategory == null || rawCategory.isEmpty) ? null : rawCategory;
+    final rawCategory = GoRouterState.of(
+      context,
+    ).uri.queryParameters['category'];
+    final routeCategory = (rawCategory == null || rawCategory.isEmpty)
+        ? null
+        : rawCategory;
     if (routeCategory != _lastRouteCategory) {
       _lastRouteCategory = routeCategory;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          ref
-              .read(browseFilterProvider.notifier)
-              .syncFromRoute(routeCategory);
+          ref.read(browseFilterProvider.notifier).syncFromRoute(routeCategory);
         }
       });
     }
@@ -153,9 +157,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     return Scaffold(
       appBar: EasyGetAppBar(
         title: 'Browse',
-        bottom: AppSearchBar(
-          onMic: () => context.go('/search?listen=1'),
-        ),
+        bottom: AppSearchBar(onMic: () => context.go('/search?listen=1')),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,7 +177,9 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
             onFilter: _openFilter,
             onSort: _openSort,
           ),
-          Expanded(child: _Grid(items: items, controller: _scroll)),
+          Expanded(
+            child: _Grid(items: items, controller: _scroll),
+          ),
         ],
       ),
     );
@@ -200,8 +204,10 @@ class _ChipsRow extends StatelessWidget {
       height: 56,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding:
-            const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: 6),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.lg,
+          vertical: 6,
+        ),
         children: [
           AppChip(
             label: 'All',
@@ -246,15 +252,17 @@ class _Toolbar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm),
+        AppSpace.lg,
+        AppSpace.sm,
+        AppSpace.lg,
+        AppSpace.sm,
+      ),
       child: Row(
         children: [
           Text(
-              totalKnown
-                  ? '$total items'
-                  : '$loadedCount items',
-              style:
-                  AppTypography.tabularNumber(scheme.onSurfaceVariant)),
+            totalKnown ? '$total items' : '$loadedCount items',
+            style: AppTypography.tabularNumber(scheme.onSurfaceVariant),
+          ),
           const Spacer(),
           TextButton.icon(
             onPressed: onFilter,
@@ -313,14 +321,16 @@ class _Grid extends ConsumerWidget {
       children: [
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () =>
-                ref.read(browseItemsProvider.notifier).refresh(),
+            onRefresh: () => ref.read(browseItemsProvider.notifier).refresh(),
             child: GridView.builder(
               controller: controller,
               padding: const EdgeInsets.fromLTRB(
-                  AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.md),
-              gridDelegate:
-                  SliverGridDelegateWithFixedCrossAxisCount(
+                AppSpace.lg,
+                AppSpace.sm,
+                AppSpace.lg,
+                AppSpace.md,
+              ),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: AppSpace.md,
                 crossAxisSpacing: AppSpace.md,
@@ -335,10 +345,8 @@ class _Grid extends ConsumerWidget {
                   product: product,
                   density: ProductDensity.grid,
                   width: width,
-                  onTap: () =>
-                      context.push('/product/${product.slug}'),
-                  onQuickAdd: () =>
-                      quickAddFromCard(context, product),
+                  onTap: () => context.push('/product/${product.slug}'),
+                  onQuickAdd: () => quickAddFromCard(context, product),
                 );
               },
             ),
