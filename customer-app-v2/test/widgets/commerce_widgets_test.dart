@@ -156,13 +156,13 @@ void main() {
       expect(find.text('−17%'), findsOneWidget);
     });
 
-    testWidgets('glassmorphism off removes every blur layer', (tester) async {
+    testWidgets('cards never use GPU blur layers', (tester) async {
       await tester.pumpWidget(_host(const ProductCard(
         product: _butter,
         density: ProductDensity.grid,
         width: 180,
       )));
-      expect(find.byType(BackdropFilter), findsWidgets);
+      expect(find.byType(BackdropFilter), findsNothing);
 
       await tester.pumpWidget(_host(const ProductCard(
         product: _butter,
@@ -212,7 +212,7 @@ void main() {
           );
       await tester.pump();
 
-      expect(find.byType(BackdropFilter), findsWidgets);
+      expect(find.byType(BackdropFilter), findsNothing);
     });
 
     testWidgets('exposes a semantics label for the product', (tester) async {

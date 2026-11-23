@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -37,7 +39,7 @@ class _QtyStepperState extends State<QtyStepper> {
 
   void _emit(int next) {
     if (next == _qty) return;
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     setState(() => _qty = next);
     widget.onChanged(next);
   }

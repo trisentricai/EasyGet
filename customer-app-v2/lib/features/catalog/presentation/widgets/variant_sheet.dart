@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -101,7 +103,7 @@ class _VariantSheetState extends State<VariantSheet> {
               child: FilledButton(
                 key: const Key('variant-cta'),
                 onPressed: () {
-                  HapticFeedback.lightImpact();
+                  unawaited(HapticFeedback.lightImpact());
                   widget.onAdd?.call(selected);
                   Navigator.of(context).maybePop(selected);
                 },
@@ -142,7 +144,7 @@ class _VariantSheetState extends State<VariantSheet> {
       child: InkWell(
         key: Key('variant-option-$index'),
         onTap: () {
-          HapticFeedback.selectionClick();
+          unawaited(HapticFeedback.selectionClick());
           setState(() => _selected = index);
         },
         child: SizedBox(

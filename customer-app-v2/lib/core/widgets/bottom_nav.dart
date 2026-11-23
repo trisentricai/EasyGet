@@ -1,4 +1,4 @@
-import 'dart:ui' show ImageFilter;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,14 +27,10 @@ class EasyGetBottomNav extends ConsumerWidget {
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerLowest.withValues(alpha: 0.78),
+              color: scheme.surfaceContainerLowest.withValues(alpha: 0.86),
               border: Border(
                 top: BorderSide(color: colors.glassBorder, width: 1),
               ),
-            ),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: const SizedBox.expand(),
             ),
           ),
         ),
@@ -51,7 +47,7 @@ class EasyGetBottomNav extends ConsumerWidget {
             return null;
           }),
           onDestinationSelected: (index) {
-            HapticFeedback.lightImpact();
+            unawaited(HapticFeedback.lightImpact());
             navigationShell.goBranch(
               index,
               initialLocation: index == navigationShell.currentIndex,

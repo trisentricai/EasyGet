@@ -91,8 +91,9 @@ there**).
   over HTTPS. On-device it keeps only: JWTs + cached profile (encrypted secure
   storage), guest-cart key, analytics session id, theme choice, and in-memory
   session state (recents, recent views, card→variant map).
-- **Push:** Firebase project `easyget-7a4b0` (`google-services.json` committed
-  — designed to ship inside the app).
+- **Push:** Firebase project `easyget-7a4b0`. `google-services.json` is a
+  local/CI-only file (gitignored): drop it in `android/app/` to enable FCM,
+  or build without it — local debug builds work with push disabled.
 
 ### 1.3 User roles & journeys
 
@@ -298,7 +299,7 @@ trigger single-flight refresh; session loss broadcasts to login.
 |---|---|---|
 | `API_BASE` | Render URL above | Point at local backend (`http://10.0.2.2:8000/api/v1` on emulator) |
 | `STORE_SLUG` | `easyget` | Platform storefront slug |
-| `GOOGLE_CLIENT_ID` | baked-in web ID | Google Sign-In web OAuth client |
+| `GOOGLE_CLIENT_ID` | baked-in Firebase web ID | Google Sign-In `serverClientId` (must share the Android client's GCP project) |
 
 ### 2.9 Test accounts
 
@@ -477,9 +478,11 @@ delivery engagement`), plus `test/data/` (repository contract tests with fake
 `HttpClientAdapter` asserting method+path+body).
 
 Android bits that matter: `android/app/google-services.json` (Firebase project
-`easyget-7a4b0`, committed — designed to ship), branded `launch_background`
-splash (`@color/eg_brand` + launcher icon), `POST_NOTIFICATIONS`/`VIBRATE`/
-`RECORD_AUDIO` permissions, desugaring for the notifications plugin.
+`easyget-7a4b0`, gitignored — CI injects it from `GOOGLE_SERVICES_JSON`; the
+Gradle plugin is skipped when it is absent, so local debug builds work without
+push), branded `launch_background` splash (`@color/eg_brand` + launcher icon),
+`POST_NOTIFICATIONS`/`VIBRATE`/`RECORD_AUDIO` permissions, desugaring for the
+notifications plugin.
 
 ### 3.3 Boot sequence (code order in `main.dart` → first frame)
 
@@ -549,7 +552,7 @@ never grey boxes. |
 | `flutter_animate` 4.5 + `shimmer` 3.0 | Micro-motion; our skeletons use a
 hand-rolled pulse (no shimmer dep at runtime) so tests never hang. |
 | `intl` | ^0.20.3 | Date/number formatting helpers. |
-| `google_sign_in` | ^7.2.0 | Google login with `serverClientId` = web OAuth ID (backend accepts it). |
+| `google_sign_in` | ^7.2.0 | Google login with `serverClientId` = Firebase web OAuth ID (`client_type: 3` in `google-services.json`, same GCP project as the Android client; backend must allow it in `GOOGLE_OAUTH_CLIENT_IDS`). |
 | `flutter_local_notifications` | ^22.3.1 | Order alerts, channel `order_updates`.
 Needs desugaring (`build.gradle.kts`) + `POST_NOTIFICATIONS`. |
 | `package_info_plus` | ^10.2.2 | App version for the update gate. |
@@ -1108,7 +1111,13 @@ retry (idempotency key = order_id + status).
   accepted, `adb kill-server; adb start-server`.
 - **Google Sign-In fails on device** → SHA-1 in the Firebase console must match
   the signing key (`keytool -list -v`); debug vs release keys differ — register
-  both. Web client ID must match `GOOGLE_CLIENT_ID`.
+  both. `GOOGLE_CLIENT_ID` must be the Firebase project's web OAuth client
+  (`client_type: 3` in `google-services.json`), not customer-web's
+  `VITE_GOOGLE_CLIENT_ID`; mixing projects fails with GMS [28444].
+- **Account picker works, but app shows "Invalid or expired Google credential."**
+  → the native token is minted for the Firebase web client; the deployed backend
+  must list that same ID in `GOOGLE_OAUTH_CLIENT_IDS` (comma-separated) and be
+  redeployed. The client logs `[google] id token aud:` in debug builds to confirm.
 - **Images load in debug, not release** → cleartext HTTP blocked in release
   (all our URLs are HTTPS — check yours); Supabase host must be in the
   network-security config if you add hosts.
@@ -2444,7 +2453,9 @@ Suggestions: `GET /search/suggestions/?q=` → `[strings]` (tap → submit).
 ### R5 FCM end-to-end (console → device → order screen)
 
 1. Firebase project `easyget-7a4b0` (console access needed): Cloud Messaging
-   enabled; `google-services.json` committed in `android/app/` (§16).
+   enabled; place its `google-services.json` in `android/app/` locally, or let
+   CI inject it from the `GOOGLE_SERVICES_JSON` secret (§16). Without the file
+   the app still builds and runs; only FCM is disabled.
 2. App: login → `push_service` fetches token → `POST /realtime/devices/
    {platform: ANDROID, device_token, user_agent}` (best-effort, never blocks).
 3. Test without backend: Firebase console → Cloud Messaging → "Send test

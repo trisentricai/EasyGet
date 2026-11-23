@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -35,10 +37,11 @@ class RealGoogleAuthSource implements GoogleAuthSource {
         await GoogleSignIn.instance.initialize(serverClientId: webClientId);
         _ready = true;
       }
-    } catch (_) {
+    } catch (e) {
       _ready = false;
       // No Google Play Services (AOSP emulators) or proxy'd environments land
       // here; keep the button honest instead of hanging.
+      debugPrint('[google] init failed: $e');
       throw ApiException(
         'Google sign-in is not available here. Use email login.',
       );
@@ -54,7 +57,14 @@ class RealGoogleAuthSource implements GoogleAuthSource {
       }
       // Keep the raw framework code visible so on-device failures (e.g. an
       // absent Android OAuth client for this signing cert) are diagnosable.
-      debugPrint('[google] sign-in failed: ${e.code}');
+      debugPrint('[google] sign-in failed: ${e.code} - ${e.description}');
+      if (e.code == GoogleSignInExceptionCode.clientConfigurationError ||
+          e.code == GoogleSignInExceptionCode.providerConfigurationError) {
+        throw ApiException(
+          'Google sign-in is not configured for this app build. '
+          'Use email login instead.',
+        );
+      }
       throw ApiException('Google sign-in failed. Please try again.');
     }
 
@@ -62,9 +72,25 @@ class RealGoogleAuthSource implements GoogleAuthSource {
     if (idToken == null || idToken.isEmpty) {
       throw ApiException('Google did not return an ID token.');
     }
+    // The audience is public (a JWT claim) and tells us which OAuth client the
+    // token was minted for — essential when diagnosing 401s from /auth/google/.
+    final parts = idToken.split('.');
+    if (parts.length == 2) {
+      try {
+        final payload =
+            jsonDecode(
+                  utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+                )
+                as Map<String, dynamic>;
+        debugPrint('[google] id token aud: ${payload['aud']}');
+      } catch (_) {
+        // Ignore malformed tokens here; the backend still verifies properly.
+      }
+    }
     return idToken;
   }
 }
 
-final googleAuthSourceProvider =
-    Provider<GoogleAuthSource>((ref) => RealGoogleAuthSource());
+final googleAuthSourceProvider = Provider<GoogleAuthSource>(
+  (ref) => RealGoogleAuthSource(),
+);

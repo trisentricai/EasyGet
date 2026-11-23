@@ -1,10 +1,24 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // Applies google-services.json (Firebase project easyget-7a4b0).
-    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Firebase is optional for local builds. CI writes google-services.json from
+// the GOOGLE_SERVICES_JSON secret; developers who want push notifications can
+// drop the same file here. Without it we skip the plugin so debug builds work
+// offline — FirebasePushBackend.ensureReady() already fails closed at runtime.
+val hasFirebaseConfig = listOf(
+    file("google-services.json"),
+    file("src/main/google-services.json"),
+    file("src/debug/google-services.json"),
+).any { it.exists() }
+
+if (hasFirebaseConfig) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle("google-services.json not found — building without Firebase (push disabled).")
 }
 
 android {

@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -251,7 +249,7 @@ class ProductCard extends ConsumerWidget {
               _nameSlot(context),
               _brandSlot(context),
               const SizedBox(height: AppSpace.sm),
-              _priceSlot(),
+              _priceSlot(context),
               const SizedBox(height: AppSpace.md),
               _quickAddControl(obsidian: true),
             ],
@@ -287,7 +285,7 @@ class ProductCard extends ConsumerWidget {
               _nameSlot(context),
               _brandSlot(context),
               const SizedBox(height: AppSpace.sm),
-              _priceSlot(),
+              _priceSlot(context),
               const SizedBox(height: AppSpace.md),
               _quickAddControl(),
             ],
@@ -313,20 +311,35 @@ class ProductCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(AppRadii.card),
         border: Border.all(
           color: glass ? colors.glassBorder : colors.champagneDeep,
-          width: 1.5,
+          width: 1, // Apple hairline
         ),
       ),
       child: child,
     );
-    final filled = glass && blur > 0
-        ? BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-            child: surface,
-          )
-        : surface;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      child: filled,
+    // No GPU BackdropFilter: Impeller on some Android GPUs leaks the blur
+    // across the whole screen. Neutral surface + hairline + soft layered
+    // shadow is the compatible Apple-material look. The shadow lives on an
+    // outer DecoratedBox because ClipRRect would clip it away.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            offset: const Offset(0, 1),
+            blurRadius: 2,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            offset: const Offset(0, 5),
+            blurRadius: 16,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        child: surface,
+      ),
     );
   }
 
@@ -384,25 +397,35 @@ class ProductCard extends ConsumerWidget {
     );
   }
 
-  /// Fixed 2-line name slot (38dp): short names leave air, long names clamp —
-  /// either way the card below starts at the same offset.
+  /// At the default text scale this is the original fixed slot, so every
+  /// card in a row/rail still measures identically. At larger Dynamic Type
+  /// sizes the slot grows instead of clipping the scaled text.
+  double _slotHeight(BuildContext context, double base) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final factor = scaler.scale(base) / base;
+    return base * (factor.isFinite && factor > 1 ? factor : 1);
+  }
+
+  /// Reserved 2-line name slot (38dp at 1×): short names leave air, long
+  /// names clamp, and the slot grows with Dynamic Type.
   Widget _nameSlot(BuildContext context) {
-    return SizedBox(
-      height: nameSlotHeight,
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: _slotHeight(context, nameSlotHeight)),
       child: Align(alignment: Alignment.topLeft, child: _name(context)),
     );
   }
 
-  /// Fixed brand slot (18dp): always reserved so the price block aligns even
-  /// when a product has no brand line.
+  /// Reserved brand slot (18dp at 1×): still present for products with no
+  /// brand line so prices stay aligned; grows with Dynamic Type.
   Widget _brandSlot(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final line = product.brand;
+    final height = _slotHeight(context, brandSlotHeight);
     if (line == null || line.isEmpty) {
-      return const SizedBox(height: brandSlotHeight);
+      return SizedBox(height: height);
     }
-    return SizedBox(
-      height: brandSlotHeight,
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: height),
       child: Text(
         line,
         maxLines: 1,
@@ -412,11 +435,11 @@ class ProductCard extends ConsumerWidget {
     );
   }
 
-  /// Fixed price slot (48dp): reserves the save line so discounted and
-  /// full-price cards measure identically.
-  Widget _priceSlot() {
-    return SizedBox(
-      height: priceSlotHeight,
+  /// Reserved price slot (64dp at 1×): keeps the save line in the same place
+  /// for discounted and full-price cards, but lets large text breathe.
+  Widget _priceSlot(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: _slotHeight(context, priceSlotHeight)),
       child: Align(
         alignment: Alignment.topLeft,
         child: PriceBlock(
@@ -529,7 +552,7 @@ class _AddedBar extends StatelessWidget {
               key: const Key('qty-minus'),
               tooltip: 'Remove one',
               onPressed: () {
-                HapticFeedback.lightImpact();
+                unawaited(HapticFeedback.lightImpact());
                 onDecrement();
               },
               icon: const Icon(Icons.remove),
@@ -552,7 +575,7 @@ class _AddedBar extends StatelessWidget {
               key: const Key('qty-plus'),
               tooltip: 'Add more',
               onPressed: () {
-                HapticFeedback.lightImpact();
+                unawaited(HapticFeedback.lightImpact());
                 onIncrement();
               },
               icon: const Icon(Icons.add),
@@ -681,15 +704,9 @@ class _GlassPill extends StatelessWidget {
         style: AppTypography.tabularSmall(colors.champagneInk, size: 11),
       ),
     );
-    final filled = enabled && blur > 0
-        ? BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-            child: pill,
-          )
-        : pill;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: filled,
+      child: pill,
     );
   }
 }

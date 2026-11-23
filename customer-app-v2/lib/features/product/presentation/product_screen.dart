@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -502,7 +504,7 @@ class _VariantSelector extends StatelessWidget {
             key: Key('pdp-variant-${variants[i].id}'),
             borderRadius: BorderRadius.circular(AppRadii.input),
             onTap: () {
-              HapticFeedback.selectionClick();
+              unawaited(HapticFeedback.selectionClick());
               onSelect(i);
             },
             child: SizedBox(
@@ -1046,7 +1048,7 @@ class _StickyBarState extends ConsumerState<_StickyBar> {
         child: OutlinedButton(
           key: const Key('pdp-add'),
           onPressed: () {
-            HapticFeedback.lightImpact();
+            unawaited(HapticFeedback.lightImpact());
             setState(() {
               _selecting = true;
               _pending = 1;

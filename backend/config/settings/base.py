@@ -359,7 +359,19 @@ HEALTH_CHECK = {
 PROMETHEUS_EXPORT_MIGRATIONS = False
 
 # Google sign-in WITHOUT Firebase (GIS button on web, google_sign_in on app).
-# Comma-separated OAuth client IDs whose ID tokens we accept (web client +
-# Android client from google-services.json). Empty locally: /auth/google/
-# answers 503 while everything else works.
-GOOGLE_OAUTH_CLIENT_IDS = env("GOOGLE_OAUTH_CLIENT_IDS", default="")
+# Comma-separated OAuth client IDs whose ID tokens we accept. First-party IDs
+# are baked in so a fresh deploy works even if the hosting dashboard's env var
+# is stale; GOOGLE_OAUTH_CLIENT_IDS can still add more audiences.
+_FIRST_PARTY_GOOGLE_CLIENT_IDS = (
+    "71530535214-rl0b86rgd7rdckh3rno418tfofkeo25c.apps.googleusercontent.com",  # customer-web
+    "86489065513-jkvv0k49c2erpu76m41krur4t7ffbk8e.apps.googleusercontent.com",  # Firebase web (Android google_sign_in serverClientId)
+    "86489065513-73m63j5hm79s0upe0pib00u0a40jpm6r.apps.googleusercontent.com",  # Android client from google-services.json
+)
+_configured_google_client_ids = [
+    value.strip()
+    for value in env("GOOGLE_OAUTH_CLIENT_IDS", default="").split(",")
+    if value.strip()
+]
+GOOGLE_OAUTH_CLIENT_IDS = ",".join(
+    dict.fromkeys([*_configured_google_client_ids, *_FIRST_PARTY_GOOGLE_CLIENT_IDS])
+)

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
@@ -86,7 +88,7 @@ class _FluidSheetState extends State<FluidSheet> with TickerProviderStateMixin {
     _samples
       ..clear()
       ..add(_Sample(event.position.dy, event.timeStamp.inMicroseconds));
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
   }
 
   void _onPointerMove(PointerEvent event) {
@@ -121,7 +123,7 @@ class _FluidSheetState extends State<FluidSheet> with TickerProviderStateMixin {
     final last = window.last;
     final elapsed = (last.time - first.time) / 1000000.0;
     final velocity = elapsed > 0 ? (last.y - first.y) / elapsed : 0.0;
-    final projected = _offset + velocity.clamp(-2000.0, 2000.0) * 0.5;
+    final projected = _offset + _projectedDistance(velocity);
     final height = context.size?.height ?? 600;
 
     final shouldDismiss =
@@ -130,7 +132,7 @@ class _FluidSheetState extends State<FluidSheet> with TickerProviderStateMixin {
         _offset > height * 0.5;
 
     if (shouldDismiss) {
-      HapticFeedback.lightImpact();
+      unawaited(HapticFeedback.lightImpact());
       _settle(target: height, velocity: velocity, dismiss: true);
     } else {
       _settle(target: 0, velocity: velocity, dismiss: false);
@@ -197,6 +199,16 @@ class _FluidSheetState extends State<FluidSheet> with TickerProviderStateMixin {
   void _finishDismiss() {
     widget.onDismiss?.call();
     Navigator.of(context).maybePop();
+  }
+
+  /// Apple's exponential projection: `v / 1000 * decay / (1 - decay)`.
+  /// With `decay = 0.998` this resolves to ~0.499s of projected travel and
+  /// keeps the flick decision tied to a named physical model instead of a
+  /// magic `0.5`.
+  static double _projectedDistance(double velocity) {
+    const decay = 0.998;
+    final clamped = velocity.clamp(-2000.0, 2000.0);
+    return clamped * (decay / (1 - decay)) / 1000;
   }
 
   /// Apple-style resistance past the resting point.

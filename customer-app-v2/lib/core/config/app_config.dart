@@ -15,14 +15,18 @@ class AppConfig {
     defaultValue: 'easyget',
   );
 
-  /// Google sign-in on Android/iOS needs the OAuth client that the backend
-  /// accepts (`serverClientId`). Same value as customer-web's
-  /// `VITE_GOOGLE_CLIENT_ID`. Public by design - embedded in the app binary.
+  /// Google sign-in on Android needs the *web* OAuth client from the same
+  /// Google Cloud project as the Android client (the `client_type: 3` entry in
+  /// `google-services.json`). Passing the customer-web client ID here makes
+  /// Google Play Services reject the exchange with [28444] because the Android
+  /// and web clients live in different projects. Public by design - embedded
+  /// in the app binary, and must be listed in the backend's
+  /// `GOOGLE_OAUTH_CLIENT_IDS` for the token exchange to succeed.
   /// Override at build time: --dart-define=GOOGLE_CLIENT_ID=...
   static const googleClientId = String.fromEnvironment(
     'GOOGLE_CLIENT_ID',
     defaultValue:
-        '71530535214-rl0b86rgd7rdckh3rno418tfofkeo25c.apps.googleusercontent.com',
+        '86489065513-jkvv0k49c2erpu76m41krur4t7ffbk8e.apps.googleusercontent.com',
   );
 
   /// Absolute URL for backend-served media paths (/media/...).

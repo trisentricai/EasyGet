@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
@@ -59,13 +57,12 @@ class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
         ...actions,
       ],
       bottom: bottom,
-      // The blur lives in flexibleSpace (behind the toolbar); the bar itself
-      // is transparent so content scrolls visibly beneath the frosted chrome.
-      flexibleSpace: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: ColoredBox(
-          color: scheme.surfaceContainerLowest.withValues(alpha: 0.78),
-        ),
+      // Translucent fill without a GPU BackdropFilter: Impeller on some
+      // Android GPUs leaks the backdrop blur across the whole screen when a
+      // filter is nested in the app bar / cards. The tint keeps the frosted
+      // look; the blur itself is intentionally omitted for compatibility.
+      flexibleSpace: ColoredBox(
+        color: scheme.surfaceContainerLowest.withValues(alpha: 0.86),
       ),
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,

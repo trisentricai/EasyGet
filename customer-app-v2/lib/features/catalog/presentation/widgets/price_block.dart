@@ -45,10 +45,13 @@ class PriceBlock extends StatelessWidget {
             ),
             if (_hasMrp) ...[
               const SizedBox(width: AppSpace.sm),
-              Text(
-                '₹${_rupees(mrp)}',
-                style: AppTypography.caption(scheme.onSurfaceVariant)
-                    .copyWith(decoration: TextDecoration.lineThrough),
+              Flexible(
+                child: Text(
+                  '₹${_rupees(mrp)}',
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.caption(scheme.onSurfaceVariant)
+                      .copyWith(decoration: TextDecoration.lineThrough),
+                ),
               ),
             ],
           ],

@@ -101,7 +101,7 @@ class AppTheme {
         color: scheme.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppRadii.card),
           side: BorderSide(color: scheme.outline.withValues(alpha: 0.4)),
         ),
       ),
@@ -113,19 +113,19 @@ class AppTheme {
           vertical: 14,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadii.input),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadii.input),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadii.input),
           borderSide: BorderSide(color: scheme.primary, width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadii.input),
           borderSide: BorderSide(color: scheme.error, width: 1.4),
         ),
         hintStyle: AppTypography.caption(scheme.onSurfaceVariant),
@@ -135,7 +135,7 @@ class AppTheme {
           minimumSize: const Size.fromHeight(54),
           textStyle: AppTypography.label(scheme.onPrimary),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadii.button),
           ),
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
@@ -145,7 +145,7 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadii.input),
           ),
           side: BorderSide(color: scheme.outline),
           foregroundColor: scheme.onSurface,
@@ -182,7 +182,7 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant,
-        thickness: 1,
+        thickness: 0.5, // Apple hairline separator
         space: 1,
       ),
       listTileTheme: ListTileThemeData(

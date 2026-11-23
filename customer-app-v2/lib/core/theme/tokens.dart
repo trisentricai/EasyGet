@@ -3,21 +3,22 @@ import 'package:flutter/material.dart';
 /// EasyGet Fresh Market — normative color tokens (DESIGN.md §10).
 /// Zero hardcoded hex/px outside `core/theme/`.
 class AppColors {
-  // Light — Warm Paper & Forest Leaf
-  static const Color lightCanvas = Color(0xFFFAF6EF);
-  static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightSunken = Color(0xFFF1EAE0);
-  static const Color lightInk = Color(0xFF1B1712);
-  static const Color lightMuted = Color(0xFF655D52);
-  static const Color lightFaint = Color(0xFFA79C8F);
-  static const Color lightBorder = Color(0xFFE7DFD3);
-  static const Color lightBorderStrong = Color(0xFFD5C9B8);
+  // Light — Apple system palette. Neutral surfaces + EASYGET green accent.
+  // Values mirror the approved mobile concept (design-reference/easyget-mobile.html).
+  static const Color lightCanvas = Color(0xFFFFFFFF);
+  static const Color lightSurface = Color(0xFFF5F5F7);
+  static const Color lightSunken = Color(0xFFEFEFF4);
+  static const Color lightInk = Color(0xFF1D1D1F);
+  static const Color lightMuted = Color(0xFF6E6E73);
+  static const Color lightFaint = Color(0xFFA1A1A6);
+  static const Color lightBorder = Color(0xFFD2D2D7);
+  static const Color lightBorderStrong = Color(0xFFC7C7CC);
 
-  // Brand Accents
+  // Brand Accents — EASYGET green is the only chromatic accent.
   static const Color brand = Color(0xFF0C3B2E);
   static const Color primary = Color(0xFF0E7A4D);
   static const Color primaryDark = Color(0xFF0A5C3B);
-  static const Color primaryTint = Color(0xFFDDF0E4);
+  static const Color primaryTint = Color(0xFFE7F6EE);
   static const Color marigold = Color(0xFFE79B12);
   static const Color marigoldWash = Color(0xFFFCEFD4);
 
@@ -26,14 +27,15 @@ class AppColors {
   static const Color warning = Color(0xFFB45309);
   static const Color danger = Color(0xFFB91C1C);
 
-  // Champagne Minimalist (grid cards) + Obsidian Glass (overlays)
-  static const Color champagne = Color(0xFFF7EFDD);
-  static const Color champagneDeep = Color(0xFFEFE0C2);
-  static const Color darkChampagne = Color(0xFF2A241B);
-  static const Color darkChampagneDeep = Color(0xFF38301F);
-  static const Color obsidian = Color(0xFF141210);
-  static const Color obsidianGlass = Color(0xB3141210);
-  static const Color champagneInk = Color(0xFFF7EFDD);
+  // Neutral card surfaces + dark overlay chips (renamed tokens retained for
+  // source compatibility). These now read as Apple system materials.
+  static const Color champagne = Color(0xFFF5F5F7);
+  static const Color champagneDeep = Color(0xFFE8E8ED);
+  static const Color darkChampagne = Color(0xFF1C1C1E);
+  static const Color darkChampagneDeep = Color(0xFF2C2C2E);
+  static const Color obsidian = Color(0xFF1D1D1F);
+  static const Color obsidianGlass = Color(0xD91D1D1F);
+  static const Color champagneInk = Color(0xFFFFFFFF);
 
   // Category card wash backgrounds (stable per-category hues when images are null)
   static const Color categoryWashDanger = Color(0xFFFDECEA);
@@ -41,15 +43,15 @@ class AppColors {
   static const Color categoryWashSuccess = Color(0xFFE8F5E9);
   static const Color categoryWashInfo = Color(0xFFE3F2FD);
 
-  // Dark — Warm Charcoal (never pure #000)
-  static const Color darkCanvas = Color(0xFF12110F);
-  static const Color darkSurface = Color(0xFF1B1A17);
-  static const Color darkSunken = Color(0xFF26241F);
-  static const Color darkInk = Color(0xFFF4EFE7);
-  static const Color darkMuted = Color(0xFFA79C8F);
-  static const Color darkFaint = Color(0xFF6F675C);
-  static const Color darkBorder = Color(0xFF2B2823);
-  static const Color darkBorderStrong = Color(0xFF3E3A33);
+  // Dark — Apple system dark palette
+  static const Color darkCanvas = Color(0xFF000000);
+  static const Color darkSurface = Color(0xFF1C1C1E);
+  static const Color darkSunken = Color(0xFF2C2C2E);
+  static const Color darkInk = Color(0xFFF5F5F7);
+  static const Color darkMuted = Color(0xFF98989D);
+  static const Color darkFaint = Color(0xFF6E6E73);
+  static const Color darkBorder = Color(0xFF38383A);
+  static const Color darkBorderStrong = Color(0xFF48484A);
   static const Color darkPrimary = Color(0xFF3AA76D);
   static const Color darkPrimaryTint = Color(0xFF14342A);
   static const Color darkMarigold = Color(0xFFFFB020);
@@ -70,15 +72,15 @@ class AppSpace {
   static const double huge = 48;
 }
 
-/// Corner radii (DESIGN §10.6).
+/// Corner radii — Apple: 24pt cards, pill controls.
 class AppRadii {
   const AppRadii._();
-  static const double card = 18;
-  static const double image = 14;
-  static const double button = 16;
-  static const double input = 14;
-  static const double snackbar = 14;
-  static const double sheet = 24;
+  static const double card = 24;
+  static const double image = 16;
+  static const double button = 999;
+  static const double input = 16;
+  static const double snackbar = 16;
+  static const double sheet = 28;
   static const double pill = 999;
 }
 
@@ -170,9 +172,9 @@ class FreshMarketLightColors extends ThemeExtension<FreshMarketLightColors>
   @override
   Color get champagneDeep => AppColors.champagneDeep;
   @override
-  Color get glassSurface => const Color(0xD0F7EFDD); // champagne ~82% opacity
+  Color get glassSurface => const Color(0xFFF5F5F7); // secondary system fill
   @override
-  Color get glassBorder => const Color(0x80EFE0C2); // champagneDeep ~50% opacity
+  Color get glassBorder => const Color(0xFFD2D2D7); // Apple separator
   @override
   Color get obsidian => AppColors.obsidian;
   @override
@@ -227,9 +229,9 @@ class FreshMarketDarkColors extends ThemeExtension<FreshMarketDarkColors>
   @override
   Color get champagneDeep => AppColors.darkChampagneDeep;
   @override
-  Color get glassSurface => const Color(0xD02A241B); // darkChampagne ~82% opacity
+  Color get glassSurface => const Color(0xFF1C1C1E); // secondary dark fill
   @override
-  Color get glassBorder => const Color(0x8038301F); // darkChampagneDeep ~50% opacity
+  Color get glassBorder => const Color(0xFF38383A); // dark separator
   @override
   Color get obsidian => AppColors.obsidian;
   @override

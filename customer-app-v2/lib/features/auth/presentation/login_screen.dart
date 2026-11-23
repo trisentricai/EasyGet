@@ -270,10 +270,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          'New here? ',
-                          style: AppTypography.body(
-                              theme.colorScheme.onSurfaceVariant),
+                        Flexible(
+                          child: Text(
+                            'New here? ',
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.caption(
+                                theme.colorScheme.onSurfaceVariant,
+                                size: 14),
+                          ),
                         ),
                         TextButton(
                           onPressed:
