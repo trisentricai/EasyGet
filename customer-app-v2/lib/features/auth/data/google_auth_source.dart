@@ -75,7 +75,7 @@ class RealGoogleAuthSource implements GoogleAuthSource {
     // The audience is public (a JWT claim) and tells us which OAuth client the
     // token was minted for — essential when diagnosing 401s from /auth/google/.
     final parts = idToken.split('.');
-    if (parts.length == 2) {
+    if (parts.length >= 2) {
       try {
         final payload =
             jsonDecode(

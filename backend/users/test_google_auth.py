@@ -6,9 +6,10 @@ Google's verification is mocked: no network, no credentials.
 from unittest import mock
 
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from rest_framework.test import APIClient
 
+from .google_auth import google_audiences
 from .models import User
 
 URL = "/api/v1/auth/google/"
@@ -97,3 +98,16 @@ class GoogleLoginTests(TestCase):
         with self._verify():
             res = self.client.post(URL, {"id_token": "tok"}, format="json")
         self.assertEqual(res.status_code, 401)
+
+
+class GoogleAudienceConfigurationTests(SimpleTestCase):
+    def test_first_party_audiences_are_available_without_an_env_var(self):
+        audiences = google_audiences()
+        self.assertIn(
+            "86489065513-jkvv0k49c2erpu76m41krur4t7ffbk8e.apps.googleusercontent.com",
+            audiences,
+        )
+        self.assertIn(
+            "86489065513-73m63j5hm79s0upe0pib00u0a40jpm6r.apps.googleusercontent.com",
+            audiences,
+        )
