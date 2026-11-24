@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,7 +10,6 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
-import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/skeletons.dart';
 import '../../../core/widgets/snackbar.dart';
 import '../../../core/widgets/states.dart';
@@ -41,20 +44,41 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(
                 AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.sm),
-            child: Row(
-              children: [
-                AppChip(
-                  label: 'Active',
-                  selected: !_showPast,
-                  onTap: () => setState(() => _showPast = false),
+            child: CupertinoSlidingSegmentedControl<bool>(
+              groupValue: _showPast,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+              thumbColor: Theme.of(context).colorScheme.surface,
+              onValueChanged: (value) {
+                if (value == null || value == _showPast) return;
+                unawaited(HapticFeedback.selectionClick());
+                setState(() => _showPast = value);
+              },
+              children: {
+                false: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.lg, vertical: AppSpace.sm),
+                  child: Text(
+                    'Active',
+                    style: AppTypography.label(
+                      !_showPast
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: AppSpace.sm),
-                AppChip(
-                  label: 'Past',
-                  selected: _showPast,
-                  onTap: () => setState(() => _showPast = true),
+                true: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.lg, vertical: AppSpace.sm),
+                  child: Text(
+                    'Past',
+                    style: AppTypography.label(
+                      _showPast
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-              ],
+              },
             ),
           ),
           Expanded(

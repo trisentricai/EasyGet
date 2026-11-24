@@ -67,8 +67,8 @@ class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      scrolledUnderElevation: 1,
-      shape: Border(bottom: BorderSide(color: colors.glassBorder, width: 1)),
+      scrolledUnderElevation: 0.5,
+      shadowColor: colors.glassBorder,
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -119,56 +120,72 @@ class _Content extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpace.lg),
-          _NavRow(
-            key: const Key('row-addresses'),
-            icon: Icons.location_on_outlined,
-            label: 'Addresses',
-            onTap: () => context.push('/addresses'),
-          ),
-          _NavRow(
-            key: const Key('row-wishlist'),
-            icon: Icons.favorite_border,
-            label: 'Wishlist',
-            badge: '$wishlistCount',
-            onTap: () => context.push('/wishlist'),
-          ),
-          _NavRow(
-            icon: Icons.rate_review_outlined,
-            label: 'My reviews',
-            onTap: () => showAppSnackbar(
-                context, 'Reviews are coming soon.'),
-          ),
-          _NavRow(
-            icon: Icons.local_offer_outlined,
-            label: 'Coupons',
-            onTap: () =>
-                showAppSnackbar(context, 'Coupons are coming soon.'),
-          ),
-          _NavRow(
-            icon: Icons.payments_outlined,
-            label: 'Payments',
-            onTap: () => showAppSnackbar(
-                context, 'Saved payments are coming soon.'),
+          _GroupedCard(
+            children: [
+              _NavRow(
+                key: const Key('row-addresses'),
+                icon: Icons.location_on_outlined,
+                label: 'Addresses',
+                onTap: () => context.push('/addresses'),
+              ),
+              _NavRow(
+                key: const Key('row-wishlist'),
+                icon: Icons.favorite_border,
+                label: 'Wishlist',
+                badge: '$wishlistCount',
+                onTap: () => context.push('/wishlist'),
+              ),
+              _NavRow(
+                icon: Icons.rate_review_outlined,
+                label: 'My reviews',
+                onTap: () => showAppSnackbar(
+                    context, 'Reviews are coming soon.'),
+              ),
+              _NavRow(
+                icon: Icons.local_offer_outlined,
+                label: 'Coupons',
+                onTap: () =>
+                    showAppSnackbar(context, 'Coupons are coming soon.'),
+              ),
+              _NavRow(
+                icon: Icons.payments_outlined,
+                label: 'Payments',
+                onTap: () => showAppSnackbar(
+                    context, 'Saved payments are coming soon.'),
+              ),
+            ],
           ),
           _SectionLabel(label: 'Settings'),
-          _ThemeRow(),
-          _NotificationsRow(),
-          _NavRow(
-            icon: Icons.help_outline,
-            label: 'Help',
-            onTap: () => _HelpSheet.show(context),
+          _GroupedCard(
+            children: [
+              const _ThemeRow(),
+              const _NotificationsRow(),
+              _NavRow(
+                icon: Icons.help_outline,
+                label: 'Help',
+                onTap: () => _HelpSheet.show(context),
+              ),
+            ],
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
-            child: TextButton(
-              key: const Key('sign-out'),
-              onPressed: () => _SignOutSheet.show(context, ref),
-              style: TextButton.styleFrom(
-                foregroundColor: scheme.error,
-                minimumSize: const Size.fromHeight(52),
-              ),
-              child: const Text('Sign out'),
+                AppSpace.lg, AppSpace.lg, AppSpace.lg, 0),
+            child: _GroupedCard(
+              margin: EdgeInsets.zero,
+              children: [
+                TextButton(
+                  key: const Key('sign-out'),
+                  onPressed: () => _SignOutSheet.show(context, ref),
+                  style: TextButton.styleFrom(
+                    foregroundColor: scheme.error,
+                    minimumSize: const Size.fromHeight(52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.card),
+                    ),
+                  ),
+                  child: const Text('Sign out'),
+                ),
+              ],
             ),
           ),
           SizedBox(
@@ -233,9 +250,55 @@ class _NavRow extends StatelessWidget {
               ),
               const SizedBox(width: AppSpace.sm),
             ],
-            Icon(Icons.chevron_right,
-                size: 20, color: scheme.onSurfaceVariant),
+            Icon(CupertinoIcons.chevron_right,
+                size: 16, color: scheme.onSurfaceVariant),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupedCard extends StatelessWidget {
+  const _GroupedCard({
+    required this.children,
+    this.margin = const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+  });
+
+  final List<Widget> children;
+  final EdgeInsetsGeometry margin;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: margin,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          border: Border.all(
+            color: scheme.outline.withValues(alpha: 0.45),
+            width: 0.8,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i != children.length - 1)
+                  Divider(
+                    height: 0.5,
+                    thickness: 0.5,
+                    indent: 54,
+                    color: scheme.outline.withValues(alpha: 0.4),
+                  ),
+              ],
+            ],
+          ),
         ),
       ),
     );

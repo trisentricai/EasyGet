@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/storefront_appearance.dart';
 import '../../../../core/theme/tokens.dart';
+import '../../../../core/widgets/pressable_scale.dart';
 import '../../../../models/catalog_models.dart';
 import '../../../product/presentation/product_providers.dart';
 import '../../../wishlist/presentation/card_heart.dart';
@@ -224,9 +225,8 @@ class ProductCard extends ConsumerWidget {
   }
 
   Widget _grid(BuildContext context, int inCartQty, bool glass, double blur) {
-    return GestureDetector(
+    return PressableScale(
       key: const Key('product-card'),
-      behavior: HitTestBehavior.opaque,
       onTap: _handleTap,
       child: SizedBox(
         width: width,
@@ -260,9 +260,8 @@ class ProductCard extends ConsumerWidget {
   }
 
   Widget _rail(BuildContext context, int inCartQty, bool glass, double blur) {
-    return GestureDetector(
+    return PressableScale(
       key: const Key('product-card'),
-      behavior: HitTestBehavior.opaque,
       onTap: _handleTap,
       child: SizedBox(
         width: width,

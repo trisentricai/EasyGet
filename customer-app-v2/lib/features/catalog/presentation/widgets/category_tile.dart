@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/tokens.dart';
+import '../../../../core/widgets/pressable_scale.dart';
 import '../../../../models/catalog_models.dart';
 
 /// Vibrant background palette for category cards when backend images are null
@@ -52,9 +53,8 @@ class CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return PressableScale(
       key: Key('category-tile-${category.slug}'),
-      borderRadius: BorderRadius.circular(AppRadii.image),
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,

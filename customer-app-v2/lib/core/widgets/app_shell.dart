@@ -16,6 +16,7 @@ class EasyGetShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: navigationShell,
       bottomNavigationBar: EasyGetBottomNav(navigationShell: navigationShell),
     );
