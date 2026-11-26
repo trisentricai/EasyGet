@@ -14,8 +14,8 @@ class AppTheme {
       onPrimary: Colors.white,
       primaryContainer: AppColors.primaryTint,
       onPrimaryContainer: AppColors.primary,
-      secondary: AppColors.marigold,
-      onSecondary: AppColors.lightInk,
+      secondary: AppColors.priceGreen,
+      onSecondary: Colors.white,
       tertiary: AppColors.brand,
       onTertiary: Colors.white,
       surface: AppColors.lightSurface,
@@ -47,8 +47,8 @@ class AppTheme {
       onPrimary: AppColors.darkOnPrimary,
       primaryContainer: AppColors.darkPrimaryTint,
       onPrimaryContainer: AppColors.darkInk,
-      secondary: AppColors.darkMarigold,
-      onSecondary: AppColors.darkCanvas,
+      secondary: AppColors.darkPriceGreen,
+      onSecondary: AppColors.darkOnPrimary,
       tertiary: AppColors.brand,
       onTertiary: Colors.white,
       surface: AppColors.darkSurface,
@@ -201,7 +201,9 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surfaceContainerLowest,
         indicatorColor: scheme.primaryContainer,
-        indicatorShape: const StadiumBorder(),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.button),
+        ),
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) {
             return scheme.primaryContainer.withValues(alpha: 0.7);

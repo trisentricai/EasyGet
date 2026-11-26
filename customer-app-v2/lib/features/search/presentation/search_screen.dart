@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/responsive.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/section_header.dart';
@@ -317,22 +318,26 @@ class _EmptyMode extends ConsumerWidget {
             const SizedBox(height: AppSpace.sm),
             // Trendy 2-column image grid (deliberately different from the
             // home track and the old row list): photo, scrim name, count.
-            GridView.builder(
-              key: const Key('search-category-grid'),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: AppSpace.md,
-                crossAxisSpacing: AppSpace.md,
-                childAspectRatio: 1.5,
-              ),
-              itemCount: cats.length,
-              itemBuilder: (_, i) => CategoryGridCard(
-                category: cats[i],
-                onTap: () =>
-                    context.go('/browse?category=${cats[i].slug}'),
+            LayoutBuilder(
+              builder: (context, constraints) => GridView.builder(
+                key: const Key('search-category-grid'),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: AppResponsive.columns(
+                    constraints.maxWidth,
+                    minCardWidth: 160,
+                  ),
+                  mainAxisSpacing: AppSpace.md,
+                  crossAxisSpacing: AppSpace.md,
+                  childAspectRatio: 1.5,
+                ),
+                itemCount: cats.length,
+                itemBuilder: (_, i) => CategoryGridCard(
+                  category: cats[i],
+                  onTap: () =>
+                      context.go('/browse?category=${cats[i].slug}'),
+                ),
               ),
             ),
             const SizedBox(height: AppSpace.xl),
@@ -477,8 +482,8 @@ class _ResultsView extends ConsumerWidget {
       );
     }
 
-    final width =
-        (MediaQuery.sizeOf(context).width - AppSpace.lg * 2 - AppSpace.md) / 2;
+    final textScale = AppResponsive.textScale(context);
+    final bottomPad = AppResponsive.bottomNavClearance(context);
     return Column(
       children: [
         Padding(
@@ -495,28 +500,42 @@ class _ResultsView extends ConsumerWidget {
           child: RefreshIndicator(
             onRefresh: () =>
                 ref.read(searchControllerProvider.notifier).retry(),
-            child: GridView.builder(
-              controller: controller,
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.md),
-              gridDelegate:
-                  SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: AppSpace.md,
-                crossAxisSpacing: AppSpace.md,
-                childAspectRatio: ProductCard.gridAspect(width),
-              ),
-              itemCount: state.results.length,
-              itemBuilder: (_, i) {
-                final product = state.results[i];
-                return ProductCard(
-                  product: product,
-                  density: ProductDensity.grid,
-                  width: width,
-                  onTap: () =>
-                      context.push('/product/${product.slug}'),
-                  onQuickAdd: () =>
-                      quickAddFromCard(context, product),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final maxW = constraints.maxWidth;
+                final hPad = AppResponsive.pagePadding(maxW);
+                final cols = AppResponsive.columns(maxW);
+                final width = AppResponsive.gridItemWidth(
+                  maxW,
+                  columns: cols,
+                  horizontalPadding: hPad,
+                );
+                return GridView.builder(
+                  controller: controller,
+                  padding: EdgeInsets.fromLTRB(
+                      hPad, AppSpace.sm, hPad, bottomPad),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: AppSpace.md,
+                    crossAxisSpacing: AppSpace.md,
+                    childAspectRatio: ProductCard.gridAspect(
+                      width,
+                      textScale: textScale,
+                    ),
+                  ),
+                  itemCount: state.results.length,
+                  itemBuilder: (_, i) {
+                    final product = state.results[i];
+                    return ProductCard(
+                      product: product,
+                      density: ProductDensity.grid,
+                      width: width,
+                      onTap: () =>
+                          context.push('/product/${product.slug}'),
+                      onQuickAdd: () =>
+                          quickAddFromCard(context, product),
+                    );
+                  },
                 );
               },
             ),

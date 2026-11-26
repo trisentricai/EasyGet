@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,20 +7,24 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/cart/data/cart_repository.dart';
 import '../theme/app_typography.dart';
-import '../theme/storefront_appearance.dart';
 import '../theme/tokens.dart';
 
-/// Floating Apple-style glassmorphic dock for the 5 noun tabs (DESIGN §11.5):
-/// Home · Browse · Search · Cart · Orders.
+/// Flat 5-tab bar for the noun routes: Home · Browse · Search · Cart · Orders.
 ///
-/// Sits above the bottom safe-area inset as a pill-shaped translucent bar
-/// with a real [BackdropFilter] blur (when [StorefrontAppearance.enableGlassmorphism]
-/// is enabled), specular hairline border, and soft layered shadow. Selected
-/// items highlight with a stadium pill in [FreshMarketColorTokens.primaryTint].
+/// Zepto's navigation is deliberately utilitarian — solid surface, hairline
+/// top divider, compact labels and a pink selected state. There is intentionally
+/// **no [BackdropFilter]**: Impeller on the target Android GPU leaks a nested
+/// blur across the whole screen. The shell keeps the existing auto-hide motion,
+/// so scrolling behaviour is unchanged while the material stays compatible.
 class EasyGetBottomNav extends ConsumerWidget {
-  const EasyGetBottomNav({super.key, required this.navigationShell});
+  const EasyGetBottomNav({
+    super.key,
+    required this.navigationShell,
+    this.visible = true,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final bool visible;
 
   static const _items = [
     (
@@ -54,87 +57,57 @@ class EasyGetBottomNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(cartCountProvider).value ?? 0;
-    final appearance = ref.watch(storefrontAppearanceProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final colors = theme.freshColors;
-    final isDark = theme.brightness == Brightness.dark;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final blur = appearance.glassBlurIntensity.clamp(8.0, 32.0).toDouble();
-    final radius = BorderRadius.circular(AppRadii.pill);
 
-    final fillColor = appearance.enableGlassmorphism
-        ? scheme.surfaceContainerLowest.withValues(alpha: isDark ? 0.72 : 0.78)
-        : colors.glassSurface;
-
-    Widget bar = Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs + 2),
+    final bar = Container(
       decoration: BoxDecoration(
-        color: fillColor,
-        borderRadius: radius,
-        border: Border.all(
-          color: colors.glassBorder.withValues(alpha: isDark ? 0.55 : 0.7),
-          width: 1,
-        ),
+        color: scheme.surfaceContainerLowest,
+        border: Border(top: BorderSide(color: colors.glassBorder)),
       ),
-      child: Row(
-        children: [
-          for (var i = 0; i < _items.length; i++)
-            Expanded(
-              child: _NavTabItem(
-                label: _items[i].label,
-                icon: _items[i].icon,
-                selectedIcon: _items[i].selectedIcon,
-                selected: navigationShell.currentIndex == i,
-                cartCount: i == 3 ? count : 0,
-                isCart: i == 3,
-                reduceMotion: reduceMotion,
-                onTap: () {
-                  unawaited(HapticFeedback.lightImpact());
-                  navigationShell.goBranch(
-                    i,
-                    initialLocation: i == navigationShell.currentIndex,
-                  );
-                },
-              ),
-            ),
-        ],
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: [
+              for (var i = 0; i < _items.length; i++)
+                Expanded(
+                  child: _NavTabItem(
+                    label: _items[i].label,
+                    icon: _items[i].icon,
+                    selectedIcon: _items[i].selectedIcon,
+                    selected: navigationShell.currentIndex == i,
+                    cartCount: i == 3 ? count : 0,
+                    isCart: i == 3,
+                    reduceMotion: reduceMotion,
+                    onTap: () {
+                      unawaited(HapticFeedback.lightImpact());
+                      navigationShell.goBranch(
+                        i,
+                        initialLocation: i == navigationShell.currentIndex,
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
 
-    if (appearance.enableGlassmorphism) {
-      bar = BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: bar,
-      );
-    }
-
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpace.lg, 0, AppSpace.lg, AppSpace.sm),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.42 : 0.10),
-                offset: const Offset(0, 8),
-                blurRadius: 24,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                offset: const Offset(0, 2),
-                blurRadius: 6,
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: radius,
-            child: bar,
-          ),
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedSlide(
+        offset: visible ? Offset.zero : const Offset(0, 1.4),
+        duration: reduceMotion ? Duration.zero : AppMotion.base,
+        curve: AppMotion.curve,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: reduceMotion ? Duration.zero : AppMotion.micro,
+          child: bar,
         ),
       ),
     );
@@ -183,13 +156,11 @@ class _NavTabItem extends StatelessWidget {
         child: AnimatedContainer(
           duration: reduceMotion ? Duration.zero : AppMotion.micro,
           curve: AppMotion.curve,
-          margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
+          margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           decoration: BoxDecoration(
-            color: selected
-                ? colors.primaryTint.withValues(alpha: 0.85)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadii.pill),
+            color: selected ? colors.primaryTint : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadii.button),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -233,8 +204,11 @@ class _CartIcon extends StatelessWidget {
     if (count <= 0) return icon;
     return Badge(
       key: const Key('cart-badge'),
-      backgroundColor: theme.freshColors.marigold,
-      label: Text(count > 99 ? '99+' : '$count'),
+      backgroundColor: theme.colorScheme.primary,
+      label: Text(
+        count > 99 ? '99+' : '$count',
+        style: AppTypography.tabularSmall(Colors.white, size: 10),
+      ),
       child: icon,
     );
   }

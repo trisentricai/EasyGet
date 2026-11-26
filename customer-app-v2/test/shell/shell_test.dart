@@ -185,10 +185,15 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('guest (no session) is bounced to /login', (tester) async {
+  testWidgets('guest (no session) lands on /home and redirects to /login on Orders',
+      (tester) async {
     await _pumpApp(tester, signedIn: false);
+    expect(find.text('Nothing here yet'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+
+    await tester.tap(find.text('Orders'));
+    await tester.pumpAndSettle();
     expect(find.text('Sign in'), findsOneWidget);
-    expect(find.text('Nothing here yet'), findsNothing);
   });
 
   testWidgets('signed-in lands on /home with the 5-tab BottomNav',

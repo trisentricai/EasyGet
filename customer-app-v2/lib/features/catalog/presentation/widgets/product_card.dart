@@ -50,8 +50,10 @@ class ProductCard extends ConsumerWidget {
   static const double priceSlotHeight = 64;
   static const double gridSlotsHeight = 180;
 
-  static double gridAspect(double itemWidth) =>
-      itemWidth / (itemWidth * imageAspect + gridSlotsHeight);
+  static double gridAspect(double itemWidth, {double textScale = 1.0}) {
+    final scaledSlots = gridSlotsHeight * (textScale > 1.0 ? textScale : 1.0);
+    return itemWidth / (itemWidth * imageAspect + scaledSlots);
+  }
 
   final CatalogProduct product;
   final ProductDensity density;
@@ -213,15 +215,10 @@ class ProductCard extends ConsumerWidget {
 
   /// Single-shot Add pill for the quick-add pipeline (grid/rail only; the
   /// line density keeps its controlled stepper via [trailing]).
-  /// Grid cards render it in obsidian (Champagne Minimalist law).
-  Widget _quickAddControl({bool obsidian = false}) {
+  Widget _quickAddControl() {
     final quickAdd = onQuickAdd;
     if (quickAdd == null) return _addControl();
-    return _CardAddControl(
-      product: product,
-      obsidian: obsidian,
-      onQuickAdd: quickAdd,
-    );
+    return _CardAddControl(product: product, onQuickAdd: quickAdd);
   }
 
   Widget _grid(BuildContext context, int inCartQty, bool glass, double blur) {
@@ -232,8 +229,6 @@ class ProductCard extends ConsumerWidget {
         width: width,
         child: _cardSurface(
           context,
-          glass: glass,
-          blur: blur,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -251,7 +246,7 @@ class ProductCard extends ConsumerWidget {
               const SizedBox(height: AppSpace.sm),
               _priceSlot(context),
               const SizedBox(height: AppSpace.md),
-              _quickAddControl(obsidian: true),
+              _quickAddControl(),
             ],
           ),
         ),
@@ -267,8 +262,6 @@ class ProductCard extends ConsumerWidget {
         width: width,
         child: _cardSurface(
           context,
-          glass: glass,
-          blur: blur,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -294,51 +287,20 @@ class ProductCard extends ConsumerWidget {
     );
   }
 
-  /// Frosted glass when enabled; an opaque champagne card when the Admin
-  /// Panel switches glassmorphism off (no BackdropFilter at all).
-  Widget _cardSurface(
-    BuildContext context, {
-    required bool glass,
-    required double blur,
-    required Widget child,
-  }) {
+  /// Flat white card with a hairline edge, matching Zepto's utilitarian
+  /// surfaces. No GPU BackdropFilter and no soft floating shadow: Impeller on
+  /// the target Android GPU leaks nested blurs full-screen, and depth here
+  /// comes from the hard offset shadows on the ADD / price controls instead.
+  Widget _cardSurface(BuildContext context, {required Widget child}) {
     final colors = Theme.of(context).freshColors;
-    final surface = Container(
+    return Container(
       padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
-        color: glass ? colors.glassSurface : colors.champagne,
+        color: colors.glassSurface,
         borderRadius: BorderRadius.circular(AppRadii.card),
-        border: Border.all(
-          color: glass ? colors.glassBorder : colors.champagneDeep,
-          width: 1, // Apple hairline
-        ),
+        border: Border.all(color: colors.glassBorder, width: 1),
       ),
       child: child,
-    );
-    // No GPU BackdropFilter: Impeller on some Android GPUs leaks the blur
-    // across the whole screen. Neutral surface + hairline + soft layered
-    // shadow is the compatible Apple-material look. The shadow lives on an
-    // outer DecoratedBox because ClipRRect would clip it away.
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            offset: const Offset(0, 1),
-            blurRadius: 2,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            offset: const Offset(0, 5),
-            blurRadius: 16,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        child: surface,
-      ),
     );
   }
 
@@ -490,12 +452,10 @@ String _rupees(double value) => value == value.roundToDouble()
 class _CardAddControl extends ConsumerWidget {
   const _CardAddControl({
     required this.product,
-    required this.obsidian,
     required this.onQuickAdd,
   });
 
   final CatalogProduct product;
-  final bool obsidian;
   final Future<void> Function() onQuickAdd;
 
   @override
@@ -513,7 +473,7 @@ class _CardAddControl extends ConsumerWidget {
             ref.read(pdpCartControllerProvider.notifier).increment(variantId),
       );
     }
-    return _QuickAddPill(onAdd: onQuickAdd, obsidian: obsidian);
+    return _QuickAddPill(onAdd: onQuickAdd);
   }
 }
 
@@ -591,14 +551,13 @@ class _AddedBar extends StatelessWidget {
   }
 }
 
-/// Single-shot Add pill (40dp — same footprint as the stepper's Add state
-/// so rows never jump). Primary outline, or obsidian fill on champagne
-/// cards. Shows a spinner while the pipeline runs.
+/// Single-shot ADD control (same compact footprint as the stepper's Add state
+/// so rows never jump). White fill, pink outline and a hard pink offset — the
+/// measured Zepto card affordance.
 class _QuickAddPill extends StatefulWidget {
-  const _QuickAddPill({required this.onAdd, this.obsidian = false});
+  const _QuickAddPill({required this.onAdd});
 
   final Future<void> Function() onAdd;
-  final bool obsidian;
 
   @override
   State<_QuickAddPill> createState() => _QuickAddPillState();
@@ -623,57 +582,45 @@ class _QuickAddPillState extends State<_QuickAddPill> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final colors = Theme.of(context).freshColors;
-    final fill = widget.obsidian ? colors.obsidian : null;
-    final ink = widget.obsidian ? colors.champagneInk : scheme.primary;
-    return SizedBox(
-      height: 40,
-      child: OutlinedButton(
-        onPressed: _busy ? null : _tap,
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(72, 40),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-          backgroundColor: fill,
-          side: BorderSide(
-            color: widget.obsidian ? colors.obsidian : scheme.primary,
-          ),
-          foregroundColor: ink,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-          ),
-          textStyle: AppTypography.label(ink),
+    return Semantics(
+      button: true,
+      label: 'Add',
+      child: Container(
+        height: 34,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.button),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.primary,
+              offset: const Offset(1, 1),
+              blurRadius: 0,
+            ),
+          ],
         ),
-        child: _busy
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Circular plus badge — the card's "Add" affordance.
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: widget.obsidian
-                          ? colors.champagneInk
-                          : scheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.add,
-                      size: 14,
-                      color: widget.obsidian
-                          ? colors.obsidian
-                          : scheme.onPrimary,
-                    ),
+        child: OutlinedButton(
+          onPressed: _busy ? null : _tap,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(56, 34),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+            backgroundColor: scheme.surface,
+            side: BorderSide(color: scheme.primary),
+            foregroundColor: scheme.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadii.button),
+            ),
+            textStyle: AppTypography.label(scheme.primary),
+          ),
+          child: _busy
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: scheme.primary,
                   ),
-                  const SizedBox(width: AppSpace.xs),
-                  const Text('Add'),
-                ],
-              ),
+                )
+              : const Text('Add'),
+        ),
       ),
     );
   }

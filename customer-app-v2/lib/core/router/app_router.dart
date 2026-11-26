@@ -24,11 +24,15 @@ import '../widgets/app_shell.dart';
 
 const Set<String> _publicRoutes = {'/login', '/register'};
 
-const Set<String> _privateRoutes = {
+const Set<String> _guestBrowsableRoutes = {
   '/home',
   '/browse',
+  '/browse/all',
   '/search',
   '/cart',
+};
+
+const Set<String> _privateRoutes = {
   '/orders',
   '/checkout',
   '/account',
@@ -38,9 +42,7 @@ const Set<String> _privateRoutes = {
 };
 
 bool _isPrivate(String location) =>
-    _privateRoutes.contains(location) ||
-    location.startsWith('/product/') ||
-    location.startsWith('/order/');
+    _privateRoutes.contains(location) || location.startsWith('/order/');
 
 /// Pure redirect decision (DESIGN §14). Exported so the whole matrix is
 /// unit-tested without a live router.
@@ -49,7 +51,11 @@ bool _isPrivate(String location) =>
 ///   nothing is stranded mid-boot.
 /// - Signed in: `/`, `/login`, `/register` bounce to `/home`; private routes
 ///   are allowed.
-/// - Guest: `/` and private routes bounce to `/login`; public routes allowed.
+/// - Guest: `/` bounces to `/home` so shoppers can browse immediately;
+///   browsable routes (`/home`, `/browse`, `/search`, `/cart`, `/product/...`)
+///   and public auth routes (`/login`, `/register`) are allowed; ordering &
+///   account routes (`/checkout`, `/orders`, `/account`, etc.) bounce to
+///   `/login`.
 String? redirectFor(
   String location, {
   required bool booted,
@@ -67,8 +73,12 @@ String? redirectFor(
   }
 
   // Guest.
-  if (location == '/') return '/login';
+  if (location == '/') return '/home';
   if (_publicRoutes.contains(location)) return null;
+  if (_guestBrowsableRoutes.contains(location) ||
+      location.startsWith('/product/')) {
+    return null;
+  }
   if (_isPrivate(location)) return '/login';
   return null;
 }

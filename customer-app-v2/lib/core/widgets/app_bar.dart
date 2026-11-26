@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_typography.dart';
 import '../theme/tokens.dart';
 import 'nav.dart';
 
-/// Navigation chrome shared by every tab + inner page (DESIGN §11.5):
-/// frosted translucent fill, no elevation, hairline scrolled-under border,
-/// Headline title. The back affordance is a framework [BackButton] (so the
-/// test `pageBack` and assistive tech find it) with [popOrHome] as the
-/// default action.
+/// Navigation chrome shared by every tab + inner page: solid Zepto-white
+/// header, deep-purple/ink title, hairline bottom divider and no elevation.
+/// The back affordance is a framework [BackButton] so `pageBack` and assistive
+/// tech find it, with [popOrHome] as the default action. There is deliberately
+/// no GPU blur — see the note in [EasyGetBottomNav].
 class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
   const EasyGetAppBar({
     super.key,
@@ -48,6 +49,7 @@ class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
           ? BackButton(onPressed: onBack ?? () => popOrHome(context))
           : null,
       title: addressRow ?? (title == null ? null : Text(title!)),
+      titleTextStyle: AppTypography.screenTitle(scheme.onSurface),
       actions: [
         if (etaPill != null)
           Padding(
@@ -57,18 +59,15 @@ class EasyGetAppBar extends StatelessWidget implements PreferredSizeWidget {
         ...actions,
       ],
       bottom: bottom,
-      // Translucent fill without a GPU BackdropFilter: Impeller on some
-      // Android GPUs leaks the backdrop blur across the whole screen when a
-      // filter is nested in the app bar / cards. The tint keeps the frosted
-      // look; the blur itself is intentionally omitted for compatibility.
-      flexibleSpace: ColoredBox(
-        color: scheme.surfaceContainerLowest.withValues(alpha: 0.86),
-      ),
+      // Opaque fill: no GPU BackdropFilter anywhere in the chrome. Impeller on
+      // the target Android GPU leaks a nested blur across the whole screen.
+      flexibleSpace: ColoredBox(color: scheme.surfaceContainerLowest),
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      scrolledUnderElevation: 0.5,
-      shadowColor: colors.glassBorder,
+      scrolledUnderElevation: 0,
+      shadowColor: Colors.transparent,
+      shape: Border(bottom: BorderSide(color: colors.glassBorder)),
     );
   }
 }

@@ -282,7 +282,13 @@ function ProductCardComponent({
         disabled={out || adding}
         onClick={quickAdd}
       >
-        <Icon name={adding ? "loader" : out ? "x" : "plus"} size={18} />
+        {adding ? (
+          <Icon name="loader" size={18} />
+        ) : out ? (
+          <Icon name="x" size={18} />
+        ) : (
+          <span aria-hidden="true">ADD</span>
+        )}
       </button>
     </article>
   );

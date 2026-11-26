@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/responsive.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
 import '../../../core/widgets/skeletons.dart';
@@ -121,14 +122,19 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 return RefreshIndicator(
                   onRefresh: () =>
                       ref.refresh(ordersListProvider.future).then((_) {}),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(AppSpace.lg,
-                        AppSpace.xs, AppSpace.lg, AppSpace.xxl),
-                    itemCount: visible.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: AppSpace.sm),
-                    itemBuilder: (_, i) =>
-                        _OrderCard(order: visible[i]),
+                  child: ResponsiveConstrained(
+                    child: ListView.separated(
+                      padding: EdgeInsets.fromLTRB(
+                          AppSpace.lg,
+                          AppSpace.xs,
+                          AppSpace.lg,
+                          AppResponsive.bottomNavClearance(context)),
+                      itemCount: visible.length,
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppSpace.sm),
+                      itemBuilder: (_, i) =>
+                          _OrderCard(order: visible[i]),
+                    ),
                   ),
                 );
               },

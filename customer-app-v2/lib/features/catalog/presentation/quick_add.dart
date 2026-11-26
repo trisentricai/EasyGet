@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/snackbar.dart';
 import '../../../models/catalog_models.dart';
 import '../../cart/data/cart_enrichment.dart';
@@ -92,11 +95,15 @@ Future<void> quickAddFromCard(
         actionLabel: 'View cart',
         onAction: () => context.go('/cart'),
       );
-    } catch (_) {
+    } catch (e) {
       container
           .read(cardAdditionsProvider.notifier)
           .forget(product.slug);
       if (context.mounted) {
+        if (e is ApiException && e.statusCode == 401) {
+          unawaited(context.push('/login'));
+          return;
+        }
         showAppSnackbar(context, 'Could not add that right now.');
       }
     }

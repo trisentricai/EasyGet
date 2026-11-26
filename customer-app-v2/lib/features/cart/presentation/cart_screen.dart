@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/responsive.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
 import '../../../core/widgets/fluid_sheet.dart';
@@ -94,33 +95,35 @@ class _Body extends ConsumerWidget {
       onRefresh: () => ref.read(cartControllerProvider.notifier).refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpace.lg,
-                AppSpace.md,
-                AppSpace.lg,
-                0,
-              ),
-              child: DeliveryEtaPill(),
-            ),
-            _CouponRow(state: state),
-            for (final item in state.items)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
+        child: ResponsiveConstrained(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
                   AppSpace.lg,
-                  AppSpace.sm,
+                  AppSpace.md,
                   AppSpace.lg,
                   0,
                 ),
-                child: _LineCard(item: item),
+                child: DeliveryEtaPill(),
               ),
-            _BillBlock(state: state),
-            const _TrustRows(),
-            const SizedBox(height: AppSpace.xxl),
-          ],
+              _CouponRow(state: state),
+              for (final item in state.items)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.lg,
+                    AppSpace.sm,
+                    AppSpace.lg,
+                    0,
+                  ),
+                  child: _LineCard(item: item),
+                ),
+              _BillBlock(state: state),
+              const _TrustRows(),
+              SizedBox(height: AppResponsive.bottomNavClearance(context)),
+            ],
+          ),
         ),
       ),
     );

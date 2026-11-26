@@ -35,13 +35,28 @@ class PriceBlock extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              '₹${_rupees(price)}',
-              style: AppTypography.tabularPrice(scheme.onSurface,
-                  size: priceSize),
+            // Zepto's green price tag: solid fill, 1px dark-green edge and a
+            // hard offset shadow. No GPU blur, no soft elevation.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: colors.priceGreen,
+                border: Border.all(color: colors.priceEdge, width: 0.8),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.priceEdge,
+                    offset: const Offset(1.5, 1.5),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: Text(
+                '₹${_rupees(price)}',
+                style: AppTypography.tabularPrice(Colors.white, size: priceSize),
+              ),
             ),
             if (_hasMrp) ...[
               const SizedBox(width: AppSpace.sm),
@@ -60,7 +75,7 @@ class PriceBlock extends StatelessWidget {
           const SizedBox(height: AppSpace.xs),
           Text(
             'Save ₹${_rupees(saved)} · $percent% off',
-            style: AppTypography.label(colors.success, size: 12),
+            style: AppTypography.label(colors.priceGreen, size: 12),
           ),
         ],
       ],

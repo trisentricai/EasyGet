@@ -196,22 +196,32 @@ void main() {
     expect(find.text('Price: Low to High'), findsOneWidget);
   });
 
-  testWidgets('grid is 2 columns with a 12dp gap', (tester) async {
+  testWidgets('grid adapts columns to phone and tablet widths with a 12dp gap',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await _pumpBrowse(tester, _FakeCatalogRepo());
 
-    final grid = tester.widget<GridView>(find.byType(GridView));
-    final delegate =
+    var grid = tester.widget<GridView>(find.byType(GridView));
+    var delegate =
         grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
     expect(delegate.crossAxisCount, 2);
     expect(delegate.mainAxisSpacing, 12);
     expect(delegate.crossAxisSpacing, 12);
-    // 800px viewport → 378px columns → aspect derived from card anatomy.
-    expect(delegate.childAspectRatio, closeTo(0.58, 0.01));
 
     // Cards run the real quick-add pipeline: plain Add pills, never the
     // decorative uncontrolled stepper (no qty-plus anywhere pre-tap).
     expect(find.text('Add'), findsWidgets);
     expect(find.byKey(const Key('qty-plus')), findsNothing);
+
+    // Wide tablet viewport expands to 4 columns.
+    tester.view.physicalSize = const Size(800, 600);
+    await tester.pumpAndSettle();
+    grid = tester.widget<GridView>(find.byType(GridView));
+    delegate = grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+    expect(delegate.crossAxisCount, 4);
   });
 
   testWidgets('applying Featured resets to page 1 with the filter',

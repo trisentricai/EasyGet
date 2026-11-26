@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/responsive.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
 import '../../../core/widgets/nav.dart';
@@ -87,18 +88,30 @@ class _Grid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final width =
-        (MediaQuery.sizeOf(context).width - AppSpace.lg * 2 - AppSpace.md) / 2;
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xxl),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: AppSpace.md,
-        crossAxisSpacing: AppSpace.md,
-        childAspectRatio: ProductCard.gridAspect(width),
-      ),
-      itemCount: rows.length,
+    final textScale = AppResponsive.textScale(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        final hPad = AppResponsive.pagePadding(maxW);
+        final cols = AppResponsive.columns(maxW);
+        final width = AppResponsive.gridItemWidth(
+          maxW,
+          columns: cols,
+          horizontalPadding: hPad,
+        );
+        return GridView.builder(
+          padding: EdgeInsets.fromLTRB(
+              hPad, AppSpace.lg, hPad, AppSpace.xxl),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            mainAxisSpacing: AppSpace.md,
+            crossAxisSpacing: AppSpace.md,
+            childAspectRatio: ProductCard.gridAspect(
+              width,
+              textScale: textScale,
+            ),
+          ),
+          itemCount: rows.length,
               itemBuilder: (_, i) {
                 final product = rows[i];
                 return ProductCard(
@@ -131,6 +144,8 @@ class _Grid extends ConsumerWidget {
                   },
                 );
               },
+        );
+      },
     );
   }
 }

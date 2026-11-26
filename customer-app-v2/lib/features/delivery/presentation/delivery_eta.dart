@@ -60,8 +60,9 @@ final deliveryEtaProvider = FutureProvider<DeliveryEta?>((ref) async {
   }
 });
 
-/// Marigold ETA pill fed by [deliveryEtaProvider]. Renders nothing while
-/// unknown — a missing promise beats a hardcoded one.
+/// Zepto-style ETA pill fed by [deliveryEtaProvider]: deep-purple label on a
+/// soft pink wash. Renders nothing while unknown — a missing promise beats a
+/// hardcoded one.
 class DeliveryEtaPill extends ConsumerWidget {
   const DeliveryEtaPill({super.key});
 
@@ -75,18 +76,16 @@ class DeliveryEtaPill extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(
           horizontal: AppSpace.md, vertical: AppSpace.xs),
       decoration: BoxDecoration(
-        color: colors.marigoldWash,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
+        color: colors.primaryTint,
+        borderRadius: BorderRadius.circular(AppRadii.button),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.timer_outlined,
-              size: 16, color: colors.marigold),
+          Icon(Icons.timer_outlined, size: 16, color: colors.purple),
           const SizedBox(width: 4),
           Text(eta.label,
-              style: AppTypography.tabularSmall(colors.marigold,
-                  size: 12)),
+              style: AppTypography.tabularSmall(colors.purple, size: 12)),
         ],
       ),
     );

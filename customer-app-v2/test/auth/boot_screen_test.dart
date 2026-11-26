@@ -165,7 +165,7 @@ void main() {
     expect(find.byKey(const Key('home')), findsOneWidget);
   });
 
-  testWidgets('no tokens resolves guest straight to /login', (tester) async {
+  testWidgets('no tokens resolves guest straight to /home', (tester) async {
     final repo = _FakeRepo(InMemoryTokenStore());
     final container = await _pumpBoot(tester, repo: repo);
     await tester.pumpAndSettle();
@@ -174,8 +174,8 @@ void main() {
     expect(state, isA<AuthGuest>());
     expect(state, isNot(isA<AuthBooting>()));
     expect(repo.meCalls, 0);
-    expect(redirectFor('/', booted: true, signedIn: false), '/login');
-    expect(find.byKey(const Key('login')), findsOneWidget);
+    expect(redirectFor('/', booted: true, signedIn: false), '/home');
+    expect(find.byKey(const Key('home')), findsOneWidget);
   });
 
   testWidgets('cold-start failure keeps a retry banner that re-runs boot',

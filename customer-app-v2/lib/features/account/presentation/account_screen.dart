@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/responsive.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
 import '../../../core/widgets/app_chip.dart';
@@ -72,8 +73,9 @@ class _Content extends ConsumerWidget {
         ref.watch(wishlistControllerProvider).value?.length ?? 0;
 
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: ResponsiveConstrained(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -192,6 +194,7 @@ class _Content extends ConsumerWidget {
               height:
                   AppSpace.xxl + MediaQuery.of(context).padding.bottom),
         ],
+        ),
       ),
     );
   }

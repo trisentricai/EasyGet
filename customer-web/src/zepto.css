@@ -1,0 +1,352 @@
+/* ==========================================================================
+ * EASYGET · Zepto-inspired storefront layer
+ *
+ * Final cascade layer (imported after apple.css). Geometry and colour are
+ * reverse-engineered from the live Zepto storefront — pink CTAs, green price
+ * tags with hard offset shadows, compact square-cornered cards, flat chrome.
+ * Merchant storefront variables are still set inline on <html> by App.tsx and
+ * therefore win over these :root defaults. API flows are untouched.
+ * ========================================================================== */
+
+:root {
+  --primary: #f9105e;
+  --secondary: #329537;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --ink: #101418;
+  --muted: #586274;
+  --border: #e5e7eb;
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-btn: 8px;
+
+  /* Zepto-specific tokens */
+  --pink: #f9105e;
+  --pink-bright: #ff3269;
+  --pink-soft: #fa3778;
+  --purple: #2b1e35;
+  --purple-deep: #332060;
+  --price-green: #329537;
+  --price-edge: #084121;
+  --sunken: #f7f8fa;
+  --faint: #707686;
+  --line: #e5e7eb;
+  --line-strong: #d3d8e0;
+  --brand: var(--primary);
+  --brand-tint: #fff0f5;
+  --cta: var(--primary);
+  --cta-dark: #d9004f;
+  --marigold: #e79b12;
+  --marigold-wash: #fcedd4;
+  --glass: #ffffff;
+  --glass-strong: #ffffff;
+  --scrim: rgb(16 20 24 / 0.55);
+  --ring: 0 0 0 3px rgb(249 16 94 / 0.28);
+
+  /* Hard 1–2px offset shadows are the signature depth cue. */
+  --shadow-1: 1px 1px 0 rgb(43 30 53 / 0.14);
+  --shadow-2: 2px 2px 0 rgb(43 30 53 / 0.14), 0 6px 18px rgb(16 20 24 / 0.06);
+  --shadow-3: 4px 4px 0 rgb(249 16 94 / 0.22), 0 18px 42px rgb(16 20 24 / 0.16);
+}
+
+html[data-theme="dark"] {
+  --primary: #ff3269 !important;
+  --secondary: #3aa76d !important;
+  --bg: #141017 !important;
+  --surface: #1d1722 !important;
+  --ink: #f7f3f7 !important;
+  --muted: #b6aebd !important;
+  --border: #342a3b !important;
+  --pink: #ff3269;
+  --purple: #f7f3f7;
+  --purple-deep: #ffb0cd;
+  --sunken: #261f2c !important;
+  --faint: #8c8192 !important;
+  --line: #342a3b !important;
+  --line-strong: #4b3f53 !important;
+  --brand-tint: #3b1429 !important;
+  --cta: var(--primary);
+  --cta-dark: #f9105e !important;
+  --glass: #1d1722 !important;
+  --glass-strong: #1d1722 !important;
+  --shadow-1: 1px 1px 0 rgb(0 0 0 / 0.6) !important;
+  --shadow-2: 2px 2px 0 rgb(0 0 0 / 0.6), 0 8px 22px rgb(0 0 0 / 0.4) !important;
+}
+
+html { scroll-behavior: smooth; }
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* ---------- Flat, solid header (no backdrop blur) ---------- */
+.topnav {
+  height: 68px;
+  gap: 18px;
+  padding: 0 clamp(12px, 2.4vw, 28px);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.brand { gap: 8px; min-height: 40px; }
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  box-shadow: 1px 1px 0 var(--price-edge);
+}
+.brand-name {
+  color: var(--purple-deep);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.brand-city { color: var(--muted); font-size: 11px; }
+.nav-primary a.on,
+.nav-login,
+.bottomnav a.on { color: var(--primary); }
+
+.search-shell,
+.searchform {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: none;
+}
+.searchform { min-height: 42px; }
+.search-kbd { border-radius: 5px; border-color: var(--line); }
+
+/* ---------- Product cards ---------- */
+.product-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+.product-card:hover {
+  box-shadow: 2px 2px 0 var(--primary), 0 8px 20px rgb(16 20 24 / 0.07);
+  transform: translateY(-1px);
+}
+.product-thumb-wrap,
+.product-thumb { border-radius: 8px; }
+.product-body { padding: 10px 12px 12px; }
+.product-brand {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.product-name {
+  font-size: 14px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: #262b33;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+html[data-theme="dark"] .product-name { color: var(--ink); }
+
+/* Green price tag with hard edge — Zepto's most recognisable element. */
+.product-price-row { padding-right: 0; }
+.price-now,
+.product-price-row .price-now {
+  display: inline-block;
+  background: var(--secondary);
+  color: #fff;
+  border: 1px solid var(--price-edge);
+  border-radius: 6px;
+  padding: 3px 6px 1px;
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  box-shadow: 1.5px 1.5px 0 var(--price-edge);
+}
+.price-mrp { color: var(--faint); font-size: 12px; }
+.price-off { color: var(--secondary); font-weight: 700; font-size: 11px; }
+html[data-theme="dark"] .price-now { color: #fff; }
+
+/* ADD — white with pink outline and hard pink offset. */
+.add-btn,
+.product-card .add-btn {
+  width: 56px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--primary);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 1px 1px 0 var(--primary);
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+.add-btn:hover:not(:disabled) { background: var(--primary); color: #fff; box-shadow: 1px 1px 0 var(--price-edge); }
+.add-btn:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: none; }
+.add-btn.added,
+.add-btn.added:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ---------- Category tiles ---------- */
+.cat-tile {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.cat-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 2px 2px 0 var(--primary);
+}
+.cat-tile-media { background: #fff; border-radius: 8px; }
+.cat-tile-media img { object-fit: contain; }
+.cat-tile-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--purple);
+  line-height: 1.25;
+  text-align: center;
+}
+html[data-theme="dark"] .cat-tile-name { color: var(--ink); }
+.cat-pill { border-radius: 8px; box-shadow: var(--shadow-1); }
+.cat-banner { border-radius: 10px; box-shadow: var(--shadow-1); }
+
+/* ---------- Product detail ---------- */
+.buybox-price .now,
+.pdp-price .now {
+  display: inline-block;
+  padding: 4px 8px 2px;
+  border: 1px solid var(--price-edge);
+  border-radius: 6px;
+  background: var(--secondary);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 1.5px 1.5px 0 var(--price-edge);
+}
+.buybox-price .mrp,
+.pdp-price .mrp { color: var(--faint); font-size: 14px; }
+.buybox-price .off,
+.pdp-price .off { color: var(--secondary); font-weight: 700; }
+.detail-title { font-family: var(--font); font-size: 24px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+.buybox,
+.pdp-stickybar {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-1);
+}
+
+/* ---------- Primary buttons ---------- */
+.btn-primary,
+.btn.btn-primary,
+button.cta,
+.checkout-btn {
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--price-edge);
+}
+.btn-primary:hover,
+.btn.btn-primary:hover { background: var(--pink-bright); box-shadow: 2px 2px 0 var(--price-edge); }
+.btn-primary:active,
+.btn.btn-primary:active { transform: translate(1px, 1px); box-shadow: none; }
+
+.btn-cart,
+.btn-buy,
+.pdp-stickybar-actions .btn-cart,
+.pdp-stickybar-actions .btn-buy {
+  min-height: 48px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--price-edge);
+}
+.btn-cart,
+.pdp-stickybar-actions .btn-cart { background: var(--primary); }
+.btn-buy,
+.pdp-stickybar-actions .btn-buy {
+  background: var(--purple);
+  border-color: var(--purple);
+  box-shadow: 2px 2px 0 var(--primary);
+}
+.btn-cart:hover:not(:disabled),
+.pdp-stickybar-actions .btn-cart:hover:not(:disabled) { background: var(--pink-bright); }
+.btn-buy:hover:not(:disabled),
+.pdp-stickybar-actions .btn-buy:hover:not(:disabled) { background: var(--purple-deep); }
+.btn-cart:active:not(:disabled),
+.btn-buy:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: none; }
+html[data-theme="dark"] .btn-buy,
+html[data-theme="dark"] .pdp-stickybar-actions .btn-buy { background: var(--purple-deep); }
+
+/* ---------- Section headings ---------- */
+.section-head h2,
+.section-head h3,
+h1, h2, h3 {
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+.section-head h2,
+.section-head h3 { font-weight: 700; }
+
+/* ---------- Mobile bottom nav: flat, pink selection ---------- */
+.bottomnav {
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: none;
+}
+.bottomnav a { color: var(--muted); font-size: 11px; font-weight: 600; }
+.bottomnav a.active,
+.bottomnav a[aria-current="page"] {
+  color: var(--primary);
+  background: var(--brand-tint);
+  border-radius: 8px;
+}
+
+/* ---------- Drawers / sheets: square-ish Zepto panels ---------- */
+.cart-drawer,
+.drawer,
+.sheet,
+.modal-card {
+  border-radius: 12px 0 0 12px;
+  box-shadow: -4px 0 30px rgb(16 20 24 / 0.16);
+}
+
+@media (max-width: 720px) {
+  .topnav { height: 60px; gap: 10px; padding: 0 12px; }
+  .product-name { font-size: 13px; }
+  .price-now { font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-card, .cat-tile { transition: none; }
+  html { scroll-behavior: auto; }
+}

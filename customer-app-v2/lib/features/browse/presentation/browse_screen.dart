@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/responsive.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
 import '../../../core/widgets/app_chip.dart';
@@ -259,20 +260,38 @@ class _Toolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(
-            totalKnown ? '$total items' : '$loadedCount items',
-            style: AppTypography.tabularNumber(scheme.onSurfaceVariant),
+          Expanded(
+            child: Text(
+              totalKnown ? '$total items' : '$loadedCount items',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.tabularNumber(scheme.onSurfaceVariant),
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: AppSpace.xs),
           TextButton.icon(
             onPressed: onFilter,
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+            ),
             icon: const Icon(Icons.tune, size: 18),
             label: Text(filterLabel),
           ),
-          TextButton.icon(
-            onPressed: onSort,
-            icon: const Icon(Icons.arrow_drop_down, size: 18),
-            label: Text('Sort: $sortLabel'),
+          Flexible(
+            child: TextButton.icon(
+              onPressed: onSort,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              ),
+              icon: const Icon(Icons.arrow_drop_down, size: 18),
+              label: Text(
+                'Sort: $sortLabel',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ),
         ],
       ),
@@ -315,38 +334,51 @@ class _Grid extends ConsumerWidget {
       );
     }
 
-    final width =
-        (MediaQuery.sizeOf(context).width - AppSpace.lg * 2 - AppSpace.md) / 2;
+    final textScale = AppResponsive.textScale(context);
+    final bottomPad = AppResponsive.bottomNavClearance(context);
     return Column(
       children: [
         Expanded(
           child: RefreshIndicator(
             onRefresh: () => ref.read(browseItemsProvider.notifier).refresh(),
-            child: GridView.builder(
-              controller: controller,
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg,
-                AppSpace.sm,
-                AppSpace.lg,
-                AppSpace.md,
-              ),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: AppSpace.md,
-                crossAxisSpacing: AppSpace.md,
-                // Derived from the card's fixed anatomy so rows align and
-                // nothing overflows at any column width.
-                childAspectRatio: ProductCard.gridAspect(width),
-              ),
-              itemCount: items.items.length,
-              itemBuilder: (_, i) {
-                final product = items.items[i];
-                return ProductCard(
-                  product: product,
-                  density: ProductDensity.grid,
-                  width: width,
-                  onTap: () => context.push('/product/${product.slug}'),
-                  onQuickAdd: () => quickAddFromCard(context, product),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final maxW = constraints.maxWidth;
+                final hPad = AppResponsive.pagePadding(maxW);
+                final cols = AppResponsive.columns(maxW);
+                final width = AppResponsive.gridItemWidth(
+                  maxW,
+                  columns: cols,
+                  horizontalPadding: hPad,
+                );
+                return GridView.builder(
+                  controller: controller,
+                  padding: EdgeInsets.fromLTRB(
+                    hPad,
+                    AppSpace.sm,
+                    hPad,
+                    bottomPad,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: AppSpace.md,
+                    crossAxisSpacing: AppSpace.md,
+                    childAspectRatio: ProductCard.gridAspect(
+                      width,
+                      textScale: textScale,
+                    ),
+                  ),
+                  itemCount: items.items.length,
+                  itemBuilder: (_, i) {
+                    final product = items.items[i];
+                    return ProductCard(
+                      product: product,
+                      density: ProductDensity.grid,
+                      width: width,
+                      onTap: () => context.push('/product/${product.slug}'),
+                      onQuickAdd: () => quickAddFromCard(context, product),
+                    );
+                  },
                 );
               },
             ),

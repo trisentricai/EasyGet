@@ -196,9 +196,13 @@ void main() {
   });
 
   testWidgets('category shortcut goes to browse', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await _pumpSearch(tester, searchRepo: _FakeSearchRepo());
 
-    // Trendy 2-column image grid (not chips, not rows).
+    // 2 columns on phone widths (adapts to more columns on wider screens).
     final grid = tester.widget<GridView>(
         find.byKey(const Key('search-category-grid')));
     expect(

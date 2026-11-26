@@ -1,18 +1,22 @@
 import 'package:easyget/core/router/app_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _private = [
+const _guestBrowsable = [
   '/home',
   '/browse',
+  '/browse/all',
   '/search',
   '/cart',
+  '/product/milk',
+];
+
+const _private = [
   '/orders',
   '/checkout',
   '/account',
   '/addresses',
   '/wishlist',
   '/notifications',
-  '/product/milk',
   '/order/1',
 ];
 
@@ -20,7 +24,7 @@ const _public = ['/login', '/register'];
 
 void main() {
   group('not booted', () {
-    for (final location in ['/', ..._public, ..._private]) {
+    for (final location in ['/', ..._public, ..._guestBrowsable, ..._private]) {
       test('$location holds before boot resolves', () {
         expect(redirectFor(location, booted: false, signedIn: false), isNull);
         expect(redirectFor(location, booted: false, signedIn: true), isNull);
@@ -39,7 +43,7 @@ void main() {
       });
     }
 
-    for (final location in _private) {
+    for (final location in [..._guestBrowsable, ..._private]) {
       test('$location is allowed', () {
         expect(redirectFor(location, booted: true, signedIn: true), isNull);
       });
@@ -47,11 +51,11 @@ void main() {
   });
 
   group('booted + guest', () {
-    test('/ redirects to /login', () {
-      expect(redirectFor('/', booted: true, signedIn: false), '/login');
+    test('/ redirects to /home', () {
+      expect(redirectFor('/', booted: true, signedIn: false), '/home');
     });
 
-    for (final location in _public) {
+    for (final location in [..._public, ..._guestBrowsable]) {
       test('$location is allowed', () {
         expect(redirectFor(location, booted: true, signedIn: false), isNull);
       });

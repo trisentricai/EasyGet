@@ -1,9 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/responsive.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/app_bar.dart';
 import '../../../core/widgets/search_bar.dart';
@@ -23,10 +25,17 @@ import 'home_providers.dart';
 /// grid → product rails → story block. Server-driven sections render from a
 /// single `GET /storefront/platform/`; the category grid reads `categories()`.
 /// Skeleton → populated / empty / error(+retry); pull-to-refresh re-fires all.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
-  Future<void> _refresh(WidgetRef ref) async {
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _headerVisible = true;
+
+  Future<void> _refresh() async {
     ref
       ..invalidate(homeStorefrontProvider)
       ..invalidate(homeCategoriesProvider);
@@ -34,35 +43,98 @@ class HomeScreen extends ConsumerWidget {
     await ref.read(homeCategoriesProvider.future);
   }
 
+  void _setHeaderVisible(bool value) {
+    if (_headerVisible == value) return;
+    setState(() => _headerVisible = value);
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+
+    if (notification is UserScrollNotification) {
+      if (notification.direction == ScrollDirection.reverse &&
+          notification.metrics.pixels > 16) {
+        _setHeaderVisible(false);
+      } else if (notification.direction == ScrollDirection.forward) {
+        _setHeaderVisible(true);
+      }
+    } else if (notification is ScrollUpdateNotification &&
+        notification.metrics.pixels <= 0) {
+      _setHeaderVisible(true);
+    }
+    return false;
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final storefront = ref.watch(homeStorefrontProvider);
     final categories = ref.watch(homeCategoriesProvider);
+    final scheme = Theme.of(context).colorScheme;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final topInset = MediaQuery.paddingOf(context).top;
+
+    final appBar = EasyGetAppBar(
+      addressRow: const _HomeAddressRow(),
+      etaPill: const KeyedSubtree(
+        key: Key('home-eta-pill'),
+        child: DeliveryEtaPill(),
+      ),
+      actions: [
+        const _BellAction(),
+        IconButton(
+          key: const Key('home-account'),
+          onPressed: () => context.push('/account'),
+          icon: const Icon(Icons.account_circle_outlined),
+          tooltip: 'Account',
+        ),
+      ],
+      bottom: AppSearchBar(
+        onMic: () => context.go('/search?listen=1'),
+      ),
+    );
 
     return Scaffold(
-      appBar: EasyGetAppBar(
-        addressRow: const _HomeAddressRow(),
-        etaPill: const KeyedSubtree(
-          key: Key('home-eta-pill'),
-          child: DeliveryEtaPill(),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: Column(
+          children: [
+            Container(
+              height: topInset,
+              color: scheme.surfaceContainerLowest.withValues(alpha: 0.92),
+            ),
+            ClipRect(
+              child: AnimatedAlign(
+                duration: reduceMotion ? Duration.zero : AppMotion.base,
+                curve: AppMotion.curve,
+                alignment: Alignment.bottomCenter,
+                heightFactor: _headerVisible ? 1.0 : 0.0,
+                child: AnimatedOpacity(
+                  duration: reduceMotion ? Duration.zero : AppMotion.micro,
+                  opacity: _headerVisible ? 1.0 : 0.0,
+                  child: SizedBox(
+                    height: appBar.preferredSize.height,
+                    child: MediaQuery.removePadding(
+                      context: context,
+                      removeTop: true,
+                      child: appBar,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: _Body(
+                  storefront: storefront,
+                  categories: categories,
+                  onRefresh: _refresh,
+                ),
+              ),
+            ),
+          ],
         ),
-        actions: [
-          const _BellAction(),
-          IconButton(
-            key: const Key('home-account'),
-            onPressed: () => context.push('/account'),
-            icon: const Icon(Icons.account_circle_outlined),
-            tooltip: 'Account',
-          ),
-        ],
-        bottom: AppSearchBar(
-          onMic: () => context.go('/search?listen=1'),
-        ),
-      ),
-      body: _Body(
-        storefront: storefront,
-        categories: categories,
-        onRefresh: () => _refresh(ref),
       ),
     );
   }
@@ -267,7 +339,7 @@ class _HomeContent extends StatelessWidget {
               ),
             ],
             const _AllProducts(),
-            const SizedBox(height: AppSpace.xxl),
+            SizedBox(height: AppResponsive.bottomNavClearance(context)),
           ],
         ),
       ),
@@ -482,8 +554,7 @@ class _AllProducts extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final width =
-        (MediaQuery.sizeOf(context).width - AppSpace.lg * 2 - AppSpace.md) / 2;
+    final textScale = AppResponsive.textScale(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -507,29 +578,42 @@ class _AllProducts extends ConsumerWidget {
             ),
           )
         else ...[
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.lg),
-            gridDelegate:
-                SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: AppSpace.md,
-              crossAxisSpacing: AppSpace.md,
-              childAspectRatio: ProductCard.gridAspect(width),
-            ),
-            itemCount: state.items.length,
-            itemBuilder: (_, i) {
-              final product = state.items[i];
-              return ProductCard(
-                product: product,
-                density: ProductDensity.grid,
-                width: width,
-                onTap: () =>
-                    context.push('/product/${product.slug}'),
-                onQuickAdd: () =>
-                    quickAddFromCard(context, product),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final maxW = constraints.maxWidth;
+              final hPad = AppResponsive.pagePadding(maxW);
+              final cols = AppResponsive.columns(maxW);
+              final width = AppResponsive.gridItemWidth(
+                maxW,
+                columns: cols,
+                horizontalPadding: hPad,
+              );
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: hPad),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: AppSpace.md,
+                  crossAxisSpacing: AppSpace.md,
+                  childAspectRatio: ProductCard.gridAspect(
+                    width,
+                    textScale: textScale,
+                  ),
+                ),
+                itemCount: state.items.length,
+                itemBuilder: (_, i) {
+                  final product = state.items[i];
+                  return ProductCard(
+                    product: product,
+                    density: ProductDensity.grid,
+                    width: width,
+                    onTap: () =>
+                        context.push('/product/${product.slug}'),
+                    onQuickAdd: () =>
+                        quickAddFromCard(context, product),
+                  );
+                },
               );
             },
           ),

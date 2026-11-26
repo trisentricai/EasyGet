@@ -16,6 +16,10 @@ import "./polish.css";
 // Approved Apple-style redesign layer. Last so it can retone the shipped
 // marketplace chrome while merchant inline variables still win.
 import "./apple.css";
+// Zepto-inspired storefront retone. Last so its measured palette and hard-edge
+// component geometry win over the neutral Apple layer while merchant inline
+// variables continue to take precedence.
+import "./zepto.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

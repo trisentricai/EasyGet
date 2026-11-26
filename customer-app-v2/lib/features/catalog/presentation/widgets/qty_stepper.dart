@@ -6,10 +6,9 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/tokens.dart';
 
-/// DESIGN §11.2 — one Add system for every density: `Add` pill (primary
-/// outline, 40dp) that morphs (180ms, light haptic) into a `− qty +` stepper
-/// (primaryTint fill). Qty 0 morphs back; `+` disables at [maxQty] with a
-/// tooltip "Only N available".
+/// One add system for every density: a compact white/pink `Add` outline with
+/// a hard offset shadow that morphs into a pink `− qty +` stepper. Qty 0
+/// morphs back; `+` disables at [maxQty] with "Only N available".
 class QtyStepper extends StatefulWidget {
   const QtyStepper({
     super.key,
@@ -56,13 +55,24 @@ class _QtyStepperState extends State<QtyStepper> {
 
   Widget _addButton(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).freshColors;
     final height = widget.compact ? 34.0 : 40.0;
     return Semantics(
       button: true,
       label: 'Add to cart',
-      child: SizedBox(
+      child: Container(
         key: const ValueKey('qty-add'),
         height: height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.button),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.primary,
+              offset: const Offset(1, 1),
+              blurRadius: 0,
+            ),
+          ],
+        ),
         child: OutlinedButton(
           onPressed: () => _emit(1),
           style: OutlinedButton.styleFrom(
@@ -70,12 +80,14 @@ class _QtyStepperState extends State<QtyStepper> {
             padding: EdgeInsets.symmetric(
               horizontal: widget.compact ? AppSpace.md : AppSpace.lg,
             ),
+            backgroundColor: scheme.surface,
             side: BorderSide(color: scheme.primary),
             foregroundColor: scheme.primary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadii.button),
             ),
             textStyle: AppTypography.label(scheme.primary),
+            overlayColor: colors.primaryTint,
           ),
           child: const Text('Add'),
         ),
@@ -95,8 +107,8 @@ class _QtyStepperState extends State<QtyStepper> {
       icon: const Icon(Icons.add),
       iconSize: 18,
       visualDensity: VisualDensity.compact,
-      color: scheme.primary,
-      disabledColor: scheme.onSurfaceVariant.withValues(alpha: 0.38),
+      color: Colors.white,
+      disabledColor: Colors.white54,
       constraints: BoxConstraints.tightFor(width: size, height: size),
       padding: EdgeInsets.zero,
     );
@@ -105,8 +117,15 @@ class _QtyStepperState extends State<QtyStepper> {
       key: const ValueKey('qty-stepper'),
       height: size,
       decoration: BoxDecoration(
-        color: colors.primaryTint,
+        color: scheme.primary,
         borderRadius: BorderRadius.circular(AppRadii.button),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primaryDark,
+            offset: const Offset(1, 1),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -117,7 +136,7 @@ class _QtyStepperState extends State<QtyStepper> {
             icon: const Icon(Icons.remove),
             iconSize: 18,
             visualDensity: VisualDensity.compact,
-            color: scheme.primary,
+            color: Colors.white,
             constraints: BoxConstraints.tightFor(width: size, height: size),
             padding: EdgeInsets.zero,
           ),
@@ -128,7 +147,7 @@ class _QtyStepperState extends State<QtyStepper> {
               child: Text(
                 '$_qty',
                 textAlign: TextAlign.center,
-                style: AppTypography.tabularNumber(scheme.onSurface, size: 14),
+                style: AppTypography.tabularNumber(Colors.white, size: 14),
               ),
             ),
           ),
